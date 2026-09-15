@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "naturalEarthCountries": {
+    "provider": "Natural Earth",
+    "version": "5.1.2",
+    "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries.geojson",
+    "sha256": "239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255",
+    "cache": "data/.geocache/ne-10m-ADM0.geojson",
+    "license": "Public domain",
+    "licenseURL": "https://www.naturalearthdata.com/about/terms-of-use/",
+    "fixture": {
+      "path": "data/boundaries/ne-10m-countries.geojson",
+      "sha256": "392d31ce9642ae4e5857eab7006ce70fb228d238bdb4ff48e6469affa43ea69e",
+      "featureCount": 4
+    }
+  },
+  "naturalEarthRegions": {
+    "provider": "Natural Earth",
+    "version": "5.1.2",
+    "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_1_states_provinces.geojson",
+    "sha256": "22d0e3ad85eb3e27f17cabf8ba2d50e554fbc27a87796ff891d958185da62fb5",
+    "cache": "data/.geocache/ne-10m-ADM1.geojson",
+    "license": "Public domain",
+    "licenseURL": "https://www.naturalearthdata.com/about/terms-of-use/"
+  },
+  "geoBoundaries": {
+    "DEU": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/DEU/ADM1/geoBoundaries-DEU-ADM1.geojson",
+      "sha256": "56e069593595c5006e7044d46b023c2afc6b4a109a669b570ee229e758c00682",
+      "cache": "data/.geocache/gbOpen-DEU-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/DEU/ADM1/",
+      "boundaryID": "DEU-ADM1-10402087",
+      "license": "Data license Germany - Attribution - Version 2.0",
+      "licenseURL": "https://www.govdata.de/dl-de/by-2-0",
+      "fixture": {
+        "path": "data/boundaries/gbOpen-DEU-ADM1.geojson",
+        "sha256": "5cd85d912983b97f61f92f47448aa13d9825cc99ed90a2262e804b1a78437fec",
+        "featureCount": 2
+      }
+    },
+    "FRA": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/FRA/ADM1/geoBoundaries-FRA-ADM1.geojson",
+      "sha256": "84b46673a2287f03bba5e2080f09025fd592e4cc70a5027d07bb16d91febd491",
+      "cache": "data/.geocache/gbOpen-FRA-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/FRA/ADM1/",
+      "boundaryID": "FRA-ADM1-19338628",
+      "license": "Etalab Open License 2.0",
+      "licenseURL": "https://geoservices.ign.fr/sites/default/files/2021-11/IGNF_ADMIN_EXPRESS_3-1.html",
+      "fixture": {
+        "path": "data/boundaries/gbOpen-FRA-ADM1.geojson",
+        "sha256": "7b5d9ab232c63d6c69a0c66311b6d0c31fefd500ee2a73ab052071f2bdf53ce3",
+        "featureCount": 2
+      }
+    },
+    "GBR": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/GBR/ADM1/geoBoundaries-GBR-ADM1.geojson",
+      "sha256": "22b69feadc23622a05d273479ab1915cace89355f6918157a1bc480cb80c3dcd",
+      "cache": "data/.geocache/gbOpen-GBR-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/GBR/ADM1/",
+      "boundaryID": "GBR-ADM1-14339913",
+      "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "licenseURL": "https://ec.europa.eu/info/legal-notice_en",
+      "fixture": {
+        "path": "data/boundaries/gbOpen-GBR-ADM1.geojson",
+        "sha256": "56bd6e71ee0e240cb8890b2d015a932cf706ad77dda0888d8c04e55d62c8353b",
+        "featureCount": 2
+      }
+    }
+  },
+  "fallbacks": []
+}

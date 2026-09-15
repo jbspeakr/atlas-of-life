@@ -1,0 +1,31 @@
+{
+  "repository": "https://github.com/protomaps/basemaps-assets",
+  "commit": "028c18f713baecad011301ff7a69acc39bcc2ae7",
+  "files": [
+    "fonts/Noto Sans Italic/0-255.pbf",
+    "fonts/Noto Sans Italic/1024-1279.pbf",
+    "fonts/Noto Sans Italic/256-511.pbf",
+    "fonts/Noto Sans Italic/512-767.pbf",
+    "fonts/Noto Sans Italic/768-1023.pbf",
+    "fonts/Noto Sans Medium/0-255.pbf",
+    "fonts/Noto Sans Medium/1024-1279.pbf",
+    "fonts/Noto Sans Medium/256-511.pbf",
+    "fonts/Noto Sans Medium/512-767.pbf",
+    "fonts/Noto Sans Medium/768-1023.pbf",
+    "fonts/Noto Sans Regular/0-255.pbf",
+    "fonts/Noto Sans Regular/1024-1279.pbf",
+    "fonts/Noto Sans Regular/256-511.pbf",
+    "fonts/Noto Sans Regular/512-767.pbf",
+    "fonts/Noto Sans Regular/768-1023.pbf",
+    "sprites/v4/dark.json",
+    "sprites/v4/dark.png",
+    "sprites/v4/dark@2x.json",
+    "sprites/v4/dark@2x.png"
+  ],
+  "fixture": {
+    "source": "https://build.protomaps.com/20260914.pmtiles",
+    "buildDate": "2026-09-14",
+    "schema": "4.15.2",
+    "coverage": "global z0–3, six city windows z4–14; verification fixture, not complete bundled production archive"
+  }
+}

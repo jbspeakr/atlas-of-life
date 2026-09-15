@@ -1,0 +1,15 @@
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/fonts/*
+  Cache-Control: public, max-age=86400
+/glyphs/*
+  Cache-Control: public, max-age=86400
+/sprites/*
+  Cache-Control: public, max-age=86400
+/tiles/*
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+  Access-Control-Expose-Headers: Content-Range, ETag
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer

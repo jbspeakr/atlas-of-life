@@ -1,0 +1,17 @@
+{
+  "jsGzip": 512000,
+  "css": 60000,
+  "fonts": 180000,
+  "geometryGzip": 400000,
+  "firstViewBytes": 2000000,
+  "firstViewRequests": 60,
+  "largestGenerated": 1500000,
+  "frameP95": 24,
+  "longFrames": 12,
+  "idleMs": 4000,
+  "heapBytes": 100000000,
+  "visualDiff": 0,
+  "fcpWarmMs": 1500,
+  "fcpColdMs": 3000,
+  "layoutShift": 0
+}

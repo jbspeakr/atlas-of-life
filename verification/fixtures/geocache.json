@@ -1,0 +1,79 @@
+{
+  "3021e6cc4a4ba781671c56b2d7f8e3ab2021a330a1d36389a313f248bf0367a0": {
+    "coordinates": [
+      -3.18916667,
+      55.95333333
+    ],
+    "kind": "city",
+    "country": "GB",
+    "region": "GB-SCT",
+    "city": "Edinburgh",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Edinburgh"
+  },
+  "683ab1245b2a9e865db1059edfb17db59442fde2f65186757a26bf6475912219": {
+    "coordinates": [
+      11.575,
+      48.1375
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BY",
+    "city": "Munich",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Munich"
+  },
+  "8fd8cab9b29f679b0f5d94b1749907578307bea57c9f43942968052eb1483ed6": {
+    "coordinates": [
+      -0.1275,
+      51.50722222
+    ],
+    "kind": "city",
+    "country": "GB",
+    "region": "GB-ENG",
+    "city": "London",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/London"
+  },
+  "9b423c82371141ea96c5c1232c5994aa780a93196ed811e596d114c7ba8be7f5": {
+    "coordinates": [
+      2.3522,
+      48.8567
+    ],
+    "kind": "city",
+    "country": "FR",
+    "region": "FR-IDF",
+    "city": "Paris",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Paris"
+  },
+  "de02f151b1db039ea5b03d6ca3d4a744cd10400c8304722fc80417cecd29bbbb": {
+    "coordinates": [
+      4.835,
+      45.7675
+    ],
+    "kind": "city",
+    "country": "FR",
+    "region": "FR-ARA",
+    "city": "Lyon",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Lyon"
+  },
+  "f14a0add2984944711e81f38a8ce9f72be834fc3f6146939cb7f685d5c8636da": {
+    "coordinates": [
+      13.405,
+      52.52
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BE",
+    "city": "Berlin",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Berlin"
+  },
+  "f6b6f763cfe154c0fab1d66dd3f5cce61fb0cba2eb70d6c900bf72d958f1783a": {
+    "coordinates": [
+      13.3777,
+      52.5163
+    ],
+    "kind": "address",
+    "country": "DE",
+    "region": "DE-BE",
+    "city": "Berlin",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Brandenburg_Gate"
+  }
+}
