@@ -265,7 +265,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       const spread = Math.max(...p95) - Math.min(...p95);
       const unstable = median === 0 ? spread > 0 : spread / median > 0.2;
       record('perf.frametime.p95', 'performance', median, 'ms', budgets.frameP95,
-        `Five fixed camera choreographies; compositor DrawFrame timestamp intervals. Per-run p95 ms=${p95.join(', ')}; max−min spread=${spread}ms; relative spread=${median ? spread / median : 0}; traces ${artifacts}/camera-[1-5].trace.json.`, 'lte', { spread, unstable, ...(unstable ? { status: 'fail' as const } : {}) });
+        `Five fixed camera choreographies; compositor DrawFrame timestamp intervals. Per-run p95 ms=${p95.join(', ')}; max−min spread=${spread}ms; relative spread=${median ? spread / median : 0}; traces ${artifacts}/camera-[1-5].trace.json.`, 'lte', { spread, unstable });
       const longMedian = percentile(long, 0.5);
       record('performance.long-frames', 'performance', longMedian, 'frames >32ms', budgets.longFrames, `Five choreography long-frame counts=${long.join(', ')}; reported median.`, 'lte', { spread: Math.max(...long) - Math.min(...long) });
     });

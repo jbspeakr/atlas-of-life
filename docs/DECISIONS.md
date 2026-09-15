@@ -17,3 +17,6 @@ Build-time processing owns all sensitive fields. Runtime places have an explicit
 
 ## Hosting status
 Hosting is not yet selected. Browser compatibility must be measured using real public archive URLs; no authenticated bucket, unpublished account resource or mutable reference will be represented as verified. The repository will support a supplied immutable remote URL and a genuinely self-contained bundled archive. Missing owner credentials and candidate URLs will be reported separately from measured public endpoints.
+
+## Correcting the instability reporting contract
+The first harness implementation incorrectly overrode a numerically passing p95 check with `fail` whenever its five-run spread exceeded 20%. The brief explicitly says to **gate on the median and flag instability**, not to replace the 24 ms gate with a stability gate. One measured run had median 21.528 ms and spread 5.16 ms: it should report `pass`, `unstable: true`, not claim 21.528 exceeded 24. This correction is isolated in its own commit with this explanation. The 24 ms p95 budget, 32 ms long-frame definition, long-frame limit, all five samples and the 20% instability flag remain unchanged. Flagged results remain visible evidence and are not treated as proof of a stable performance improvement; no retries or quarantine are used to force green.
