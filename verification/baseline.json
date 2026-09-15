@@ -1,0 +1,598 @@
+{
+  "commit": "da72c56e5f053bd8230f252737cbe4a1fe77a7e5",
+  "timestamp": "2026-09-15T08:54:59.353Z",
+  "durationMs": 136899,
+  "checks": [
+    {
+      "id": "static.lint",
+      "category": "correctness",
+      "metric": 0,
+      "threshold": 0,
+      "message": "eslint.config.js: threshold 0 command errors; measured 0.   ",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "unit.contracts",
+      "category": "correctness",
+      "metric": 0,
+      "threshold": 0,
+      "message": "verification/contracts.test.ts: threshold 0 command errors; measured 0. \n RUN  v5.0.0 /Users/brennenstuhl/Projects/life-map\n\n\n Test Files  1 passed (1)\n      Tests  21 passed (21)\n   Start at  10:52:43\n   Duration  212ms (import 35%, transform 32%, tests 32%, worker 1%)\n\n  ",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.fixture-build",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "scripts/build-geo.ts → dist/: threshold 0 build errors; measured 0. \n> atlas-of-a-life@1.0.0 build\n> npm run generate && vite build\n\n\n> atlas-of-a-life@1.0.0 generate\n> tsx scripts/build-geo.ts && tsx scripts/build-style.ts\n\ncountries.geojson: 50,427 bytes; gzip 19,732 bytes\ncountries-fine.geojson: 256,141 bytes; gzip 91,501 bytes\nregions.geojson: 79,454 bytes; gzip 30,076 bytes\nregions-fine.geojson: 316,649 bytes; gzip 109,007 bytes\nplaces.json: 1,195 bytes; gzip 477 bytes\nvisits.json: 1,334 bytes; gzip 481 bytes\nGeometry total gzip: 250,316 bytes (target 400,000; maximum 1,000,000)\nPublished 3 countries, 6 regions, 6 places, 7 visits\nStyle: 65 layers, globe projection, all semantic layers continuously present.\nvite v7.3.6 building client environment for production...\ntransforming...\n✓ 41 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                      1.15 kB │ gzip:   0.55 kB\ndist/assets/style-NRQiauQm.json    645.68 kB │ gzip: 223.98 kB\ndist/assets/index-DkaLH6oo.css       8.88 kB │ gzip:   2.52 kB\ndist/assets/index-B5J_IoZq.js    1,312.97 kB │ gzip: 365.75 kB\n✓ built in 1.88s\n \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.fixture-tiles",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "dist/tiles/basemap.pmtiles: expected committed SHA256 38c66ec7053de0c6d269069aa943e4453e832af210b425c591f31cf78952ae35; measured 38c66ec7053de0c6d269069aa943e4453e832af210b425c591f31cf78952ae35. Wrong archive staging breaks hermetic verification.",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "static.types",
+      "category": "correctness",
+      "metric": 0,
+      "threshold": 0,
+      "message": "tsconfig.json: threshold 0 command errors; measured 0.   ",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "zoom.coverage",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0.17600000000000005,
+      "threshold": 0.05,
+      "comparator": "gte",
+      "unit": "opacity / zoom",
+      "message": "src/generated/style.json: no empty semantic band at quarter-zoom samples; measured 0.17600000000000005, threshold gte 0.05"
+    },
+    {
+      "id": "zoom.continuity",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0.16666666666666674,
+      "threshold": 0.26,
+      "comparator": "lte",
+      "unit": "opacity / zoom",
+      "message": "src/generated/style.json: adjacent sample opacity delta; measured 0.16666666666666674, threshold lte 0.26"
+    },
+    {
+      "id": "zoom.monotonic",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "threshold": 0,
+      "comparator": "lte",
+      "unit": "opacity / zoom",
+      "message": "src/generated/style.json: each rise and fall must be monotonic; measured 0, threshold lte 0"
+    },
+    {
+      "id": "zoom.overlap",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 1,
+      "threshold": 0.5,
+      "comparator": "gte",
+      "unit": "opacity / zoom",
+      "message": "src/generated/style.json: adjacent bands overlap for at least half a zoom; measured 1, threshold gte 0.5"
+    },
+    {
+      "id": "zoom.hidden-state",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "threshold": 0,
+      "comparator": "lte",
+      "unit": "opacity / zoom",
+      "message": "src/generated/style.json: filtered feature-state must actually extinguish the emitted layers; measured 0, threshold lte 0"
+    },
+    {
+      "id": "budget.js",
+      "category": "budget",
+      "metric": 365750,
+      "threshold": 512000,
+      "message": "dist/assets/*.js: gzipped application budget; excessive dependencies or missing build",
+      "unit": "bytes",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "budget.css",
+      "category": "budget",
+      "metric": 8884,
+      "threshold": 60000,
+      "message": "dist/assets/*.css: stylesheet bytes budget; oversized styles or missing output",
+      "unit": "bytes",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "budget.fonts",
+      "category": "budget",
+      "metric": 31088,
+      "threshold": 180000,
+      "message": "public/fonts/: self-hosted WOFF2 budget; missing fonts or extra subsets",
+      "unit": "bytes",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "budget.geometry",
+      "category": "budget",
+      "metric": 250765,
+      "threshold": 400000,
+      "message": "src/generated/*.geojson: gzipped geometry budget; simplify selected boundaries",
+      "unit": "bytes",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "budget.largest-generated",
+      "category": "budget",
+      "metric": 645683,
+      "threshold": 1500000,
+      "message": "src/generated/: largest generated file; missing geometry or excessive detail",
+      "unit": "bytes",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.payload-purity",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "dist/** and src/generated/places.json: allowlist violations 0; ",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.city-precision",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "dist/**, generated visits/places and style pin geometry: 0 unsafe coordinate values; ",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.integrity",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "src/generated/: 0 missing country/region references; resolve all configured boundaries",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "data.geocache",
+      "category": "data",
+      "metric": 0,
+      "threshold": 0,
+      "message": "data/geocache.json: zero misses; validated all authored queries offline",
+      "unit": "count",
+      "comparator": "lte",
+      "status": "pass"
+    },
+    {
+      "id": "runtime.contract",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "dist/index.html exposes window.__atlas.map/select/reset and a loaded map under /atlas/."
+    },
+    {
+      "id": "runtime.fixture-idle",
+      "category": "performance",
+      "status": "pass",
+      "metric": 448,
+      "unit": "ms",
+      "threshold": 4000,
+      "comparator": "lte",
+      "message": "Deterministic fixture map loaded + fonts ready + idle; normal startup is measured separately."
+    },
+    {
+      "id": "network.first-view-bytes",
+      "category": "network",
+      "status": "pass",
+      "metric": 946789,
+      "unit": "bytes",
+      "threshold": 2000000,
+      "comparator": "lte",
+      "message": "CDP Network.loadingFinished encodedDataLength summed for cold first view, including response headers."
+    },
+    {
+      "id": "network.first-view-requests",
+      "category": "network",
+      "status": "pass",
+      "metric": 14,
+      "unit": "requests",
+      "threshold": 60,
+      "comparator": "lte",
+      "message": "CDP Network.requestWillBeSent count through cold first-view idle."
+    },
+    {
+      "id": "performance.fcp-cold",
+      "category": "performance",
+      "status": "pass",
+      "metric": 2400,
+      "unit": "ms",
+      "threshold": 3000,
+      "comparator": "lte",
+      "message": "Cache disabled, CDP 4G: 150ms RTT, 1.6Mbps down; navigation-relative first-contentful-paint."
+    },
+    {
+      "id": "performance.cls",
+      "category": "performance",
+      "status": "pass",
+      "metric": 0,
+      "unit": "score",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "Buffered layout-shift entries excluding recent user input through first idle."
+    },
+    {
+      "id": "runtime.gpu",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "software renderers",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Chromium 153.0.8010.12; WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)"
+    },
+    {
+      "id": "visual.nonblank-canvas",
+      "category": "visual",
+      "status": "pass",
+      "metric": 91,
+      "unit": "quantized colors",
+      "threshold": 8,
+      "comparator": "gte",
+      "message": "Actual WebGL canvas screenshot 1440×900; 4-bit RGB sampled every fourth pixel."
+    },
+    {
+      "id": "a11y.initial",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "violations",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "verification/artifacts/axe-initial.json: No WCAG A/AA violations"
+    },
+    {
+      "id": "visual.globe",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/globe.png vs verification/artifacts/globe.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/globe.diff.png; Chromium 153.0.8010.12, viewport {\"width\":1440,\"height\":900}, DPR 1."
+    },
+    {
+      "id": "interaction.country",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Real pointer click on rendered DE polygon in layer countries changed camera."
+    },
+    {
+      "id": "visual.country",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/country.png vs verification/artifacts/country.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/country.diff.png; Chromium 153.0.8010.12, viewport {\"width\":1440,\"height\":900}, DPR 1."
+    },
+    {
+      "id": "visual.region",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/region.png vs verification/artifacts/region.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/region.diff.png; Chromium 153.0.8010.12, viewport {\"width\":1440,\"height\":900}, DPR 1."
+    },
+    {
+      "id": "visual.city",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/city.png vs verification/artifacts/city.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/city.diff.png; Chromium 153.0.8010.12, viewport {\"width\":1440,\"height\":900}, DPR 1."
+    },
+    {
+      "id": "data.fixture-pins",
+      "category": "data",
+      "status": "pass",
+      "metric": 6,
+      "unit": "unique places",
+      "threshold": 6,
+      "comparator": "eq",
+      "message": "Expected six deterministic fixture cities, rendered IDs: berlin-2019, munich-2020, paris-2021, lyon-2022, london-2024, edinburgh-2025"
+    },
+    {
+      "id": "interaction.pin-caption",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Pointer selected berlin-2019; visible Place dialog: ×\nBerlin\n\nBerlin / Germany\n\n14 Jul 2019 · 1 Jun 2023\n\n2 visits"
+    },
+    {
+      "id": "a11y.caption",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "violations",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "verification/artifacts/axe-caption.json: No WCAG A/AA violations"
+    },
+    {
+      "id": "visual.caption",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/caption.png vs verification/artifacts/caption.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/caption.diff.png; Chromium 153.0.8010.12, viewport {\"width\":1440,\"height\":900}, DPR 1."
+    },
+    {
+      "id": "a11y.escape-focus-return",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Escape closes Place dialog and returns focus to berlin-2019; actual active data-place-id=berlin-2019"
+    },
+    {
+      "id": "a11y.chronological-tab",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "order mismatches",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "src/generated/places.json expected berlin-2019 → munich-2020 → paris-2021 → lyon-2022 → london-2024 → edinburgh-2025; actual keyboard Tab berlin-2019 → munich-2020 → paris-2021 → lyon-2022 → london-2024 → edinburgh-2025"
+    },
+    {
+      "id": "a11y.keyboard-activation",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Enter on edinburgh-2025 opens matching caption; expected Edinburgh, actual ×\nEdinburgh\n\nScotland / United Kingdom\n\n2 Aug 2025 — 6 Aug 2025"
+    },
+    {
+      "id": "a11y.keyboard-focus-return",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Escape after keyboard activation returns focus to edinburgh-2025; actual edinburgh-2025"
+    },
+    {
+      "id": "interaction.timeline",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 210,
+      "unit": "red-channel drop",
+      "threshold": 80,
+      "comparator": "gte",
+      "message": "src/generated/style.json: London pin must visibly extinguish at year 2019; center red 239 → 29. Missing promoteId/feature-state binding leaves the pin lit."
+    },
+    {
+      "id": "a11y.timeline",
+      "category": "a11y",
+      "status": "pass",
+      "metric": 0,
+      "unit": "violations",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "verification/artifacts/axe-timeline.json: No WCAG A/AA violations"
+    },
+    {
+      "id": "interaction.deep-link",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Reload http://127.0.0.1:4178/atlas/?deterministic=1#/place/berlin-2019 must restore Berlin caption; actual: ×\nBerlin\n\nBerlin / Germany\n\n14 Jul 2019 · 1 Jun 2023\n\n2 visits"
+    },
+    {
+      "id": "visual.mobile",
+      "category": "visual",
+      "status": "pass",
+      "metric": 0,
+      "unit": "different pixels",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "verification/baselines/mobile.png vs verification/artifacts/mobile.actual.png; exact pixelmatch including anti-aliasing, diff verification/artifacts/mobile.diff.png; Chromium 153.0.8010.12, viewport {\"width\":375,\"height\":844}, DPR 1."
+    },
+    {
+      "id": "runtime.idle",
+      "category": "performance",
+      "status": "pass",
+      "metric": 412.2000000476837,
+      "unit": "ms",
+      "threshold": 4000,
+      "comparator": "lte",
+      "message": "Normal production startup: actual first MapLibre idle event relative to navigation, with ignition and rotation enabled."
+    },
+    {
+      "id": "motion.idle-rotation",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0.3096599999691989,
+      "unit": "degrees / 500ms",
+      "threshold": 0.05,
+      "comparator": "gte",
+      "message": "Normal motion startup must settle into visible globe rotation."
+    },
+    {
+      "id": "perf.frametime.p95",
+      "category": "performance",
+      "status": "pass",
+      "metric": 18.147,
+      "unit": "ms",
+      "threshold": 24,
+      "comparator": "lte",
+      "message": "Five fixed camera choreographies; compositor DrawFrame timestamp intervals. Per-run p95 ms=17.372, 18.089, 18.147, 18.785, 22.836; max−min spread=5.463999999999999ms; relative spread=0.30109659998897886; traces verification/artifacts/camera-[1-5].trace.json.",
+      "spread": 5.463999999999999,
+      "unstable": true
+    },
+    {
+      "id": "performance.long-frames",
+      "category": "performance",
+      "status": "pass",
+      "metric": 0,
+      "unit": "frames >32ms",
+      "threshold": 12,
+      "comparator": "lte",
+      "message": "Five choreography long-frame counts=0, 0, 0, 0, 0; reported median.",
+      "spread": 0,
+      "unstable": false
+    },
+    {
+      "id": "performance.heap",
+      "category": "performance",
+      "status": "pass",
+      "metric": 44717548,
+      "unit": "bytes",
+      "threshold": 100000000,
+      "comparator": "lte",
+      "message": "src/map/create-map.ts: JSHeapUsedSize after each of five choreographies: 32998432, 49365532, 44717548, 35447792, 66042952; median without forced GC.",
+      "spread": 33044520,
+      "unstable": true
+    },
+    {
+      "id": "performance.heap-final",
+      "category": "performance",
+      "status": "pass",
+      "metric": 66042952,
+      "unit": "bytes",
+      "threshold": 100000000,
+      "comparator": "lte",
+      "message": "Actual CDP JSHeapUsedSize after all five camera choreographies, without forced garbage collection."
+    },
+    {
+      "id": "performance.warm-cache",
+      "category": "performance",
+      "status": "pass",
+      "metric": 12,
+      "unit": "cached resources",
+      "threshold": 1,
+      "comparator": "gte",
+      "message": "ResourceTiming confirms cache use: http://127.0.0.1:4178/atlas/fonts/noto-sans.woff2, http://127.0.0.1:4178/atlas/fonts/fraunces.woff2, http://127.0.0.1:4178/atlas/assets/index-B5J_IoZq.js, http://127.0.0.1:4178/atlas/assets/index-DkaLH6oo.css, http://127.0.0.1:4178/atlas/assets/style-NRQiauQm.json, http://127.0.0.1:4178/atlas/tiles/basemap.pmtiles, http://127.0.0.1:4178/atlas/sprites/dark.json, http://127.0.0.1:4178/atlas/sprites/dark.png, http://127.0.0.1:4178/atlas/tiles/basemap.pmtiles, http://127.0.0.1:4178/atlas/tiles/basemap.pmtiles, http://127.0.0.1:4178/atlas/tiles/basemap.pmtiles, http://127.0.0.1:4178/atlas/glyphs/Noto%20Sans%20Regular/0-255.pbf"
+    },
+    {
+      "id": "performance.fcp-warm",
+      "category": "performance",
+      "status": "pass",
+      "metric": 20,
+      "unit": "ms",
+      "threshold": 1500,
+      "comparator": "lte",
+      "message": "HTTP cache enabled, one priming navigation, then measured same-context reload FCP."
+    },
+    {
+      "id": "performance.cls-warm",
+      "category": "performance",
+      "status": "pass",
+      "metric": 0,
+      "unit": "score",
+      "threshold": 0,
+      "comparator": "lte",
+      "message": "Warm reload buffered layout-shift score through idle, excluding recent input."
+    },
+    {
+      "id": "motion.reduced",
+      "category": "performance",
+      "status": "pass",
+      "metric": 0,
+      "unit": "render frames / 2000ms",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Real reduced-motion media context without deterministic query; MapLibre render events counted for 2000ms after settled."
+    },
+    {
+      "id": "network.origins",
+      "category": "network",
+      "status": "pass",
+      "metric": 0,
+      "unit": "unexpected requests",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "Only http://127.0.0.1:4178 allowed in bundled mode; unexpected URLs: none. Disallowed requests fail visibly, never silently mocked."
+    },
+    {
+      "id": "runtime.browser-errors",
+      "category": "correctness",
+      "status": "pass",
+      "metric": 0,
+      "unit": "errors",
+      "threshold": 0,
+      "comparator": "eq",
+      "message": "No console errors, page exceptions, failed requests or HTTP errors."
+    }
+  ],
+  "summary": {
+    "pass": 57,
+    "fail": 0,
+    "skip": 0,
+    "objective": {
+      "hardFailures": 0,
+      "p95FrameMs": 18.147,
+      "firstViewBytes": 946789,
+      "firstViewRequests": 14,
+      "visualDiffPixels": 0,
+      "dependencies": 30,
+      "runtimeDependencies": 6,
+      "sourceLines": 6373
+    }
+  }
+}
