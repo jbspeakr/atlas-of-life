@@ -25,7 +25,7 @@ Publication precision defaults to `city`. Even explicit street coordinates are r
 
 Set `VITE_BASEMAP=remote`, `VITE_BASEMAP_URL` to your archive URL, and `VITE_TILE_ORIGINS` to any exact redirect origins reported by the hosting probe. Explicit remote mode refuses a missing URL. With no environment configured the local sample remains usable; no unrelated public tile service is silently selected. The preferred production host is a **Hugging Face dataset repository pinned to a commit SHA**, based on live range/CORS/browser measurements; publishing your own extract still requires your account.
 
-Run `npm run verify:hosting -- URL --origin https://your-site.example --min-zoom 0 --max-zoom 14 --bounds=-180,-85.0511287,180,85.0511287` before deploying. The CLI accepts `--bounds` followed by the comma-separated bounds (use that separated form if your npm/shell does not retain the `=` form). Dated `build.protomaps.com` archives are extraction inputs, never browser URLs.
+Run `npm run verify:hosting -- URL --origin https://your-site.example --min-zoom 0 --max-zoom 14 --bounds -180,-85.0511287,180,85.0511287` before deploying. Dated `build.protomaps.com` archives are extraction inputs, never browser URLs.
 
 `npm run tiles:publish -- --help` describes the `hf` CLI publishing command. It stages only the archive and an OSM-derived dataset card, uploads them, verifies remote identity, and writes a full immutable resolve URL into `.env.production`. It never uploads `data/visits.ts`. Authentication and permission to write your dataset are required. Read the [measured hosting decisions](docs/DECISIONS.md), including the unverified Storage Bucket prerequisite.
 
@@ -55,7 +55,7 @@ Quick mode runs static, unit, cold fixture generation and payload budgets in und
 
 Normal-motion startup and camera performance are measured separately from deterministic visual capture. Cold FCP uses CDP 150 ms latency / 1.6 Mbps down; warm FCP proves HTTP cache use. Static serving uses ordinary gzip compression for text, but never compresses PMTiles byte ranges. Performance measurements require real GPU acceleration; software renderers fail visibly. The CI workflow therefore targets a provisioned self-hosted `macOS`, `ARM64`, `atlas-gpu` runner, matching the approved platform. A runner and Pages/Cloudflare permissions must be supplied before hosted CI can execute.
 
-Current measured application JavaScript is approximately **366 KB gzip**, CSS **8.1 KB**, self-hosted WOFF2 **41.6 KB**, and all generated boundary LODs **251 KB gzip**. The full report is authoritative; [evolution](docs/EVOLUTION.md) records measured changes rather than visual guesses.
+Current measured application JavaScript is approximately **366 KB gzip**, CSS **8.8 KB**, self-hosted WOFF2 **31.1 KB**, and all generated boundary LODs **251 KB gzip**. The full report is authoritative; [evolution](docs/EVOLUTION.md) records measured changes rather than visual guesses.
 
 ## Static hosting and security
 
