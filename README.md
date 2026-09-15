@@ -8,6 +8,8 @@ Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev`. The first genera
 
 `npm run build` produces `dist/`; `npm run preview` serves it. Use `VITE_BASE=/some/subpath/ npm run build` for a subpath, or retain the default relative `./` base. `npm run geocode` is the explicit cache-warming step. `npm test` runs the same unit contracts used by verification. `npm run analyze` generates `dist/bundle-analysis.html`.
 
+Append `?tag=coast` to share a geographically tagged view; it combines with the year scrubber, and “Show all” clears it. Tags change what is illuminated, not the single warm accent palette.
+
 ## Add a place
 
 Edit `data/visits.ts` and add a visit with a unique slug, label and uppercase country code.
@@ -26,6 +28,8 @@ Publication precision defaults to `city`. Even explicit street coordinates are r
 Set `VITE_BASEMAP=remote`, `VITE_BASEMAP_URL` to your archive URL, and `VITE_TILE_ORIGINS` to any exact redirect origins reported by the hosting probe. Explicit remote mode refuses a missing URL. With no environment configured the local sample remains usable; no unrelated public tile service is silently selected. The preferred production host is a **Hugging Face dataset repository pinned to a commit SHA**, based on live range/CORS/browser measurements; publishing your own extract still requires your account.
 
 Run `npm run verify:hosting -- URL --origin https://your-site.example --min-zoom 0 --max-zoom 14 --bounds -180,-85.0511287,180,85.0511287` before deploying. Dated `build.protomaps.com` archives are extraction inputs, never browser URLs.
+
+Without overrides, the hosting probe requires vector Protomaps layers, z0–14 and global bounds. Transport success on a public sample is not an app-compatibility certificate: the measured HF sample is an MGRS archive, not the basemap to deploy. For a country-only archive without city detail, pass `--max-zoom 6`.
 
 `npm run tiles:publish -- --help` describes the `hf` CLI publishing command. It stages only the archive and an OSM-derived dataset card, uploads them, verifies remote identity, and writes a full immutable resolve URL into `.env.production`. It never uploads `data/visits.ts`. Authentication and permission to write your dataset are required. Read the [measured hosting decisions](docs/DECISIONS.md), including the unverified Storage Bucket prerequisite.
 
@@ -55,13 +59,15 @@ Quick mode runs static, unit, cold fixture generation and payload budgets in und
 
 Normal-motion startup and camera performance are measured separately from deterministic visual capture. Cold FCP uses CDP 150 ms latency / 1.6 Mbps down; warm FCP proves HTTP cache use. Static serving uses ordinary gzip compression for text, but never compresses PMTiles byte ranges. Performance measurements require real GPU acceleration; software renderers fail visibly. The CI workflow therefore targets a provisioned self-hosted `macOS`, `ARM64`, `atlas-gpu` runner, matching the approved platform. A runner and Pages/Cloudflare permissions must be supplied before hosted CI can execute.
 
-Current measured application JavaScript is approximately **366 KB gzip**, CSS **8.8 KB**, self-hosted WOFF2 **31.1 KB**, and all generated boundary LODs **251 KB gzip**. The full report is authoritative; [evolution](docs/EVOLUTION.md) records measured changes rather than visual guesses.
+Current measured application JavaScript is approximately **366 KB gzip**, CSS **8.9 KB**, self-hosted WOFF2 **31.1 KB**, and all generated boundary LODs **251 KB gzip**. The full report is authoritative; [evolution](docs/EVOLUTION.md) records measured changes rather than visual guesses.
 
 ## Static hosting and security
 
 The Vite build injects a restrictive CSP: scripts/fonts/styles from self, only explicit tile/redirect connect origins, blob workers for MapLibre, data/blob image decoding, no objects, no form submissions. MapLibre's positioned DOM requires `style-src-attr 'unsafe-inline'`; script execution does **not** permit inline or eval. Deploy over HTTP(S), not `file://`. `_headers` is included for Cloudflare-compatible hosts. Hashed assets get a one-year immutable policy; when replacing an un-hashed archive, change its URL or purge caches. GitHub Pages controls its own cache headers and cannot honour `_headers`; use an immutable remote archive there. Do not assume a host supports byte ranges: run the probe. Never gzip a PMTiles object at the CDN.
 
 The workflow builds and deploys GitHub Pages after full verification; a Cloudflare Pages alternative is commented alongside it. Configure repository variables `VITE_BASEMAP_URL` and `VITE_TILE_ORIGINS`. Pull requests receive the objective table and verification artifacts. Fork PRs do not receive write-token comment permissions.
+
+Full GPU verification runs for repository pushes and trusted same-repository PRs. Fork changes must be reviewed and mirrored onto a trusted branch before using a self-hosted runner; do not run untrusted code on a machine containing personal credentials. The Cloudflare alternative is a separate commented job that rebuilds with a root base.
 
 ## Data provenance
 

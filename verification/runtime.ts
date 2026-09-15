@@ -631,6 +631,25 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       );
       await page.keyboard.press("Escape");
     });
+    await run("interaction.alias-history", "correctness", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.goto(`${url}#/place/berlin-2023`);
+      await page
+        .getByRole("dialog", { name: "Place", exact: true })
+        .waitFor({ state: "visible" });
+      await page.goBack();
+      await page.waitForURL(url);
+      record(
+        "interaction.alias-history",
+        "correctness",
+        0,
+        "history traps",
+        0,
+        "src/map/create-map.ts: repeat-visit alias restores its city caption without pushing a redirect loop; browser Back returns to the preceding globe route.",
+        "eq",
+      );
+    });
     await run("visual.mobile", "visual", async () => {
       await page.setViewportSize({ width: 375, height: 844 });
       await page.evaluate(() => {

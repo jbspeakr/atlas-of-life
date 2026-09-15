@@ -1495,6 +1495,1343 @@
           }
         ]
       }
+    },
+    {
+      "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+      "origin": "http://127.0.0.1:4178",
+      "measuredAt": "2026-09-15T07:58:20.014Z",
+      "expectations": {
+        "minZoom": 0,
+        "maxZoom": 14,
+        "bounds": [
+          -180,
+          -85.0511287,
+          180,
+          85.0511287
+        ]
+      },
+      "status": "fail",
+      "head": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "close",
+              "content-length": "211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 07:58:19 GMT",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 14.81
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "keep-alive",
+              "content-length": "16384",
+              "content-range": "bytes 0-16383/211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 07:58:19 GMT",
+              "keep-alive": "timeout=5",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 11.78
+          }
+        ],
+        "bytes": 16384
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 204,
+            "headers": {
+              "access-control-allow-headers": "Range",
+              "access-control-allow-methods": "GET, HEAD, OPTIONS",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "connection": "keep-alive",
+              "date": "Tue, 15 Sep 2026 07:58:19 GMT",
+              "keep-alive": "timeout=5"
+            },
+            "elapsedMs": 8.96
+          }
+        ],
+        "bytes": 0
+      },
+      "header": {
+        "specVersion": 3,
+        "rootDirectoryOffset": 127,
+        "rootDirectoryLength": 48,
+        "jsonMetadataOffset": 175,
+        "jsonMetadataLength": 1013,
+        "leafDirectoryOffset": 1188,
+        "leafDirectoryLength": 24215,
+        "tileDataOffset": 25403,
+        "tileDataLength": 211734168,
+        "numAddressedTiles": 11440,
+        "numTileEntries": 9219,
+        "numTileContents": 8677,
+        "clustered": true,
+        "internalCompression": 2,
+        "tileCompression": 2,
+        "tileType": 1,
+        "minZoom": 0,
+        "maxZoom": 14,
+        "minLon": -180,
+        "minLat": -85.0511287,
+        "maxLon": 180,
+        "maxLat": 85.0511287,
+        "centerZoom": 6,
+        "centerLon": 0,
+        "centerLat": 0
+      },
+      "checks": {
+        "head": true,
+        "range": true,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": true,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": true,
+        "zoom": true,
+        "bounds": true,
+        "browser": false
+      },
+      "browser": {
+        "status": "fail",
+        "origin": "http://127.0.0.1:4178",
+        "renderedFeatures": 0,
+        "changedPixels": 0,
+        "consoleErrors": [
+          "Access to fetch at 'http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles' from origin 'http://127.0.0.1:4178' has been blocked by CORS policy: Permission was denied for this request to access the `loopback` address space.",
+          "Failed to load resource: net::ERR_FAILED"
+        ],
+        "requests": [],
+        "error": "page.evaluate: TypeError: Failed to fetch\n    at FetchSource.<anonymous> (node_modules/pmtiles/dist/pmtiles.js:1:12047)\n    at Generator.next (<anonymous>)\n    at node_modules/pmtiles/dist/pmtiles.js:1:716\n    at new Promise (<anonymous>)\n    at d (node_modules/pmtiles/dist/pmtiles.js:1:536)\n    at FetchSource.getBytes (node_modules/pmtiles/dist/pmtiles.js:1:11812)\n    at node_modules/pmtiles/dist/pmtiles.js:1:14631\n    at Generator.next (<anonymous>)\n    at node_modules/pmtiles/dist/pmtiles.js:1:716\n    at new Promise (<anonymous>)"
+      }
+    },
+    {
+      "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+      "origin": "http://127.0.0.1:4179",
+      "measuredAt": "2026-09-15T07:59:16.683Z",
+      "expectations": {
+        "minZoom": 0,
+        "maxZoom": 14,
+        "bounds": [
+          -180,
+          -85.0511287,
+          180,
+          85.0511287
+        ]
+      },
+      "status": "pass",
+      "head": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "close",
+              "content-length": "211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 07:59:15 GMT",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 11.35
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "keep-alive",
+              "content-length": "16384",
+              "content-range": "bytes 0-16383/211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 07:59:15 GMT",
+              "keep-alive": "timeout=5",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 8.72
+          }
+        ],
+        "bytes": 16384
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 204,
+            "headers": {
+              "access-control-allow-headers": "Range",
+              "access-control-allow-methods": "GET, HEAD, OPTIONS",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "connection": "keep-alive",
+              "date": "Tue, 15 Sep 2026 07:59:15 GMT",
+              "keep-alive": "timeout=5"
+            },
+            "elapsedMs": 7.86
+          }
+        ],
+        "bytes": 0
+      },
+      "header": {
+        "specVersion": 3,
+        "rootDirectoryOffset": 127,
+        "rootDirectoryLength": 48,
+        "jsonMetadataOffset": 175,
+        "jsonMetadataLength": 1013,
+        "leafDirectoryOffset": 1188,
+        "leafDirectoryLength": 24215,
+        "tileDataOffset": 25403,
+        "tileDataLength": 211734168,
+        "numAddressedTiles": 11440,
+        "numTileEntries": 9219,
+        "numTileContents": 8677,
+        "clustered": true,
+        "internalCompression": 2,
+        "tileCompression": 2,
+        "tileType": 1,
+        "minZoom": 0,
+        "maxZoom": 14,
+        "minLon": -180,
+        "minLat": -85.0511287,
+        "maxLon": 180,
+        "maxLat": 85.0511287,
+        "centerZoom": 6,
+        "centerLon": 0,
+        "centerLat": 0
+      },
+      "checks": {
+        "head": true,
+        "range": true,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": true,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": true,
+        "zoom": true,
+        "bounds": true,
+        "browser": true
+      },
+      "browser": {
+        "status": "pass",
+        "origin": "http://127.0.0.1:4179",
+        "renderedFeatures": 5,
+        "changedPixels": 480000,
+        "consoleErrors": [],
+        "requests": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=175-1187"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=1188-12689"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=27752327-27753855"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=14918250-14918342"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=36062254-36069778"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=20650310-20661332"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg",
+      "origin": "http://127.0.0.1:4178",
+      "measuredAt": "2026-09-15T07:59:31.898Z",
+      "expectations": {},
+      "status": "fail",
+      "head": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 302,
+            "headers": {
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "content-length": "1070",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 07:59:30 GMT",
+              "last-modified": "Mon, 27 Apr 2026 14:31:39 GMT",
+              "link": "<https://huggingface.co/api/buckets/julien-c/my-training-bucket/xet-read-token>; rel=\"xet-auth\", <https://cas-server.xethub.hf.co/v1/reconstructions/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945>; rel=\"xet-reconstruction-info\"",
+              "location": "https://us.aws.cdn.hf.co/xet-bridge-us/69947873a39db36d7ec8611b/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945?response-content-type=image%2Fsvg%2Bxml&user_id=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27pi-logo-dark.svg%3B+filename%3D%22pi-logo-dark.svg%22%3B&X-Xet-Cas-Uid=public&Expires=1789462770&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+              "ratelimit": "\"resolvers\";r=2999;t=138",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=3000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin, Accept",
+              "via": "1.1 2696c49ebf3abec704c6af790acf6778.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "eWnxeXoP5Xr4HOTIpp8BeThmSRKSHATqWQJKiAk4XDKw4ayZ7zyOuA==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-linked-etag": "\"655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945\"",
+              "x-linked-size": "473",
+              "x-powered-by": "huggingface-moon",
+              "x-request-id": "Root=1-6aa8fae2-0ca8db76242138e97a00e7f4",
+              "x-xet-hash": "655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945"
+            },
+            "elapsedMs": 236.71
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69947873a39db36d7ec8611b/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945?response-content-type=image%2Fsvg%2Bxml&user_id=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27pi-logo-dark.svg%3B+filename%3D%22pi-logo-dark.svg%22%3B&X-Xet-Cas-Uid=public&Expires=1789462770&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-headers": "Content-Range, Content-Type, Content-Disposition, ETag",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "*",
+              "content-disposition": "inline; filename*=UTF-8''pi-logo-dark.svg; filename=\"pi-logo-dark.svg\";",
+              "content-length": "473",
+              "content-type": "image/svg+xml",
+              "date": "Tue, 15 Sep 2026 07:59:31 GMT",
+              "etag": "\"655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945\"",
+              "vary": "origin, access-control-request-method, access-control-request-headers",
+              "x-hf-cdn-pop": "aws-eu-west-3",
+              "x-request-id": "01M2J181K41YQEHMC2VFVFDPJS"
+            },
+            "elapsedMs": 212.74
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 302,
+            "headers": {
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "content-length": "1072",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 07:59:30 GMT",
+              "last-modified": "Mon, 27 Apr 2026 14:31:39 GMT",
+              "link": "<https://huggingface.co/api/buckets/julien-c/my-training-bucket/xet-read-token>; rel=\"xet-auth\", <https://cas-server.xethub.hf.co/v1/reconstructions/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945>; rel=\"xet-reconstruction-info\"",
+              "location": "https://us.aws.cdn.hf.co/xet-bridge-us/69947873a39db36d7ec8611b/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27pi-logo-dark.svg%3B+filename%3D%22pi-logo-dark.svg%22%3B&response-content-type=image%2Fsvg%2Bxml&X-Xet-Cas-Uid=public&user_id=public&Expires=1789462770&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+              "ratelimit": "\"resolvers\";r=2997;t=138",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=3000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin, Accept",
+              "via": "1.1 06659e009eac6940f260d2b396e0460c.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "40_Y4K46kkl-6bgjSvhSJoT3Gldns34LdOFzRCzOTrxfm-EAnXbw6w==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-linked-etag": "\"655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945\"",
+              "x-linked-size": "473",
+              "x-powered-by": "huggingface-moon",
+              "x-request-id": "Root=1-6aa8fae2-04c7680839e3c1e76ea44d78",
+              "x-xet-hash": "655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945"
+            },
+            "elapsedMs": 219.45
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69947873a39db36d7ec8611b/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27pi-logo-dark.svg%3B+filename%3D%22pi-logo-dark.svg%22%3B&response-content-type=image%2Fsvg%2Bxml&X-Xet-Cas-Uid=public&user_id=public&Expires=1789462770&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-headers": "Content-Range, Content-Type, Content-Disposition, ETag",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "*",
+              "content-disposition": "inline; filename*=UTF-8''pi-logo-dark.svg; filename=\"pi-logo-dark.svg\";",
+              "content-length": "473",
+              "content-range": "bytes 0-472/473",
+              "content-type": "image/svg+xml",
+              "date": "Tue, 15 Sep 2026 07:59:31 GMT",
+              "etag": "\"655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945\"",
+              "vary": "origin, access-control-request-method, access-control-request-headers",
+              "x-hf-cdn-pop": "aws-eu-west-3",
+              "x-request-id": "01M2J181K531VD89WD5T86TSVT"
+            },
+            "elapsedMs": 247.54
+          }
+        ],
+        "bytes": 473,
+        "error": "Expected PMTiles v3 magic and 127-byte header"
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 200,
+            "headers": {
+              "access-control-allow-headers": "range",
+              "access-control-allow-methods": "GET",
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "content-length": "2",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 07:59:30 GMT",
+              "etag": "W/\"2-nOO9QiTIwXgNtWtBJezz8kv3SLc\"",
+              "ratelimit": "\"resolvers\";r=99998;t=138",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=100000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin",
+              "via": "1.1 32202134de03dbdd880d0da736c39c1c.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "HtwxZERWlZUKiDrRzc53benX-gHVqdXmRNfevxSjVkjD81jOcFcclQ==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-powered-by": "huggingface-moon",
+              "x-request-id": "Root=1-6aa8fae2-5b08944829839d60430c08ef"
+            },
+            "elapsedMs": 212.42
+          }
+        ],
+        "bytes": 0
+      },
+      "checks": {
+        "head": false,
+        "range": false,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": true,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": false,
+        "browser": false
+      },
+      "browser": {
+        "status": "fail",
+        "origin": "http://127.0.0.1:4178",
+        "renderedFeatures": 0,
+        "changedPixels": 0,
+        "consoleErrors": [],
+        "requests": [
+          {
+            "url": "https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg",
+            "status": 302,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69947873a39db36d7ec8611b/655848989da370ded132a8cb42c0e628e05ca4865f9a4c457cea645225dfd945?response-content-type=image%2Fsvg%2Bxml&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27pi-logo-dark.svg%3B+filename%3D%22pi-logo-dark.svg%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789462771&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=0-16383"
+          }
+        ],
+        "error": "page.evaluate: Error: Wrong magic number for PMTiles archive\n    at node_modules/pmtiles/dist/pmtiles.js:1:14703\n    at Generator.next (<anonymous>)\n    at a (node_modules/pmtiles/dist/pmtiles.js:1:574)"
+      }
+    },
+    {
+      "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+      "origin": "http://127.0.0.1:4179",
+      "measuredAt": "2026-09-15T09:36:53.021Z",
+      "expectations": {
+        "minZoom": 0,
+        "maxZoom": 14,
+        "bounds": [
+          -180,
+          -85.0511287,
+          180,
+          85.0511287
+        ]
+      },
+      "layerNames": [
+        "boundaries",
+        "earth",
+        "landcover",
+        "landuse",
+        "places",
+        "pois",
+        "roads",
+        "water",
+        "buildings"
+      ],
+      "status": "pass",
+      "head": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "close",
+              "content-length": "211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 09:36:52 GMT",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 15.09
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "cache-control": "public, max-age=3600",
+              "connection": "keep-alive",
+              "content-length": "16384",
+              "content-range": "bytes 0-16383/211759571",
+              "content-type": "application/vnd.pmtiles",
+              "date": "Tue, 15 Sep 2026 09:36:52 GMT",
+              "keep-alive": "timeout=5",
+              "last-modified": "Tue, 15 Sep 2026 07:30:50 GMT",
+              "x-content-type-options": "nosniff"
+            },
+            "elapsedMs": 11.34
+          }
+        ],
+        "bytes": 16384
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4179",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 204,
+            "headers": {
+              "access-control-allow-headers": "Range",
+              "access-control-allow-methods": "GET, HEAD, OPTIONS",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "Content-Range, ETag",
+              "connection": "keep-alive",
+              "date": "Tue, 15 Sep 2026 09:36:52 GMT",
+              "keep-alive": "timeout=5"
+            },
+            "elapsedMs": 8.49
+          }
+        ],
+        "bytes": 0
+      },
+      "header": {
+        "specVersion": 3,
+        "rootDirectoryOffset": 127,
+        "rootDirectoryLength": 48,
+        "jsonMetadataOffset": 175,
+        "jsonMetadataLength": 1013,
+        "leafDirectoryOffset": 1188,
+        "leafDirectoryLength": 24215,
+        "tileDataOffset": 25403,
+        "tileDataLength": 211734168,
+        "numAddressedTiles": 11440,
+        "numTileEntries": 9219,
+        "numTileContents": 8677,
+        "clustered": true,
+        "internalCompression": 2,
+        "tileCompression": 2,
+        "tileType": 1,
+        "minZoom": 0,
+        "maxZoom": 14,
+        "minLon": -180,
+        "minLat": -85.0511287,
+        "maxLon": 180,
+        "maxLat": 85.0511287,
+        "centerZoom": 6,
+        "centerLon": 0,
+        "centerLat": 0
+      },
+      "checks": {
+        "head": true,
+        "range": true,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": true,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": true,
+        "zoom": true,
+        "bounds": true,
+        "vector": true,
+        "styleLayers": true,
+        "browser": true
+      },
+      "browser": {
+        "status": "pass",
+        "origin": "http://127.0.0.1:4179",
+        "renderedFeatures": 5,
+        "changedPixels": 480000,
+        "consoleErrors": [],
+        "requests": [
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=175-1187"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=1188-12689"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=27752327-27753855"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=14918250-14918342"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=36062254-36069778"
+          },
+          {
+            "url": "http://127.0.0.1:4179/atlas/tiles/basemap.pmtiles",
+            "status": 206,
+            "range": "bytes=20650310-20661332"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+      "origin": "http://127.0.0.1:4178",
+      "measuredAt": "2026-09-15T09:37:10.697Z",
+      "expectations": {
+        "minZoom": 0,
+        "maxZoom": 14,
+        "bounds": [
+          -180,
+          -85.0511287,
+          180,
+          85.0511287
+        ]
+      },
+      "layerNames": [
+        "mgrs_100km",
+        "mgrs_100km_label_points",
+        "mgrs_100m",
+        "mgrs_100m_label_e",
+        "mgrs_100m_label_n",
+        "mgrs_10km",
+        "mgrs_10km_label_e",
+        "mgrs_10km_label_n",
+        "mgrs_1km",
+        "mgrs_1km_label_e",
+        "mgrs_1km_label_n"
+      ],
+      "status": "fail",
+      "head": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 302,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "cache-control": "no-store",
+              "content-length": "1000",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 09:37:05 GMT",
+              "link": "<https://huggingface.co/api/datasets/smartmaps/mgrs-pmtiles/xet-read-token/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32>; rel=\"xet-auth\", <https://cas-server.xethub.hf.co/v1/reconstructions/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a>; rel=\"xet-reconstruction-info\"",
+              "location": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468625&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+              "ratelimit": "\"resolvers\";r=2999;t=78",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=3000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin, Accept",
+              "via": "1.1 385cb8def78c1bb03b9aa3bd53bf1f06.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "fUH1ZCf5ZYH7XNrTnHdgv7SIhzLOieXQ5A1qjv_Ow_CPXUZpjazxjA==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-hf-warning": "unauthenticated; Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.",
+              "x-hub-cache": "MISS",
+              "x-linked-etag": "\"8e6a564bf29734e6fc194965a69a5bad816225fa09b2615ceecd3e797a173acf\"",
+              "x-linked-size": "6515998388",
+              "x-powered-by": "huggingface-moon",
+              "x-repo-commit": "f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32",
+              "x-request-id": "Root=1-6aa911c1-3d4146613132026e3477c827",
+              "x-xet-hash": "d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a"
+            },
+            "elapsedMs": 1044.55
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468625&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-headers": "Content-Range, Content-Type, Content-Disposition, ETag",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "*",
+              "content-disposition": "inline; filename*=UTF-8''mgrs-hokkaido.pmtiles; filename=\"mgrs-hokkaido.pmtiles\";",
+              "content-length": "6515998388",
+              "content-type": "application/octet-stream",
+              "date": "Tue, 15 Sep 2026 09:37:05 GMT",
+              "etag": "\"d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a\"",
+              "vary": "origin, access-control-request-method, access-control-request-headers",
+              "x-hf-cdn-pop": "aws-eu-west-3",
+              "x-request-id": "01M2J6TQAGYR3BF9VWS521P3XH"
+            },
+            "elapsedMs": 253.67
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 302,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "cache-control": "no-store",
+              "content-length": "1000",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 09:37:05 GMT",
+              "link": "<https://huggingface.co/api/datasets/smartmaps/mgrs-pmtiles/xet-read-token/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32>; rel=\"xet-auth\", <https://cas-server.xethub.hf.co/v1/reconstructions/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a>; rel=\"xet-reconstruction-info\"",
+              "location": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?user_id=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&Expires=1789468625&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+              "ratelimit": "\"resolvers\";r=2998;t=78",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=3000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin, Accept",
+              "via": "1.1 b24ae08ef06aba9fb6d6ddc32eb80c64.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "FHDsPOqUSHSJ-MPq_iRvCedC0b8SpFRIk4vW2OZqGg6fkQR9sAJQxw==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-hf-warning": "unauthenticated; Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.",
+              "x-linked-etag": "\"8e6a564bf29734e6fc194965a69a5bad816225fa09b2615ceecd3e797a173acf\"",
+              "x-linked-size": "6515998388",
+              "x-powered-by": "huggingface-moon",
+              "x-repo-commit": "f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32",
+              "x-request-id": "Root=1-6aa911c1-744bb66d4379fff23245de80",
+              "x-xet-hash": "d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a"
+            },
+            "elapsedMs": 1029.97
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?user_id=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&Expires=1789468625&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-headers": "Content-Range, Content-Type, Content-Disposition, ETag",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "*",
+              "content-disposition": "inline; filename*=UTF-8''mgrs-hokkaido.pmtiles; filename=\"mgrs-hokkaido.pmtiles\";",
+              "content-length": "16384",
+              "content-range": "bytes 0-16383/6515998388",
+              "content-type": "application/octet-stream",
+              "date": "Tue, 15 Sep 2026 09:37:05 GMT",
+              "etag": "\"d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a\"",
+              "vary": "origin, access-control-request-method, access-control-request-headers",
+              "x-hf-cdn-pop": "aws-eu-west-3",
+              "x-request-id": "01M2J6TQAJ2VXJNXQHE1JM9J5B"
+            },
+            "elapsedMs": 251.84
+          }
+        ],
+        "bytes": 16384
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 200,
+            "headers": {
+              "access-control-allow-headers": "range",
+              "access-control-allow-methods": "GET",
+              "access-control-allow-origin": "http://127.0.0.1:4178",
+              "access-control-expose-headers": "X-Repo-Commit,X-Request-Id,X-Error-Code,X-Error-Message,X-Total-Count,ETag,Link,Accept-Ranges,Content-Range,X-Linked-Size,X-Linked-ETag,X-Xet-Hash",
+              "access-control-max-age": "86400",
+              "content-length": "2",
+              "content-type": "text/plain; charset=utf-8",
+              "cross-origin-opener-policy": "same-origin",
+              "date": "Tue, 15 Sep 2026 09:37:05 GMT",
+              "etag": "W/\"2-nOO9QiTIwXgNtWtBJezz8kv3SLc\"",
+              "ratelimit": "\"resolvers\";r=99997;t=78",
+              "ratelimit-policy": "\"fixed window\";\"resolvers\";q=100000;w=300",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Origin",
+              "via": "1.1 2e4eab1a81a3a1decbe496056c9489da.cloudfront.net (CloudFront)",
+              "x-amz-cf-id": "ruC9g-yiRmPf6FYmpdD5VJPoXWeqKagJk9w8Q4sLwDuomPzdQgbP-Q==",
+              "x-amz-cf-pop": "FRA50-P2",
+              "x-cache": "Miss from cloudfront",
+              "x-powered-by": "huggingface-moon",
+              "x-request-id": "Root=1-6aa911c1-0c341c2e6fa8ddb72b0bc305"
+            },
+            "elapsedMs": 1015.67
+          }
+        ],
+        "bytes": 0
+      },
+      "header": {
+        "specVersion": 3,
+        "rootDirectoryOffset": 127,
+        "rootDirectoryLength": 2104,
+        "jsonMetadataOffset": 2231,
+        "jsonMetadataLength": 2299,
+        "leafDirectoryOffset": 4530,
+        "leafDirectoryLength": 6204287,
+        "tileDataOffset": 6208817,
+        "tileDataLength": 6509789571,
+        "numAddressedTiles": 4446986,
+        "numTileEntries": 4446986,
+        "numTileContents": 4446986,
+        "clustered": true,
+        "internalCompression": 2,
+        "tileCompression": 2,
+        "tileType": 1,
+        "minZoom": 0,
+        "maxZoom": 16,
+        "minLon": 138.372999,
+        "minLat": 40.610371,
+        "maxLon": 150,
+        "maxLat": 46.953529,
+        "centerZoom": 16,
+        "centerLon": 144.000549,
+        "centerLat": 43.355141
+      },
+      "checks": {
+        "head": true,
+        "range": true,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": true,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": true,
+        "zoom": true,
+        "bounds": false,
+        "vector": true,
+        "styleLayers": false,
+        "browser": true
+      },
+      "browser": {
+        "status": "pass",
+        "origin": "http://127.0.0.1:4178",
+        "renderedFeatures": 175,
+        "changedPixels": 480000,
+        "consoleErrors": [],
+        "requests": [
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468628&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=2231-4529"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?user_id=public&X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&Expires=1789468628&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=2231-4529"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=4474968-4480726"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=4474968-4480726"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140039706-5140041223"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140036943-5140038154"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140038155-5140039705"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5139833143-5139834228"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140035873-5140036942"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5139831836-5139833142"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5139828325-5139829409"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140041224-5140042406"
+          },
+          {
+            "url": "https://huggingface.co/datasets/smartmaps/mgrs-pmtiles/resolve/f8d8eb59c3e3d34d69aaea8acdc304c92e5f6e32/mgrs-hokkaido.pmtiles",
+            "status": 302,
+            "range": "bytes=5140042407-5140043618"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?user_id=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140038155-5140039705"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&X-Xet-Cas-Uid=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140036943-5140038154"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140035873-5140036942"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5139831836-5139833142"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140041224-5140042406"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5139833143-5139834228"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&X-Xet-Cas-Uid=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5139828325-5139829409"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140042407-5140043618"
+          },
+          {
+            "url": "https://us.aws.cdn.hf.co/xet-bridge-us/69f97cc716f270e82bb223eb/d6a9a84ac4eea6b4dd7ca8f6f1e40916588087d1b78ca29fa2cc675e53c23c8a?X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27mgrs-hokkaido.pmtiles%3B+filename%3D%22mgrs-hokkaido.pmtiles%22%3B&user_id=public&Expires=1789468629&Policy=%5Bredacted%5D&Signature=%5Bredacted%5D&Key-Pair-Id=%5Bredacted%5D",
+            "status": 206,
+            "range": "bytes=5140039706-5140041223"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+      "origin": "http://127.0.0.1:4178",
+      "measuredAt": "2026-09-15T09:37:52.001Z",
+      "expectations": {
+        "minZoom": 0,
+        "maxZoom": 14,
+        "bounds": [
+          -180,
+          -85.0511287,
+          180,
+          85.0511287
+        ]
+      },
+      "layerNames": [
+        "zcta"
+      ],
+      "status": "fail",
+      "head": {
+        "hops": [
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "method": "HEAD",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity"
+            },
+            "status": 200,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "ETag",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "a3b6a7a2f897cf96-TXL",
+              "connection": "close",
+              "content-length": "20926494",
+              "date": "Tue, 15 Sep 2026 09:37:48 GMT",
+              "etag": "\"49697fcebb04b92d843c8b3003cb83e5\"",
+              "last-modified": "Mon, 31 Oct 2022 03:54:06 GMT",
+              "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+              "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=33%2ByqoYtNUOoRMPdM%2Br%2BVAFgZOgWaSL7AMrfD0%2FLGsWbvbbsjc2sBvkG9l2n5xK7J0Zk%2BiNQuYzpWCBvgr43AvXFrHxEzFc0istR4QoFyFqVM8TKkjtT6OfpUWgvBUn0M1L9pb5Wj54U\"}]}",
+              "server": "cloudflare",
+              "vary": "Origin"
+            },
+            "elapsedMs": 922.14
+          }
+        ],
+        "bytes": 0
+      },
+      "range": {
+        "hops": [
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "method": "GET",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-16383"
+            },
+            "status": 206,
+            "headers": {
+              "accept-ranges": "bytes",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "ETag",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "a3b6a7a33926bf67-WAW",
+              "connection": "keep-alive",
+              "content-length": "16384",
+              "content-range": "bytes 0-16383/20926494",
+              "date": "Tue, 15 Sep 2026 09:37:48 GMT",
+              "etag": "\"49697fcebb04b92d843c8b3003cb83e5\"",
+              "last-modified": "Mon, 31 Oct 2022 03:54:06 GMT",
+              "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+              "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=n5GUQW8BtZrgdK9DafvBEE9VDOAo60u4A6u%2BUnonvmHPRaC5F4EKgLpzL0oT5CbTIo%2FeQPpghVu87UhM0uE9Evvfk%2BgqhIdjZ91xM9oVO72rlplfrKSVOMSlIicCCaoTUYL713p7arJU\"}]}",
+              "server": "cloudflare",
+              "vary": "Origin"
+            },
+            "elapsedMs": 1333.47
+          }
+        ],
+        "bytes": 16384
+      },
+      "preflight": {
+        "hops": [
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "method": "OPTIONS",
+            "requestHeaders": {
+              "Origin": "http://127.0.0.1:4178",
+              "Access-Control-Request-Method": "GET",
+              "Access-Control-Request-Headers": "range"
+            },
+            "status": 204,
+            "headers": {
+              "access-control-allow-headers": "range",
+              "access-control-allow-methods": "GET, HEAD",
+              "access-control-allow-origin": "*",
+              "access-control-max-age": "3000",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "a3b6a7a32f291df9-WAW",
+              "connection": "keep-alive",
+              "date": "Tue, 15 Sep 2026 09:37:48 GMT",
+              "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+              "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BuoifO%2FddcWADNtriB%2B1wcjNrvNeQEBjjQxvavZ%2FEOinqWtbv%2FUwS5qdM3urQAiiSIx6Cj7qqSWT3V6wEqZBCYcX92qWICwFW0KZIsi1YSwPXGyvAJLvZ%2BEsPaFDn1RRQwoPSP%2B%2F2%2FCa\"}]}",
+              "server": "cloudflare",
+              "vary": "Origin"
+            },
+            "elapsedMs": 747.47
+          }
+        ],
+        "bytes": 0
+      },
+      "header": {
+        "specVersion": 3,
+        "rootDirectoryOffset": 127,
+        "rootDirectoryLength": 1433,
+        "jsonMetadataOffset": 1560,
+        "jsonMetadataLength": 1836,
+        "leafDirectoryOffset": 3396,
+        "leafDirectoryLength": 0,
+        "tileDataOffset": 3396,
+        "tileDataLength": 20923098,
+        "numAddressedTiles": 514,
+        "numTileEntries": 514,
+        "numTileContents": 514,
+        "clustered": true,
+        "internalCompression": 2,
+        "tileCompression": 2,
+        "tileType": 1,
+        "minZoom": 0,
+        "maxZoom": 7,
+        "minLon": -176.684714,
+        "minLat": -14.37374,
+        "maxLon": 145.830418,
+        "maxLat": 71.341223,
+        "centerZoom": 7,
+        "centerLon": -82.96875,
+        "centerLat": 37.71024
+      },
+      "checks": {
+        "head": true,
+        "range": true,
+        "acceptRanges": true,
+        "cors": true,
+        "exposedRange": false,
+        "exposedEtag": true,
+        "preflight": true,
+        "header": true,
+        "zoom": false,
+        "bounds": false,
+        "vector": true,
+        "styleLayers": false,
+        "browser": true
+      },
+      "browser": {
+        "status": "pass",
+        "origin": "http://127.0.0.1:4178",
+        "renderedFeatures": 1305,
+        "changedPixels": 479157,
+        "consoleErrors": [],
+        "requests": [
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=0-16383"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=1560-3395"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15166050-15278720"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15778063-15921409"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15921410-16019968"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=16349991-16458352"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15278721-15389999"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15674471-15778062"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15521580-15674470"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=15390000-15521579"
+          },
+          {
+            "url": "https://r2-public.protomaps.com/protomaps-sample-datasets/cb_2018_us_zcta510_500k.pmtiles",
+            "status": 206,
+            "range": "bytes=16019969-16103425"
+          }
+        ]
+      }
     }
   ],
   "prerequisites": [

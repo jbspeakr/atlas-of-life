@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { createMap, places, visits, visitsByPlace } from "./map/create-map";
+import {
+  createMap,
+  places,
+  visits,
+  visitsByPlace,
+  filterTag,
+} from "./map/create-map";
 import type { Atlas } from "./map/create-map";
 import regionLabelsData from "./generated/region-labels.json";
 const regionLabels: Record<string, string> = regionLabelsData;
@@ -117,7 +123,16 @@ function App() {
       <div ref={host} className="map" aria-label="Interactive world map" />
       <header>
         <h1>Atlas of a Life</h1>
-        <p>A little more of the world.</p>
+        <p>
+          {filterTag ? (
+            <>
+              Places tagged {filterTag}.{" "}
+              <a href={import.meta.env.BASE_URL}>Show all</a>
+            </>
+          ) : (
+            "A little more of the world."
+          )}
+        </p>
         <div className="atlas-count">
           {new Set(visits.map((v) => v.country)).size} countries{" "}
           <span aria-hidden="true">·</span> {places.length} places{" "}

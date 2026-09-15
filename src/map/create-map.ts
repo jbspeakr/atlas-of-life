@@ -26,6 +26,7 @@ export type Place = {
 type PublicVisit = Omit<Place, "visitCount"> & { visitCount?: number };
 export const places = placesData as Place[];
 export const visits = visitsData as PublicVisit[];
+export const filterTag = new URLSearchParams(location.search).get("tag") ?? "";
 export const visitsByPlace = new Map<string, PublicVisit[]>();
 const placeByVisit = new Map<string, Place>();
 const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
@@ -227,6 +228,7 @@ export async function createMap(
         const target = Math.max(
           0,
           ...f.visits.map((v) => {
+            if (filterTag && !v.tags?.includes(filterTag)) return 0;
             const date = v.date ?? v.dateRange?.[0];
             if (!date) return 1;
             const first = Number(date.slice(0, 4));
@@ -275,7 +277,14 @@ export async function createMap(
     const match = location.hash.match(/^#\/place\/(.+)$/);
     if (match) {
       try {
-        atlas.select(decodeURIComponent(match[1]));
+        const place = placeByVisit.get(decodeURIComponent(match[1]));
+        if (!place) {
+          selected = null;
+          onSelect(null);
+          return;
+        }
+        history.replaceState(null, "", "#/place/" + place.id);
+        atlas.select(place.id);
       } catch {
         onSelect(null);
       }
@@ -301,6 +310,7 @@ export async function createMap(
   });
   map.on("load", () => {
     route();
+    if (filterTag) atlas.filter(9999);
     if (!media.matches && !deterministic && !location.hash && !stopped) {
       const ordered = [...countries.features].sort((a, b) => {
         const first = (id: unknown) =>

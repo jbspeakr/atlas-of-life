@@ -4,12 +4,26 @@
 
 ```ts
 const config: Config = {
-  publishPrecision: 'city',
+  publishPrecision: "city",
   visits: [
-    { id: 'berlin-2019', label: 'Berlin', country: 'DE', city: 'Berlin', region: 'DE-BE', date: '2019-07-14' },
-    { id: 'france', label: 'France', country: 'FR' },
-    { id: 'bavaria', label: 'Bavaria', country: 'DE', region: 'Bavaria' },
-    { id: 'public-landmark', label: 'Brandenburg Gate', country: 'DE', city: 'Berlin', coordinates: [13.3777, 52.5163], publishPrecision: 'exact' },
+    {
+      id: "berlin-2019",
+      label: "Berlin",
+      country: "DE",
+      city: "Berlin",
+      region: "DE-BE",
+      date: "2019-07-14",
+    },
+    { id: "france", label: "France", country: "FR" },
+    { id: "bavaria", label: "Bavaria", country: "DE", region: "Bavaria" },
+    {
+      id: "public-landmark",
+      label: "Brandenburg Gate",
+      country: "DE",
+      city: "Berlin",
+      coordinates: [13.3777, 52.5163],
+      publishPrecision: "exact",
+    },
   ],
 };
 ```
@@ -21,6 +35,10 @@ A country-only record lights a country without a pin. Region-only records light 
 Dates are real `YYYY-MM-DD` calendar dates. Choose `date` or `dateRange`, never both. A range is a two-element tuple with `''` for an open endpoint: `['2020-01-01', '']`. Reversed ranges and impossible dates fail. Undated places remain lit at every timeline position. The scrubber means **visited by this year**; it is cumulative, with a smooth fractional-year transition. Original public visit dates are retained separately so a collapsed pin's caption does not invent a continuous trip between two visits.
 
 Cities collapse by country, resolved region and NFKC/whitespace/case-normalized city name. The first chronological visit supplies the canonical pin ID and location; counts and tag unions summarize repeat visits, while the caption uses the original dates. Consequently an exact landmark that shares a city with an earlier city visit remains part of that city's single pin; exact precision does not create a second pin. Give the geographic settlement as `city`, not a person's name.
+
+Use a URL such as `?tag=coast` (before any `#/place/...` hash) to illuminate visits with that exact tag. The tag combines with the year filter; “Show all” clears it. No permanent filter-chip bar or second accent colour is added. Public per-visit rows carry `visitCount: 1` only for city/address visits; boundary-only records omit it, preventing a same-named region record from being mistaken for another city visit.
+
+The cache key retains the authored query context, including subdivision constraints. Nominatim receives human place-name tokens plus its country filter; ISO subdivision codes are checked against results, not inserted as free-text place names. When an address supplies the otherwise missing region, its city lookup retains that region to avoid silently choosing a different same-named city.
 
 ## Precision and caches
 

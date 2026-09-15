@@ -3,12 +3,14 @@ import { visualizer } from "rollup-plugin-visualizer";
 import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const remote =
+    env.VITE_BASEMAP !== "bundled" && Boolean(env.VITE_BASEMAP_URL);
   if (env.VITE_BASEMAP === "remote" && !env.VITE_BASEMAP_URL)
     throw new Error(
       "Remote mode requires VITE_BASEMAP_URL: publish a reusable extract or choose VITE_BASEMAP=bundled",
     );
   const origins = new Set<string>();
-  if (env.VITE_BASEMAP_URL) {
+  if (remote) {
     const url = new URL(env.VITE_BASEMAP_URL);
     if (
       url.protocol !== "https:" &&
@@ -26,7 +28,7 @@ export default defineConfig(({ mode }) => {
       throw new Error("Hugging Face resolve URLs must pin a full commit SHA");
     origins.add(url.origin);
   }
-  for (const origin of (env.VITE_TILE_ORIGINS ?? "")
+  for (const origin of (remote ? (env.VITE_TILE_ORIGINS ?? "") : "")
     .split(/\s+/)
     .filter(Boolean)) {
     const url = new URL(origin);
@@ -65,7 +67,7 @@ export default defineConfig(({ mode }) => {
               "dist/tiles/basemap.pmtiles",
             );
           }
-          if (env.VITE_BASEMAP === "remote") {
+          if (remote) {
             rmSync("dist/tiles", { recursive: true, force: true });
           }
         },

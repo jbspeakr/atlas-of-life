@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser } from "@playwright/test";
 import { PNG } from "pngjs";
-import { bytesToHeader, type Header } from "pmtiles";
+import { bytesToHeader, PMTiles, type Header } from "pmtiles";
 
 interface Hop {
   url: string;
@@ -42,6 +42,7 @@ interface Probe {
   range: Exchange;
   preflight: Exchange;
   header?: Header;
+  layerNames: string[];
   checks: Record<string, boolean>;
   browser: BrowserResult;
 }
@@ -240,6 +241,11 @@ export async function probeHosting(
   origin: string,
   expectations: Expectations = {},
 ): Promise<Probe> {
+  expectations = {
+    minZoom: expectations.minZoom ?? 0,
+    maxZoom: expectations.maxZoom ?? 14,
+    bounds: expectations.bounds ?? [-180, -85.0511287, 180, 85.0511287],
+  };
   const common = { Origin: origin, "Accept-Encoding": "identity" };
   const [head, range, preflight] = await Promise.all([
     exchange(url, "HEAD", common),
@@ -305,6 +311,7 @@ export async function probeHosting(
       ),
   };
   let header: Header | undefined;
+  let layerNames: string[] = [];
   try {
     if (
       range.body?.subarray(0, 7).toString() !== "PMTiles" ||
@@ -325,6 +332,21 @@ export async function probeHosting(
         header.minLat <= bounds[1] &&
         header.maxLon >= bounds[2] &&
         header.maxLat >= bounds[3]);
+    checks.vector = header.tileType === 1;
+    try {
+      const metadata = (await new PMTiles(url).getMetadata()) as {
+        vector_layers?: { id: string }[];
+      };
+      layerNames = Array.isArray(metadata.vector_layers)
+        ? metadata.vector_layers.map((layer) => layer.id)
+        : [];
+      checks.styleLayers = ["earth", "water", "roads"].every((name) =>
+        layerNames.includes(name),
+      );
+    } catch (error) {
+      checks.styleLayers = false;
+      range.error = `Protomaps metadata: ${errorText(error)}`;
+    }
   } catch (error) {
     checks.header = false;
     range.error = [range.error, errorText(error)].filter(Boolean).join("; ");
@@ -337,6 +359,7 @@ export async function probeHosting(
     origin,
     measuredAt: new Date().toISOString(),
     expectations,
+    layerNames,
     status: Object.values(checks).every(Boolean) ? "pass" : "fail",
     head,
     range,

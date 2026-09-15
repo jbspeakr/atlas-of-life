@@ -82,9 +82,28 @@ jobs:
           path: dist
       - uses: actions/deploy-pages@v4
         id: deployment
-      # Cloudflare Pages alternative (enable instead of GitHub Pages upload/deploy):
-      # - uses: cloudflare/wrangler-action@v3
-      #   with:
-      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      #     command: pages deploy dist --project-name=atlas-of-a-life
+  # Optional second deployment. Uncomment this whole job for Cloudflare Pages.
+  # It rebuilds with a root base rather than reusing GitHub Pages' /repository/ build.
+  # cloudflare:
+  #   needs: verify
+  #   if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  #   runs-on: ubuntu-latest
+  #   environment: cloudflare-pages
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '22'
+  #         cache: npm
+  #     - run: npm ci
+  #     - run: npm run build
+  #       env:
+  #         VITE_BASE: /
+  #         VITE_BASEMAP: remote
+  #         VITE_BASEMAP_URL: ${{ vars.VITE_BASEMAP_URL }}
+  #         VITE_TILE_ORIGINS: ${{ vars.VITE_TILE_ORIGINS }}
+  #     - uses: cloudflare/wrangler-action@v3
+  #       with:
+  #         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  #         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  #         command: pages deploy dist --project-name=atlas-of-a-life

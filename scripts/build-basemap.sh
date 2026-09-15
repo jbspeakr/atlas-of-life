@@ -32,8 +32,8 @@ km = float(padding)
 if not math.isfinite(km) or km <= 0:
     raise SystemExit('CITY_PADDING_KM must be a finite positive distance.')
 cities = json.loads(pathlib.Path(cities_path).read_text())
-if not isinstance(cities, list) or not cities:
-    raise SystemExit('City input must be a nonempty array of objects with coordinates: [longitude, latitude].')
+if not isinstance(cities, list):
+    raise SystemExit('City input must be an array of objects with coordinates: [longitude, latitude].')
 boxes = []
 for city in cities:
     coordinates = city.get('coordinates')
@@ -50,7 +50,7 @@ for city in cities:
     segments = [(west, east)] if west >= -180 and east <= 180 else ([(west + 360, 180), (-180, east)] if west < -180 else [(west, 180), (-180, east - 360)])
     for west, east in segments:
         boxes.append(','.join(f'{v:.7f}' for v in (west, south, east, north)))
-(work / 'boxes.txt').write_text('\n'.join(dict.fromkeys(boxes)) + '\n')
+(work / 'boxes.txt').write_text('\n'.join(dict.fromkeys(boxes)) + ('\n' if boxes else ''))
 PY
 pmtiles extract "$source_archive" "$work/world.pmtiles" --minzoom=0 --maxzoom=6
 tile-join -pk -o "$work/world.mbtiles" "$work/world.pmtiles"
@@ -87,9 +87,10 @@ with sqlite3.connect(merged) as db:
                             layers[layer['id']] = layer
             db.executemany('INSERT OR IGNORE INTO tiles(zoom_level,tile_column,tile_row,tile_data) VALUES(?,?,?,?)', part.execute('SELECT zoom_level,tile_column,tile_row,tile_data FROM tiles'))
     minimum, maximum = db.execute('SELECT min(zoom_level),max(zoom_level) FROM tiles').fetchone()
-    if minimum != 0 or maximum != 14:
-        raise SystemExit(f'Extracted tile coverage is z{minimum}–{maximum}, expected z0–14.')
-    updates = {'minzoom': '0', 'maxzoom': '14', 'bounds': '-180,-85.0511287,180,85.0511287', 'json': json.dumps({'vector_layers': list(layers.values())}), 'attribution': '© OpenStreetMap contributors · Protomaps'}
+    expected_maximum = 14 if (work / 'boxes.txt').read_text().strip() else 6
+    if minimum != 0 or maximum != expected_maximum:
+        raise SystemExit(f'Extracted tile coverage is z{minimum}–{maximum}, expected z0–{expected_maximum}.')
+    updates = {'minzoom': '0', 'maxzoom': str(maximum), 'bounds': '-180,-85.0511287,180,85.0511287', 'json': json.dumps({'vector_layers': list(layers.values())}), 'attribution': '© OpenStreetMap contributors · Protomaps'}
     for key, value in updates.items():
         db.execute('DELETE FROM metadata WHERE name=?', (key,))
         db.execute('INSERT INTO metadata(name,value) VALUES(?,?)', (key, value))
@@ -105,5 +106,6 @@ if size > 250_000_000:
 output.parent.mkdir(parents=True, exist_ok=True)
 with output.open('xb') as dest, source.open('rb') as src:
     shutil.copyfileobj(src, dest)
-print(f'Bundled archive: {output} ({size:,} bytes); global z0–6 plus padded city windows z7–14.')
+detail = 'padded city windows z7–14' if (source.parent / 'boxes.txt').read_text().strip() else 'no city detail requested'
+print(f'Bundled archive: {output} ({size:,} bytes); global z0–6; {detail}.')
 PY

@@ -47,6 +47,10 @@ header,
 .place-index {
   text-shadow: 0 1px 3px var(--midnight);
 }
+header a {
+  pointer-events: auto;
+  color: var(--lamplight);
+}
 .timeline,
 .attribution {
   background: #080f18ef;

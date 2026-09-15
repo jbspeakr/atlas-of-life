@@ -1,0 +1,42 @@
+{
+  "archiveBytes": 211759571,
+  "results": [
+    {
+      "mode": "bundled",
+      "url": "http://127.0.0.1:4180/atlas/",
+      "earthFeatures": 4,
+      "origins": [
+        "http://127.0.0.1:4180"
+      ],
+      "consoleErrors": 0,
+      "pinCaption": "Berlin",
+      "escapeFocus": "berlin-2019",
+      "deepLink": "http://127.0.0.1:4180/atlas/?deterministic=1#/place/berlin-2019",
+      "tagFilterPixels": {
+        "excludedLondon": 29,
+        "includedParis": 239
+      },
+      "clearTagLink": true
+    },
+    {
+      "mode": "remote",
+      "url": "http://127.0.0.1:4181/atlas/",
+      "earthFeatures": 4,
+      "origins": [
+        "http://127.0.0.1:4181",
+        "http://127.0.0.1:4179"
+      ],
+      "consoleErrors": 0,
+      "pinCaption": "Berlin",
+      "escapeFocus": "berlin-2019",
+      "deepLink": "http://127.0.0.1:4181/atlas/?deterministic=1#/place/berlin-2019",
+      "tagFilterPixels": {
+        "excludedLondon": 29,
+        "includedParis": 239
+      },
+      "clearTagLink": true
+    }
+  ],
+  "globeDiffPixels": 0,
+  "cityDiffPixels": 0
+}
