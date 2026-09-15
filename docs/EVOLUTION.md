@@ -23,8 +23,18 @@ These are corrective implementation steps, not claimed optimisation experiments 
 
 The last pre-approval full run measured 365,598 bytes gzipped JS, 8,069 bytes CSS, 41,632 bytes WOFF2, 250,765 bytes gzipped boundary LODs, 956,873 first-view transferred bytes and 14 requests. Cold 4G FCP was 2,444 ms, warm FCP 20 ms, normal first idle 414.4 ms, heap 32,359,140 bytes. Five normal-motion choreography p95 values were 17.558, 20.275, 21.528, 22.55 and 22.718 ms (median 21.528, spread 5.16). The numeric 24 ms gate passed, but an erroneous harness status override treated the instability flag as a numeric failure. Missing approved screenshots correctly remained failures. No green or stable baseline was claimed at this stage.
 
-## Experiment: remove unused sprite loading
+## Experiment: remove unused sprite loading — reverted
 
-Hypothesis: a style with no `icon-image`, `fill-pattern`, `line-pattern` or `background-pattern` consumers does not need a sprite URL. Removing only that runtime dependency should reduce first-view requests/bytes without changing any pixel. The vendored upstream sprite files remain available in `public/sprites/`; this experiment changes loading, not asset provenance or cartography.
+Hypothesis: with no `icon-image` or pattern consumers in the generated style, removing its sprite URL would reduce first-view requests/bytes without a visual or performance regression. Only sprite loading changed (`scripts/build-style.ts` and `src/map/create-map.ts`); vendored assets stayed intact. The experiment was committed as `376120d` and measured with quick verification followed by a full run. The before measurement was the committed green baseline.
 
-The immediately preceding full run passed all 57 checks and set the baseline: p95 median **18.147 ms**, five-run spread **5.464 ms** (flagged unstable); first view **946,789 bytes / 14 requests**; visual diff **0**; 30 direct dependencies, 6 runtime dependencies. The timing spread is explicitly not evidence of a stable causal speedup. Acceptance requires all gates and zero visual diff, reduced bytes/requests, and no measured median p95 regression.
+| Metric | Before | After | Delta |
+|---|---:|---:|---:|
+| Hard failures | 0 | 0 | 0 |
+| p95 frame time, five-run median | 18.147 ms | 23.548 ms | +5.401 ms |
+| p95 spread | 5.464 ms (unstable) | 2.874 ms | — |
+| First-view transferred bytes | 946,789 | 929,367 | −17,422 |
+| First-view requests | 14 | 12 | −2 |
+| Visual diff pixels | 0 | 39,675, in city view | +39,675 |
+| Direct / runtime dependencies | 30 / 6 | 30 / 6 | 0 |
+
+**Reverted.** Fewer requests cannot buy a worse measured p95 or an unapproved image change. Timing noise was already flagged in the baseline, so this is not a claim of a proven causal slowdown; it is a refusal to accept an experiment that failed the stated acceptance criteria. No threshold or visual baseline was weakened, and no retry was used to manufacture a passing result. The original sprite-loading behavior is restored.

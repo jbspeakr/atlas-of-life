@@ -82,6 +82,7 @@ export async function createMap(
   style.glyphs = new URL("glyphs/{fontstack}/{range}.pbf", base).href
     .replaceAll("%7B", "{")
     .replaceAll("%7D", "}");
+  style.sprite = new URL("sprites/dark", base).href;
   if (media.matches || deterministic)
     style.transition = { duration: 0, delay: 0 };
   const map = new maplibregl.Map({

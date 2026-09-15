@@ -76,6 +76,7 @@ const style: StyleSpecification = {
   name: "Atlas — lamplight",
   projection: { type: "globe" },
   glyphs: "./glyphs/{fontstack}/{range}.pbf",
+  sprite: "./sprites/dark",
   transition: { duration: 300, delay: 0 },
   sources: {
     basemap: { type: "vector", url: "pmtiles://./tiles/basemap.pmtiles" },
