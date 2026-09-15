@@ -22,3 +22,9 @@ These are corrective implementation steps, not claimed optimisation experiments 
 | Initial rotation check sampled before the last country finished ignition | Wait for all fixture countries to finish their rise before measuring idle drift | Correction pending the next recorded full run |
 
 The last pre-approval full run measured 365,598 bytes gzipped JS, 8,069 bytes CSS, 41,632 bytes WOFF2, 250,765 bytes gzipped boundary LODs, 956,873 first-view transferred bytes and 14 requests. Cold 4G FCP was 2,444 ms, warm FCP 20 ms, normal first idle 414.4 ms, heap 32,359,140 bytes. Five normal-motion choreography p95 values were 17.558, 20.275, 21.528, 22.55 and 22.718 ms (median 21.528, spread 5.16). The numeric 24 ms gate passed, but an erroneous harness status override treated the instability flag as a numeric failure. Missing approved screenshots correctly remained failures. No green or stable baseline was claimed at this stage.
+
+## Experiment: remove unused sprite loading
+
+Hypothesis: a style with no `icon-image`, `fill-pattern`, `line-pattern` or `background-pattern` consumers does not need a sprite URL. Removing only that runtime dependency should reduce first-view requests/bytes without changing any pixel. The vendored upstream sprite files remain available in `public/sprites/`; this experiment changes loading, not asset provenance or cartography.
+
+The immediately preceding full run passed all 57 checks and set the baseline: p95 median **18.147 ms**, five-run spread **5.464 ms** (flagged unstable); first view **946,789 bytes / 14 requests**; visual diff **0**; 30 direct dependencies, 6 runtime dependencies. The timing spread is explicitly not evidence of a stable causal speedup. Acceptance requires all gates and zero visual diff, reduced bytes/requests, and no measured median p95 regression.
