@@ -154,14 +154,18 @@ export async function camera(
 ) {
   await page.evaluate(
     ({ center, zoom, duration }) => {
-      (window as unknown as AtlasWindow).__atlas.map.easeTo({
-        center,
-        zoom,
-        bearing: 0,
-        pitch: 0,
-        duration,
-        essential: true,
-      });
+      const map = (window as unknown as AtlasWindow).__atlas.map;
+      // Position static captures exactly; timed choreography still uses real easing.
+      if (duration === 0) map.jumpTo({ center, zoom, bearing: 0, pitch: 0 });
+      else
+        map.easeTo({
+          center,
+          zoom,
+          bearing: 0,
+          pitch: 0,
+          duration,
+          essential: true,
+        });
     },
     { center, zoom, duration },
   );

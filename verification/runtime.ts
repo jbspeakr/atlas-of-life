@@ -280,6 +280,15 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
     });
     const screenshot = async (name: string) => {
       await settle(page);
+      // On the first city view, line pixels can change on a render after idle.
+      // Flush a subsequent render, rather than retrying pixel comparisons.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          ),
+      );
+      await settle(page);
       const actual = await page.screenshot({
         animations: "disabled",
         caret: "hide",
