@@ -1,7 +1,6 @@
 name: Verify and publish atlas
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -11,6 +10,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    # Untrusted fork code must not execute on a persistent GPU runner.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     # A GPU-equipped runner is intentional: hosted Linux software rasterizers
     # cannot certify the measured 60fps hardware contract or exact Mac baselines.
     runs-on: [self-hosted, macOS, ARM64, atlas-gpu]
