@@ -88,6 +88,11 @@ const config: Config = {
       city: "Ahlbeck",
       dateRange: ["2026-08-07", "2026-08-13"],
     },
+    {
+      country: "PL",
+      city: "Swinemünde",
+      date: "2026-08-12",
+    },
   ],
 };
 export default config;

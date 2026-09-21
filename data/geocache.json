@@ -175,6 +175,17 @@
     "city": "Storvorde",
     "source": "https://nominatim.openstreetmap.org/search?q=Storvorde&countrycodes=dk&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
   },
+  "b70d0dc0c9c312316f0c783aa6ba1ee06f62a07415465b5658971fc79941a271": {
+    "coordinates": [
+      14.2510703,
+      53.9097477
+    ],
+    "kind": "city",
+    "country": "PL",
+    "region": "PL-32",
+    "city": "Świnoujście",
+    "source": "https://nominatim.openstreetmap.org/search?q=Swinem%C3%BCnde&countrycodes=pl&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
   "d8205c775156b6d4a01d4aab09cfddc62e259d509229c17c0933262932c8a5e4": {
     "coordinates": [
       2.3483915,

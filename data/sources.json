@@ -149,6 +149,19 @@
       "boundaryCanonical": "County",
       "license": "Creative Commons Attribution 3.0 License",
       "licenseURL": "https://commons.wikimedia.org/w/index.php?curid=5675559"
+    },
+    "POL": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/POL/ADM1/geoBoundaries-POL-ADM1.geojson",
+      "sha256": "a08b2b1d2a33e1351f822881bdc22780e9052b251270d2a2570c006ec259bd57",
+      "cache": "data/.geocache/gbOpen-POL-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/POL/ADM1/",
+      "boundaryID": "POL-ADM1-17162690",
+      "boundaryYearRepresented": "2017",
+      "boundaryCanonical": "Unknown",
+      "license": "Open Data Commons Open Database License 1.0",
+      "licenseURL": "https://www.openstreetmap.org/copyright"
     }
   },
   "fallbacks": []
