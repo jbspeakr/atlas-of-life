@@ -1,21 +1,26 @@
 # Atlas of a Life
 
-A quiet, static night-sky atlas of places visited. Globe → countries → regions → places is one continuous MapLibre zoom, not three screens. The only authored content is geography, optional dates and non-personal tags. Code is MIT; geographic data keeps its upstream licences.
+A quiet, static night-sky atlas of places visited. Globe → countries → regions → places is one continuous MapLibre zoom, not three screens. Author city, country and optional dates; coordinates, display labels, IDs and boundary membership are discovered or generated. Code is MIT; geographic data keeps its upstream licences.
 
 ## Run locally
 
-Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev`. The first generation installs the committed 22.3 MB preview tile archive if no local archive exists. It has global z0–3 and six small city windows through z14; it is a deterministic demonstration, **not** the complete bundled basemap. No account or live geocoder is needed for the included example. The dates are fictional and every cached location is public.
+Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev` for cached visits. After adding cities, run the explicit geocode step below first. The first generation installs the committed 22.3 MB preview tile archive if no local archive exists. It has global z0–3 and six small city windows through z14; it is a deterministic demonstration, **not** the complete bundled basemap. Verification uses separate fictional visits and public landmark fixtures; the owner configuration is independent.
 
 `npm run build` produces `dist/`; `npm run preview` serves it. Use `VITE_BASE=/some/subpath/ npm run build` for a subpath, or retain the default relative `./` base. `npm run geocode` is the explicit cache-warming step. `npm test` runs the same unit contracts used by verification. `npm run analyze` generates `dist/bundle-analysis.html`.
 
-Append `?tag=coast` to share a geographically tagged view; it combines with the year scrubber, and “Show all” clears it. Tags change what is illuminated, not the single warm accent palette.
+GitHub Pages deployment discovers its actual site base with `actions/configure-pages` **before** building. Custom domains such as `https://atlas.brnnnsthl.eu/` use `/`; project sites use their configured `/repository/` path. Do not derive the base from the repository name alone. For a manual root-domain build, run `VITE_BASE=/ npm run build`. Changing the deployment base requires rebuilding and redeploying; it does not repair an already-published HTML file.
 
 ## Add a place
 
-Edit `data/visits.ts` and add a visit with a unique slug, label and uppercase country code.
-Add a region, city or address, and optionally dates, tags or an explicit landmark precision override.
-Run `NOMINATIM_CONTACT=you@example.org npm run geocode` if the required city/address is not cached.
-Run `npm run build`, commit the config and updated caches/manifest, then redeploy `dist/`.
+Add an entry to `data/visits.ts` with only the fields you have:
+
+```ts
+{ country: "GR", city: "Kalamos", dateRange: ["2025-04-27", "2025-05-02"] }
+```
+
+Use uppercase country codes (`DE`, `GR`, `GB`) and `YYYY-MM-DD` dates. A single-day visit uses `date` instead of `dateRange`. IDs and city labels are generated automatically; tags are not supported.
+
+Run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, using your own contact email or URL, then `npm run build`. Commit the config and updated geocache/source manifest, then redeploy `dist/`. No region codes or coordinates need to be authored. Same-named cities can require an optional qualifier rather than a guessed location. See [data authoring](docs/DATA.md) for identity stability, precision and boundary-provider limitations.
 
 ## Privacy first
 

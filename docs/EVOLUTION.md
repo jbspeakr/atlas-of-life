@@ -2,6 +2,20 @@
 
 Only measured experiments belong here. Optimisation uses the ordered objective in the brief; correctness, publication safety, accessibility and network purity are never traded away. Visual changes require explicit approval. Failed checks are fixed, not retried into acceptance.
 
+## Date/city/country authoring and geographic discovery
+
+The owner dataset exposed incompatible geographic identifiers: Kalamos's Nominatim `GR-A2` versus gbOpen Attica `GR-AT` and Natural Earth `GR-A1`; Lampeland's `NO-33` versus the pinned 2022 Viken `NO-30`; and Italian macro-area polygons with empty ISO codes. The pipeline now discovers implicit membership spatially and keeps provider identifiers separate from geocoder provenance. It does not invent country-specific aliases or drop usable polygons lacking ISO codes.
+
+City entries now need only country, city and dates. Stable IDs and labels are generated; tags and tag filtering are removed. Settlement geocoding uses the place's own name and upstream alternatives instead of a containing municipality; Hollenbeck's cached metadata was corrected from Harsefeld without moving its already-correct point.
+
+Verification: 37 tests passed; all 19 quick-verification checks passed, including lint, TypeScript, fixture build, publication safety and budgets. The real owner build emitted 17 visits/pins, 14 regions and 8 countries. All 17 cities were selected in the production browser and their actual rendered pins and geography captions checked. Kalamos's generated deep link survived reload; the timeline changed its visibility from 0 in 2024 to 1 in 2026, and Escape restored focus. This was a functional browser smoke check, not a full performance or baseline-image approval run.
+
+The owner's larger geography totals 592,249 gzip bytes, above the 400,000-byte target but below the unchanged 1,000,000-byte hard limit. Provider geography remains explicitly versioned: Lampeland displays historical Viken, and Reggio Calabria displays Italy's supplied Sud macro-area. Basemap street-detail coverage is still determined by the deployed tile archive, independently of visit pins.
+
+## Custom-domain asset base
+
+The deployed custom domain served files at `/`, but the workflow unconditionally built with `/repository/`. Pages configuration now runs before the build, and its actual `base_path` determines `VITE_BASE`. A root-base production build emitted `/assets/...` script/CSS links and `/fonts/...` preload/CSS URLs. Browser requests for both fonts, JavaScript and CSS returned 200; style JSON, sprites and glyphs also loaded from root paths, and the map rendered without page errors. The workflow change still needs a push/redeployment to replace the existing live artifact.
+
 ## Establishing the instrument
 
 The empty-project quick run exited 1 with missing config/types/build/geometry/budget failures; the full red run additionally failed on missing `dist/index.html`. This preceded the application pipeline. A real single-country globe was then rendered with local vector tiles and photographed before expanding the data pipeline. The evaluator is pinned to **the exact style-spec version used by MapLibre**, 24.10.0, rather than the independently latest package.

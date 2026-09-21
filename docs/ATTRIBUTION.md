@@ -21,6 +21,12 @@ Retain the original upstream notices carried by gbOpen as well:
 - **Germany:** © GeoBasis-DE / BKG, 2021, administrative/NUTS boundaries. [Data licence Germany – attribution – version 2.0](https://www.govdata.de/dl-de/by-2-0). Source: [BKG administrative geography](https://gdz.bkg.bund.de/index.php/default/digitale-geodaten/verwaltungsgebiete/nuts-gebiete-1-250-000-stand-31-12-nuts250-31-12.html).
 - **France:** IGN, ADMIN EXPRESS, 2022. [Etalab Open Licence 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/). Source: [IGN Admin Express](https://geoservices.ign.fr/adminexpress).
 - **United Kingdom:** European Commission / Eurostat GISCO, NUTS 2021; CC-BY 4.0, [legal notice](https://ec.europa.eu/info/legal-notice_en). Source: [GISCO administrative units](https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data/administrative-units-statistical-units/nuts).
+- **Denmark:** geoBoundaries / Web Vectors Map, 2021. CC-BY 4.0; [source and terms](https://webvectormaps.com/administrative-map-of-denmark-by-regions/).
+- **Greece:** EuroGeoGraphics / Regional IM Working Group – Europe, 2016 decentralized administrations. CC-BY 4.0; [source and terms](https://data.humdata.org/dataset/gree).
+- **Italy:** ISTAT / National Institute of Statistics, 2023. CC-BY 3.0; [legal notice](https://www.istat.it/it/note-legali). The selected ADM1 source contains five macro-areas.
+- **Netherlands:** National Georegister, 2022 provinces. CC0 1.0; [source metadata](https://nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/208bc283-7c66-4ce7-8ad3-1cf3e8933fb5?tab=general).
+- **Norway:** Kartverket, 2022 counties. CC-BY 4.0; [source metadata](https://kartkatalog.geonorge.no/metadata/administrative-enheter-fylker/6093c8a8-fa80-11e6-bc64-92361f002671).
+- **Sweden:** geoBoundaries / Erik Frohne, 2009 counties. CC-BY 3.0; [source and terms](https://commons.wikimedia.org/w/index.php?curid=5675559).
 
 The original API metadata and checksums, including country-specific licence URLs, are preserved in the source manifest. Future countries must retain their own upstream credit requirements, not just the generic gbOpen credit.
 

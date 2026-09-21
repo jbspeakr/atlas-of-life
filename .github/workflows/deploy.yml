@@ -81,14 +81,16 @@ jobs:
           if [ -z "${VITE_TILE_ORIGINS//[[:space:]]/}" ]; then
             echo "::warning::vars.VITE_TILE_ORIGINS is empty; redirect origins will be absent from the connect-src policy."
           fi
+      - name: Discover Pages deployment base
+        uses: actions/configure-pages@v5
+        id: pages
       - name: Build immutable remote archive deployment
         run: npm run build
         env:
-          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
           VITE_BASEMAP: remote
           VITE_BASEMAP_URL: ${{ vars.VITE_BASEMAP_URL }}
           VITE_TILE_ORIGINS: ${{ vars.VITE_TILE_ORIGINS }}
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

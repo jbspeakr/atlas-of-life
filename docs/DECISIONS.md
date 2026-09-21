@@ -2,7 +2,7 @@
 
 ## Stack and scope
 
-Vite 7, React 19, TypeScript 5, MapLibre GL JS 5.24 or newer within major 5, PMTiles 4, Zod, Vitest and Playwright are resolved to exact installed versions in the lockfile. MapLibre circle and symbol layers provide the marks, glow and collision handling without deck.gl: a second rendering engine does not earn its dependency and interoperation cost here. All authored information is geographic, dates or non-personal tags. City publication precision is the default; explicit landmark overrides are intentional public disclosures.
+Vite 7, React 19, TypeScript 5, MapLibre GL JS 5.24 or newer within major 5, PMTiles 4, Zod, Vitest and Playwright are resolved to exact installed versions in the lockfile. MapLibre circle and symbol layers provide the marks, glow and collision handling without deck.gl: a second rendering engine does not earn its dependency and interoperation cost here. Ordinary authored visits contain only country, city and dates. IDs and labels are generated. City publication precision is the default; explicit landmark overrides are intentional public disclosures.
 
 ## Art direction
 
@@ -18,7 +18,9 @@ The verification harness precedes application code. Missing outputs, assets, run
 
 ## Boundary and publication architecture
 
-Build-time processing owns all sensitive fields. Runtime places have an explicit allowlist and never import the authored config or geocode cache. Countries use Natural Earth's `ISO_A2_EH`; ADM1 uses per-country geoBoundaries gbOpen with documented Natural Earth fallback. Download manifests pin bytes by SHA-256. Offline normal builds use committed fixture boundaries and warm geocodes; source refresh is explicit. Two weighted Visvalingam LODs and interior label anchors keep geometry compact and navigation reliable.
+Build-time processing owns all sensitive fields. Runtime places have an explicit allowlist and never import the authored config or geocode cache. Countries use Natural Earth's `ISO_A2_EH`; subdivision geometry uses per-country geoBoundaries gbOpen with documented Natural Earth fallback. Geocoder administrative codes are not boundary IDs: implicit region discovery uses the published city's point within raw source polygons. Missing ISO codes retain stable provider-scoped identities. Explicit author constraints remain strict. Uncovered city points stay visible without an invented region; malformed sources, failed requests and checksum mismatches remain errors. Source versions, represented years and administrative levels are not silently harmonized to modern ISO definitions. Download manifests pin bytes by SHA-256. Offline builds use cached sources and warm geocodes; source refresh is explicit. Two weighted Visvalingam LODs and interior label anchors keep geometry compact and navigation reliable.
+
+The Pages workflow obtains `base_path` from `actions/configure-pages` before Vite runs, adding the trailing slash for `VITE_BASE`. An empty Pages path becomes `/` for a custom domain or user site; a project-site path remains `/repository/`. This keeps HTML scripts, CSS, font preloads, CSS font URLs, sprites and glyphs on the same deployment base without hardcoding a hostname or repository name.
 
 ## Hosting status
 
@@ -39,7 +41,7 @@ The publishing script's unauthenticated path was exercised: it fails before uplo
 
 The hosting command now defaults to application expectations: vector MVT, z0–14, global bounds, and Protomaps `earth`, `water`, and `roads` layers. It does not silently treat unspecified expectations as passing. Earlier generic transport probes are retained as history; their success is not an app-compatibility certificate. The R2 sample also fails application coverage/schema in addition to its exposed-header defect. A synthetic cross-loopback probe hit Chromium's local-network protection; actual statically served pages on separate loopback origins passed, so that synthetic-page failure is not misreported as a range/CORS defect in the archive.
 
-The full archive was then loaded in two real production builds under `/atlas/`: bundled at port 4180 and remote at port 4181 fetching from port 4179. Both rendered actual `earth` features, selected Berlin by clicking the map, restored focus with Escape and restored deep links. All console-error counts were zero, origins were exactly the declared app/tile origins, and globe plus city screenshots matched at **zero pixels**. Query-tag filtering was also exercised: an `art` filter extinguished London's pin (red channel 29) while Paris remained lit (239), and the “Show all” link cleared the filter.
+The full archive was then loaded in two real production builds under `/atlas/`: bundled at port 4180 and remote at port 4181 fetching from port 4179. Both rendered actual `earth` features, selected Berlin by clicking the map, restored focus with Escape and restored deep links. All console-error counts were zero, origins were exactly the declared app/tile origins, and globe plus city screenshots matched at **zero pixels**.
 
 ### Archive extraction and provenance
 
@@ -51,7 +53,7 @@ Natural Earth's full country bbox includes overseas territories; the interior an
 
 ## Maintainer and accessibility choices
 
-Tags are usable through shareable `?tag=coast`-style URLs, with a quiet status/clear link only when active, rather than a permanent row of filter chips. They combine with the year scrubber through feature-state visibility and retain the one-accent palette rather than introducing categorical hues. There is no deck.gl or terrain dependency: native MapLibre circles, text collision placement and a hovered halo cover the requested effects without another rendering stack. Repeated-visit aliases replace their canonical hash instead of pushing another history entry, so browser Back cannot become trapped.
+Date filtering combines with map feature-state visibility and retains the one-accent palette. Tags and tag URL filtering have been removed: they are not part of the owner's date/city/country workflow. There is no deck.gl or terrain dependency: native MapLibre circles, text collision placement and a hovered halo cover the requested effects without another rendering stack. Repeated-visit aliases replace their canonical hash instead of pushing another history entry, so browser Back cannot become trapped.
 
 ## CI and measurement environment
 
