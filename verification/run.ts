@@ -72,8 +72,8 @@ if (!quick) rmSync("src/generated", { recursive: true, force: true });
 command("static.lint", ["eslint", "."], "eslint.config.js");
 command(
   "unit.contracts",
-  ["vitest", "run", "verification/contracts.test.ts"],
-  "verification/contracts.test.ts",
+  ["vitest", "run"],
+  "verification/*.test.ts",
 );
 const build = spawnSync("npm", ["run", "build"], {
   encoding: "utf8",

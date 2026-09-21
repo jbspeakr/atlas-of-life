@@ -8,7 +8,6 @@ const allowlist: Record<string, true> = {
   coordinates: true,
   date: true,
   dateRange: true,
-  tags: true,
   visitCount: true,
 };
 /** Audit object shapes in both standalone JSON and minified production JavaScript. */

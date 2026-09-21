@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import fc from "fast-check";
 import {
   validateConfig,
@@ -12,6 +12,7 @@ import type { Visit, Cache } from "../scripts/config.ts";
 import { expression } from "@maplibre/maplibre-gl-style-spec";
 import { bands } from "../src/map/expressions.ts";
 import { BoundaryRepository } from "../scripts/boundaries.ts";
+import { geocodeConfig } from "../scripts/geocode.ts";
 const good: Visit = {
   id: "berlin",
   label: "Berlin",
@@ -56,9 +57,147 @@ it("uses an address's region to disambiguate city publication", () => {
       coordinates: [13.405, 52.52],
     },
   };
-  expect(resolveVisits({ visits: [visit] }, cache)[0].coordinates).toEqual([
-    13.405, 52.52,
-  ]);
+  const resolved = resolveVisits({ visits: [visit] }, cache)[0];
+  expect(resolved.coordinates).toEqual([13.405, 52.52]);
+  expect(resolved.region).toBeUndefined();
+});
+describe("generated visit identities", () => {
+  it("keeps Unicode places and repeated visits distinct across unrelated reorderings", () => {
+    const first = { country: "SE", city: "Ödsmål", date: "2025-06-18" };
+    const plain = { ...first, city: "Odsmal" };
+    const tokyo = { country: "JP", city: "東京", date: "2025-06-18" };
+    const osaka = { ...tokyo, city: "大阪" };
+    const later = { ...first, date: "2026-06-18" };
+    const original = validateConfig({
+      visits: [first, plain, tokyo, first, osaka, later],
+    }).visits;
+    const reordered = validateConfig({
+      visits: [
+        { country: "FR", city: "Paris", date: "2026-01-01" },
+        later,
+        osaka,
+        first,
+        tokyo,
+        plain,
+        first,
+      ],
+    }).visits;
+    expect(new Set(original.map((visit) => visit.id)).size).toBe(6);
+    expect(reordered.slice(1).map((visit) => visit.id).sort()).toEqual(
+      original.map((visit) => visit.id).sort(),
+    );
+    for (const visit of original) {
+      expect(visit.id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(visit.label).toBe(visit.city);
+    }
+  });
+  it("does not collide with an explicit identity override", () => {
+    const city = { country: "DE", city: "Berlin", date: "2024-04-25" };
+    const generated = validateConfig({ visits: [city] }).visits[0].id;
+    const config = validateConfig({
+      visits: [city, { country: "FR", city: "Paris", id: generated }],
+    });
+    expect(config.visits[0].id).not.toBe(config.visits[1].id);
+    expect(config.visits[1].id).toBe(generated);
+  });
+});
+it("keeps cache administrative provenance out of geographic boundary matching", () => {
+  const config = validateConfig({
+    visits: [{ country: "GR", city: "Kalamos", date: "2025-04-27" }],
+  });
+  const visit = config.visits[0];
+  const cache: Cache = {
+    [queryKey(buildQuery(visit, "city"))]: {
+      kind: "city",
+      country: "GR",
+      region: "GR-A2",
+      city: "Kalamos",
+      coordinates: [23.86, 38.28],
+    },
+  };
+  const resolved = resolveVisits(config, cache)[0];
+  expect(resolved.coordinates).toEqual([23.86, 38.28]);
+  expect(resolved.region).toBeUndefined();
+});
+describe("settlement geocoding", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+  const village = {
+    lat: "53.4342967",
+    lon: "9.4633076",
+    importance: 0.2,
+    name: "Hollenbeck",
+    addresstype: "village",
+    display_name: "Hollenbeck, Harsefeld, Germany",
+    address: {
+      country_code: "de",
+      village: "Hollenbeck",
+      town: "Harsefeld",
+      "ISO3166-2-lvl4": "DE-NI",
+    },
+  };
+  function respond(candidates: unknown[]) {
+    vi.stubEnv("NOMINATIM_CONTACT", "https://example.com/contact");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(candidates)),
+    );
+  }
+  it("resolves the requested village rather than its containing town", async () => {
+    respond([village]);
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Hollenbeck", date: "2025-05-24" }],
+    });
+    const cache = await geocodeConfig(config, {});
+    const entry = cache[queryKey(buildQuery(config.visits[0], "city"))];
+    expect(entry.city).toBe("Hollenbeck");
+    expect(entry.coordinates).toEqual([9.4633076, 53.4342967]);
+  });
+  it("accepts an upstream short name without country-specific aliases", async () => {
+    respond([
+      {
+        ...village,
+        name: "Lübbenau/Spreewald",
+        addresstype: "town",
+        display_name: "Lübbenau/Spreewald, Germany",
+        address: { country_code: "de", town: "Lübbenau/Spreewald" },
+        namedetails: { short_name: "Lübbenau" },
+      },
+    ]);
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Lübbenau" }],
+    });
+    const cache = await geocodeConfig(config, {});
+    expect(resolveVisits(config, cache)[0].city).toBe("Lübbenau");
+  });
+  it("rejects a containing municipality instead of silently moving the visit", async () => {
+    respond([{ ...village, name: "Harsefeld", addresstype: "town" }]);
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Hollenbeck" }],
+    });
+    await expect(geocodeConfig(config, {})).rejects.toThrow(
+      /no settlement with the requested name/,
+    );
+  });
+  it("rejects distinct same-named settlements even with a large importance gap", async () => {
+    respond([
+      village,
+      {
+        ...village,
+        importance: 0.9,
+        lat: "54",
+        lon: "10",
+        display_name: "Hollenbeck, Another municipality, Germany",
+      },
+    ]);
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Hollenbeck" }],
+    });
+    await expect(geocodeConfig(config, {})).rejects.toThrow(
+      /multiple settlements match the requested name/,
+    );
+  });
 });
 describe("authored config corpus", () => {
   const valid = [
@@ -67,7 +206,7 @@ describe("authored config corpus", () => {
     { ...good, region: "DE-BE" },
     { ...good, date: "2020-02-29" },
     { ...good, dateRange: ["2019-01-01", ""] },
-    { ...good, tags: ["city"], publishPrecision: "exact" },
+    { ...good, publishPrecision: "exact" },
   ];
   for (const [i, visit] of valid.entries())
     it("valid " + i, () =>
@@ -106,6 +245,10 @@ describe("authored config corpus", () => {
     expect(() =>
       validateConfig({ visits: [{ ...good, notes: "private" }] }),
     ).toThrow("Unrecognized key"));
+  it("rejects removed tag fields", () =>
+    expect(() =>
+      validateConfig({ visits: [{ ...good, tags: ["city"] }] }),
+    ).toThrow("Unrecognized key"));
 });
 it("upstream region names resolve within their country", async () => {
   const previous = process.env.ATLAS_FIXTURE;
@@ -123,7 +266,7 @@ it("upstream region names resolve within their country", async () => {
     });
     const repository = await BoundaryRepository.open();
     const found = await repository.regions("DE", "DEU", config.visits);
-    expect(found.map((feature) => feature.id)).toEqual(["DE-BE"]);
+    expect(found.boundaries.map((feature) => feature.id)).toEqual(["DE-BE"]);
     await expect(
       repository.regions("DE", "DEU", [{ region: "Île-de-France" }]),
     ).rejects.toThrow(

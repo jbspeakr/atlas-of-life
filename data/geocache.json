@@ -7,8 +7,8 @@
     "kind": "city",
     "country": "DE",
     "region": "DE-NI",
-    "city": "Harsefeld",
-    "source": "https://nominatim.openstreetmap.org/search?q=Hollenbeck&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+    "city": "Hollenbeck",
+    "source": "https://nominatim.openstreetmap.org/search?q=Hollenbeck&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=10&accept-language=en"
   },
   "16767c928684698741afc91a4ac199b2fc8d361316f6a4b88e3c84f1b83ef069": {
     "coordinates": [

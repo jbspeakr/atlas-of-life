@@ -13,7 +13,6 @@ import {
 } from "./config.ts";
 import {
   BoundaryRepository,
-  containsPoint,
   geometryMetadata,
   root,
   type Boundary,
@@ -107,38 +106,15 @@ async function main(): Promise<void> {
       region: visit.region,
       coordinates: visit.city || visit.address ? visit.coordinates : undefined,
     }));
-    regions.push(
-      ...(await repository.regions(
-        country,
-        countries.iso3.get(country)!,
-        requests,
-      )),
+    const discovered = await repository.regions(
+      country,
+      countries.iso3.get(country)!,
+      requests,
     );
-    for (const visit of visits) {
-      if (visit.region && !/^[A-Z]{2}-/.test(visit.region)) {
-        const region = regions.find(
-          (feature) =>
-            feature.properties.country === country &&
-            feature.properties.label === visit.region,
-        );
-        if (!region)
-          throw new Error(
-            `No region named ${visit.region} belongs to ${country} for ${visit.id}`,
-          );
-        visit.region = String(region.id);
-      }
-      if (!visit.region && (visit.city || visit.address) && visit.coordinates) {
-        const region = regions.find(
-          (feature) =>
-            feature.properties.country === country &&
-            containsPoint(feature.geometry, visit.coordinates!),
-        );
-        if (!region)
-          throw new Error(
-            `Unable to associate ${visit.id} with an ADM1 boundary`,
-          );
-        visit.region = String(region.id);
-      }
+    regions.push(...discovered.boundaries);
+    for (const [index, visit] of visits.entries()) {
+      const region = discovered.assignments[index];
+      if (region) visit.region = region;
     }
   }
   const visitedRegionIds = new Set(

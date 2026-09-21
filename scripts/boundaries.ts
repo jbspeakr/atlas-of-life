@@ -37,6 +37,8 @@ type Source = {
   licenseURL: string;
   api?: string;
   boundaryID?: string;
+  boundaryYearRepresented?: string;
+  boundaryCanonical?: string;
   fixture?: Fixture;
 };
 type Fallback = {
@@ -50,6 +52,7 @@ type Manifest = {
   naturalEarthCountries: Source;
   naturalEarthRegions: Source;
   geoBoundaries: Record<string, Source>;
+  unavailableGeoBoundaries?: Record<string, { api: string; status: 404 }>;
   fallbacks: Fallback[];
 };
 export const root = fileURLToPath(new URL("../", import.meta.url));
@@ -70,6 +73,8 @@ function collection(bytes: Uint8Array, label: string): RawCollection {
   ) {
     throw new Error(`${label}: expected a GeoJSON FeatureCollection`);
   }
+  if (!value.features.length)
+    throw new Error(`${label}: empty boundary dataset`);
   for (const feature of value.features) {
     if (
       !object(feature) ||
@@ -81,6 +86,32 @@ function collection(bytes: Uint8Array, label: string): RawCollection {
     ) {
       throw new Error(`${label}: unusable polygon feature`);
     }
+    const parts =
+      feature.geometry.type === "Polygon"
+        ? [feature.geometry.coordinates]
+        : feature.geometry.coordinates;
+    if (
+      !parts.length ||
+      parts.some(
+        (polygon: unknown) =>
+          !Array.isArray(polygon) ||
+          !polygon.length ||
+          polygon.some(
+            (ring: unknown) =>
+              !Array.isArray(ring) ||
+              ring.length < 4 ||
+              ring.some(
+                (point: unknown) =>
+                  !Array.isArray(point) ||
+                  point.length < 2 ||
+                  !point.every((value) => typeof value === "number" && Number.isFinite(value)),
+              ) ||
+              ring[0][0] !== ring[ring.length - 1][0] ||
+              ring[0][1] !== ring[ring.length - 1][1],
+          ),
+      )
+    )
+      throw new Error(`${label}: invalid polygon coordinates`);
   }
   return value as unknown as RawCollection;
 }
@@ -221,15 +252,18 @@ function combine(
 export class BoundaryRepository {
   private readonly datasets = new Map<string, RawCollection>();
   private changed = false;
-  private constructor(private readonly manifest: Manifest) {}
+  private constructor(
+    private readonly manifest: Manifest,
+    private readonly manifestFile: string,
+  ) {}
 
-  static async open(): Promise<BoundaryRepository> {
+  static async open(path = manifestPath): Promise<BoundaryRepository> {
     const manifest = JSON.parse(
-      await readFile(manifestPath, "utf8"),
+      await readFile(path, "utf8"),
     ) as Manifest;
     if (manifest.version !== 1)
       throw new Error("Unsupported boundary source manifest version");
-    return new BoundaryRepository(manifest);
+    return new BoundaryRepository(manifest, path);
   }
 
   private async load(source: Source, fixture = false): Promise<RawCollection> {
@@ -304,20 +338,33 @@ export class BoundaryRepository {
     return { boundaries, iso3 };
   }
 
-  private async gbSource(iso3: string): Promise<Source> {
+  private async gbSource(iso3: string): Promise<Source | undefined> {
     const existing = this.manifest.geoBoundaries[iso3];
     if (existing) return existing;
+    if (this.manifest.unavailableGeoBoundaries?.[iso3]) return undefined;
     if (process.env.ATLAS_FIXTURE === "1")
       throw new Error(
         `ATLAS_FIXTURE=1: no pinned gbOpen fixture for ${iso3}; network is disabled`,
       );
     const api = `https://www.geoboundaries.org/api/current/gbOpen/${iso3}/ADM1/`;
     console.log(`Discovering gbOpen boundary source: ${api}`);
-    const metadata: unknown = JSON.parse(
-      (await fetchBytes(api)).toString("utf8"),
-    );
-    if (!object(metadata) || typeof metadata.gjDownloadURL !== "string")
-      throw new Error(`gbOpen ADM1 is absent for ${iso3}`);
+    const response = await fetch(api, { signal: AbortSignal.timeout(120_000) });
+    if (response.status === 404) {
+      this.manifest.unavailableGeoBoundaries ??= {};
+      this.manifest.unavailableGeoBoundaries[iso3] = { api, status: 404 };
+      this.changed = true;
+      return undefined;
+    }
+    if (!response.ok)
+      throw new Error(`Boundary discovery ${response.status}: ${api}`);
+    const metadata: unknown = await response.json();
+    if (
+      !object(metadata) ||
+      metadata.boundaryISO !== iso3 ||
+      metadata.boundaryType !== "ADM1" ||
+      typeof metadata.gjDownloadURL !== "string"
+    )
+      throw new Error(`Invalid gbOpen ADM1 metadata for ${iso3}`);
     // Resolve Git LFS to its actual object, keeping the API's immutable commit in the URL.
     const url = metadata.gjDownloadURL.replace(
       "https://github.com/wmgeolab/geoBoundaries/raw/",
@@ -336,6 +383,8 @@ export class BoundaryRepository {
       cache: `data/.geocache/gbOpen-${iso3}-ADM1.geojson`,
       api,
       boundaryID: String(metadata.boundaryID),
+      boundaryYearRepresented: String(metadata.boundaryYearRepresented),
+      boundaryCanonical: String(metadata.boundaryCanonical),
       license: String(metadata.boundaryLicense),
       licenseURL: String(metadata.licenseSource).startsWith("http")
         ? String(metadata.licenseSource)
@@ -356,21 +405,39 @@ export class BoundaryRepository {
     naturalEarth = false,
   ): Boundary[] {
     const groups = new Map<string, RawFeature[]>();
-    for (const feature of data.features) {
+    const countryCode = new RegExp(`^${country}-[A-Z0-9]{1,3}$`);
+    const scoped = naturalEarth
+      ? data.features.filter((feature) => feature.properties.iso_a2 === country)
+      : data.features;
+    // Natural Earth includes undivided countries as ADM0 placeholders in its ADM1 file.
+    if (
+      naturalEarth &&
+      scoped.length === 1 &&
+      scoped[0].properties.adm1_code === `${iso3}+00?` &&
+      scoped[0].properties.gadm_level === 0
+    )
+      return [];
+    for (const feature of scoped) {
       const props = feature.properties;
+      if (!naturalEarth && (props.shapeGroup !== iso3 || props.shapeType !== "ADM1")) {
+        throw new Error(`gbOpen ${iso3}: expected country-scoped ADM1 features`);
+      }
       const code = naturalEarth ? props.iso_3166_2 : props.shapeISO;
-      const belongs = naturalEarth
-        ? props.iso_a2 === country
-        : props.shapeGroup === iso3;
-      if (
-        !belongs ||
-        typeof code !== "string" ||
-        !code.startsWith(`${country}-`)
-      )
-        continue;
-      const members = groups.get(code) ?? [];
+      const sourceId = naturalEarth ? props.adm1_code : props.shapeID;
+      // Provider IDs survive feature reordering; a pinned geometry digest is the last resort.
+      // These are boundary identities, not a claim that the provider uses current ISO subdivisions.
+      const id =
+        typeof code === "string" &&
+        countryCode.test(code)
+          ? code
+          : `${country}-${naturalEarth ? "ne" : "gb"}-${
+              typeof sourceId === "string" && sourceId.trim()
+                ? encodeURIComponent(sourceId)
+                : sha256(Buffer.from(JSON.stringify(feature.geometry)))
+            }`;
+      const members = groups.get(id) ?? [];
       members.push(feature);
-      groups.set(code, members);
+      groups.set(id, members);
     }
     return [...groups].map(([code, features]) =>
       combine(
@@ -379,7 +446,8 @@ export class BoundaryRepository {
         country,
         String(
           features[0].properties[naturalEarth ? "name_en" : "shapeName"] ??
-            features[0].properties.name,
+            features[0].properties.name ??
+            code,
         ),
         code,
       ),
@@ -390,114 +458,108 @@ export class BoundaryRepository {
     country: string,
     iso3: string,
     requests: { region?: string; coordinates?: [number, number] }[],
-  ): Promise<Boundary[]> {
-    const requested = requests.filter(
-      (visit) => visit.region || visit.coordinates,
-    );
-    if (!requested.length) return [];
-    const satisfies = (
+  ): Promise<{ boundaries: Boundary[]; assignments: (string | undefined)[] }> {
+    const selected = new Map<string, Boundary>();
+    const assignments: (string | undefined)[] = Array(requests.length).fill(undefined);
+    if (!requests.some((request) => request.region || request.coordinates))
+      return { boundaries: [], assignments };
+    const match = (
       features: Boundary[],
-      request: (typeof requested)[number],
-    ) =>
-      request.region
-        ? features.some(
-            (feature) =>
-              feature.id === request.region ||
-              feature.properties.label === request.region,
-          )
-        : features.some((feature) =>
-            containsPoint(feature.geometry, request.coordinates!),
-          );
-    let features: Boundary[] = [];
-    let unavailable: string | undefined;
-    try {
-      const source = await this.gbSource(iso3);
-      features = this.regionFeatures(
-        await this.load(source, Boolean(source.fixture)),
-        country,
-        iso3,
+      request: (typeof requests)[number],
+    ) => {
+      const candidates = features.filter(
+        (feature) =>
+          (!request.region ||
+            feature.id === request.region ||
+            feature.properties.label === request.region) &&
+          (!request.coordinates ||
+            containsPoint(feature.geometry, request.coordinates)),
       );
-      if (
-        requested.some((request) => !satisfies(features, request)) &&
-        source.fixture
-      ) {
-        features = this.regionFeatures(await this.load(source), country, iso3);
-      }
-    } catch (error) {
-      if (process.env.ATLAS_FIXTURE === "1") throw error;
-      // Corrupt local sources must never be silently replaced by another provider.
-      if (error instanceof Error && error.message.includes("SHA256 mismatch"))
-        throw error;
-      unavailable = error instanceof Error ? error.message : String(error);
-    }
-    const missing = requested.filter(
-      (request) => !satisfies(features, request),
-    );
-    if (missing.length) {
-      const fallback = this.regionFeatures(
-        await this.load(this.manifest.naturalEarthRegions),
-        country,
-        iso3,
-        true,
-      );
-      for (const request of missing) {
-        const replacement = fallback.find((feature) =>
-          request.region
-            ? feature.id === request.region ||
-              feature.properties.label === request.region
-            : containsPoint(feature.geometry, request.coordinates!),
+      if (candidates.length > 1)
+        throw new Error(
+          `Ambiguous ADM1 boundary in ${country} for ${request.region ?? request.coordinates?.join(",")}; specify a region`,
         );
-        if (!replacement) {
-          if (request.region)
-            throw new Error(
-              `No usable ADM1 boundary for ${request.region}: ${unavailable ?? "absent from gbOpen and Natural Earth"}`,
-            );
-          throw new Error(
-            `No ADM1 boundary contains ${request.coordinates?.join(",")} in ${country}; specify a valid region explicitly`,
-          );
-        }
-        if (!features.some((feature) => feature.id === replacement.id))
-          features.push(replacement);
-        const reason =
-          unavailable ??
-          `gbOpen ADM1 does not cover ${request.region ?? request.coordinates?.join(",")}`;
-        const record: Fallback = {
+      return candidates[0];
+    };
+    const source = await this.gbSource(iso3);
+    let preferred = source
+      ? this.regionFeatures(
+          await this.load(source, Boolean(source.fixture)),
           country,
-          region: String(replacement.id),
-          source: "naturalEarthRegions",
-          reason,
-        };
-        if (
-          !this.manifest.fallbacks.some(
-            (item) =>
-              item.country === record.country &&
-              item.region === record.region &&
-              item.reason === reason,
-          )
-        ) {
-          this.manifest.fallbacks.push(record);
-          this.changed = true;
-        }
-        console.warn(
-          `Natural Earth ADM1 fallback for ${replacement.id}: ${reason}`,
-        );
-      }
+          iso3,
+        )
+      : [];
+    const pending = requests.filter((request) => request.region || request.coordinates);
+    if (source?.fixture && pending.some((request) => !match(preferred, request))) {
+      preferred = this.regionFeatures(await this.load(source), country, iso3);
     }
-    // Never expose unvisited polygons, even when a full upstream country dataset was loaded.
-    return features.filter((feature) =>
-      requested.some((request) =>
-        request.region
-          ? feature.id === request.region ||
-            feature.properties.label === request.region
-          : containsPoint(feature.geometry, request.coordinates!),
-      ),
-    );
+    let fallback: Boundary[] | undefined;
+    for (const [index, request] of requests.entries()) {
+      if (!request.region && !request.coordinates) continue;
+      let boundary = match(preferred, request);
+      if (!boundary) {
+        fallback ??= this.regionFeatures(
+          await this.load(this.manifest.naturalEarthRegions),
+          country,
+          iso3,
+          true,
+        );
+        boundary = match(fallback, request);
+        if (boundary) {
+          const reason = source
+            ? `gbOpen ADM1 does not cover ${request.region ?? request.coordinates?.join(",")}`
+            : `gbOpen ADM1 is unavailable for ${iso3} (HTTP 404)`;
+          const record: Fallback = {
+            country,
+            region: String(boundary.id),
+            source: "naturalEarthRegions",
+            reason,
+          };
+          if (
+            !this.manifest.fallbacks.some(
+              (item) =>
+                item.country === record.country &&
+                item.region === record.region &&
+                item.reason === reason,
+            )
+          ) {
+            this.manifest.fallbacks.push(record);
+            this.changed = true;
+          }
+          console.warn(
+            `Natural Earth ADM1 fallback for ${boundary.id} (${boundary.properties.label}): ${reason}; provider subdivision levels and dates may differ`,
+          );
+        }
+      }
+      if (!boundary) {
+        if (request.region)
+          throw new Error(
+            `No usable ADM1 boundary for ${request.region} in ${country}${
+              request.coordinates ? ` containing ${request.coordinates.join(",")}` : ""
+            }; explicit region constraints are not replaced`,
+          );
+        // Offshore points and omitted islands must not be snapped to an arbitrary nearest region.
+        console.warn(
+          `No ADM1 boundary contains ${request.coordinates?.join(",")} in ${country}; preserving city pin without a region highlight`,
+        );
+        continue;
+      }
+      const id = String(boundary.id);
+      const existing = selected.get(id);
+      if (existing && existing !== boundary)
+        throw new Error(
+          `Conflicting gbOpen and Natural Earth geometries for ${id}; cannot publish two boundaries with the same identity`,
+        );
+      selected.set(id, boundary);
+      assignments[index] = id;
+    }
+    return { boundaries: [...selected.values()], assignments };
   }
 
   async save(): Promise<void> {
     if (this.changed)
       await writeFile(
-        manifestPath,
+        this.manifestFile,
         `${JSON.stringify(this.manifest, null, 2)}\n`,
       );
   }

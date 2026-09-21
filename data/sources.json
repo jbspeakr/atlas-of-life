@@ -71,6 +71,84 @@
         "sha256": "56bd6e71ee0e240cb8890b2d015a932cf706ad77dda0888d8c04e55d62c8353b",
         "featureCount": 2
       }
+    },
+    "DNK": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/DNK/ADM1/geoBoundaries-DNK-ADM1.geojson",
+      "sha256": "5aedd6ecb225af8b5bbfac416e7024d15255b4bbdb884d1d8e77b8b4a58baca9",
+      "cache": "data/.geocache/gbOpen-DNK-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/DNK/ADM1/",
+      "boundaryID": "DNK-ADM1-84455774",
+      "boundaryYearRepresented": "2021",
+      "boundaryCanonical": "Unknown",
+      "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "licenseURL": "https://webvectormaps.com/administrative-map-of-denmark-by-regions/"
+    },
+    "GRC": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/GRC/ADM1/geoBoundaries-GRC-ADM1.geojson",
+      "sha256": "8536ead0547605f9aaad1a203d65f042eddcd828b7bdbbea7fb3f35254ce7cc1",
+      "cache": "data/.geocache/gbOpen-GRC-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/GRC/ADM1/",
+      "boundaryID": "GRC-ADM1-93993887",
+      "boundaryYearRepresented": "2016",
+      "boundaryCanonical": "Decentralized administration",
+      "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "licenseURL": "https://data.humdata.org/dataset/gree"
+    },
+    "ITA": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/ITA/ADM1/geoBoundaries-ITA-ADM1.geojson",
+      "sha256": "ccfd6897ea7231232080dd518f724b0dcfe6d40962cbc3042ee2fbb1e2e05158",
+      "cache": "data/.geocache/gbOpen-ITA-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/ITA/ADM1/",
+      "boundaryID": "ITA-ADM1-72843720",
+      "boundaryYearRepresented": "2023",
+      "boundaryCanonical": "Unknown",
+      "license": "Creative Commons Attribution 3.0 License",
+      "licenseURL": "https://www.istat.it/it/note-legali"
+    },
+    "NLD": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/NLD/ADM1/geoBoundaries-NLD-ADM1.geojson",
+      "sha256": "d6676dd70a3f12780f0becc8c19044a51cc9b8d8c7dd30ec6341c81b21018e1e",
+      "cache": "data/.geocache/gbOpen-NLD-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/NLD/ADM1/",
+      "boundaryID": "NLD-ADM1-6811986",
+      "boundaryYearRepresented": "2022",
+      "boundaryCanonical": "Province",
+      "license": "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+      "licenseURL": "https://nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/208bc283-7c66-4ce7-8ad3-1cf3e8933fb5?tab=general"
+    },
+    "NOR": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/NOR/ADM1/geoBoundaries-NOR-ADM1.geojson",
+      "sha256": "5c525b3a438b40b90622d57bc24dfcd0f056fc37c8983ea35228319a31c79700",
+      "cache": "data/.geocache/gbOpen-NOR-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/NOR/ADM1/",
+      "boundaryID": "NOR-ADM1-71437522",
+      "boundaryYearRepresented": "2022",
+      "boundaryCanonical": "Fylke",
+      "license": "Creative Commons Attribution 4.0 (CC BY 4.0)",
+      "licenseURL": "https://kartkatalog.geonorge.no/metadata/administrative-enheter-fylker/6093c8a8-fa80-11e6-bc64-92361f002671"
+    },
+    "SWE": {
+      "provider": "geoBoundaries gbOpen",
+      "version": "9469f09",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/SWE/ADM1/geoBoundaries-SWE-ADM1.geojson",
+      "sha256": "687061193aea39ef44458e91831e73b16d2d5212b736cbc7ff8e43b4cd659e82",
+      "cache": "data/.geocache/gbOpen-SWE-ADM1.geojson",
+      "api": "https://www.geoboundaries.org/api/current/gbOpen/SWE/ADM1/",
+      "boundaryID": "SWE-ADM1-68755315",
+      "boundaryYearRepresented": "2009",
+      "boundaryCanonical": "County",
+      "license": "Creative Commons Attribution 3.0 License",
+      "licenseURL": "https://commons.wikimedia.org/w/index.php?curid=5675559"
     }
   },
   "fallbacks": []

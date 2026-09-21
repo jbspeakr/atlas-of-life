@@ -10,3 +10,4 @@ verification/traces/
 verification/hosting-results.json
 verification/artifacts/
 public/tiles/basemap.pmtiles
+/data/visits_backup.ts

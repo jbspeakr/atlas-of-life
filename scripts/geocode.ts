@@ -10,7 +10,7 @@ import {
   queryKey,
   validateConfig,
   type Cache,
-  type Config,
+  type ValidatedConfig,
   type QueryKind,
   type Visit,
 } from "./config.ts";
@@ -24,6 +24,7 @@ const resultSchema = z.object({
   name: z.string().optional(),
   addresstype: z.string().optional(),
   address: z.record(z.string(), z.string()),
+  namedetails: z.record(z.string(), z.string()).optional(),
 });
 type Candidate = z.infer<typeof resultSchema>;
 const settlements: Record<string, true> = {
@@ -36,14 +37,24 @@ const settlements: Record<string, true> = {
 const normalized = (value: string): string =>
   value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
 const cityName = (candidate: Candidate): string | undefined =>
-  candidate.address.city ??
-  candidate.address.town ??
-  candidate.address.village ??
-  candidate.address.hamlet ??
-  candidate.address.municipality ??
   (settlements[candidate.addresstype ?? ""] === true
-    ? candidate.name
-    : undefined);
+    ? (candidate.name ?? candidate.address[candidate.addresstype!])
+    : undefined) ??
+  candidate.address.hamlet ??
+  candidate.address.village ??
+  candidate.address.town ??
+  candidate.address.city ??
+  candidate.address.municipality;
+const settlementNames = (candidate: Candidate): string[] => [
+  cityName(candidate) ?? "",
+  ...Object.entries(candidate.namedetails ?? {})
+    .filter(([key]) =>
+      /^(?:(?:alt|short|official|loc)_)?name(?::(?!prefix$|suffix$)[\w-]+)?$/.test(
+        key,
+      ),
+    )
+    .flatMap(([, names]) => names.split(";")),
+];
 const regionCode = (candidate: Candidate): string | undefined =>
   candidate.address["ISO3166-2-lvl4"] ??
   candidate.address["ISO3166-2-lvl3"] ??
@@ -57,7 +68,7 @@ function ambiguity(visit: Visit, reason: string): never {
 
 // Explicit author action only. Builds import config.ts, never this network-capable module.
 export async function geocodeConfig(
-  config: Config,
+  config: ValidatedConfig,
   cache: Cache,
 ): Promise<Cache> {
   let lastRequest = 0;
@@ -90,7 +101,8 @@ export async function geocodeConfig(
       countrycodes: query.countrycodes,
       format: "jsonv2",
       addressdetails: "1",
-      limit: "5",
+      namedetails: "1",
+      limit: "40",
       "accept-language": "en",
     }).toString();
     const response = await fetch(url, {
@@ -113,6 +125,14 @@ export async function geocodeConfig(
         if (
           kind === "city" &&
           settlements[candidate.addresstype ?? ""] !== true
+        )
+          return false;
+        if (
+          kind === "city" &&
+          visit.city &&
+          !settlementNames(candidate).some(
+            (name) => normalized(name) === normalized(visit.city!),
+          )
         )
           return false;
         const region = regionCode(candidate);
@@ -139,9 +159,25 @@ export async function geocodeConfig(
       }))
       .sort((a, b) => b.score - a.score);
     if (!candidates.length)
-      ambiguity(visit, "no result in the requested country/region");
-    if (candidates[1] && candidates[0].score - candidates[1].score < 0.05)
-      ambiguity(visit, "ambiguous results (confidence gap below 0.05)");
+      ambiguity(
+        visit,
+        kind === "city"
+          ? "no settlement with the requested name in the requested country/region"
+          : "no result in the requested country/region",
+      );
+    if (kind === "city" && candidates.length > 1)
+      ambiguity(
+        visit,
+        `multiple settlements match the requested name: ${candidates
+          .map(({ candidate }) => candidate.display_name)
+          .join("; ")}`,
+      );
+    if (
+      kind === "address" &&
+      candidates[1] &&
+      candidates[0].score - candidates[1].score < 0.05
+    )
+      ambiguity(visit, "ambiguous address results (confidence gap below 0.05)");
     const chosen = candidates[0].candidate;
     const coordinates: [number, number] = [
       Number(chosen.lon),

@@ -23,7 +23,7 @@
   "include": [
     "src",
     "scripts",
-    "data",
+    "data/visits.ts",
     "verification",
     "vite.config.ts"
   ]

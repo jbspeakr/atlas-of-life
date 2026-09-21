@@ -45,8 +45,9 @@ export const visitSchema = z
       .regex(
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
         "id must be a stable lowercase slug",
-      ),
-    label: text,
+      )
+      .optional(),
+    label: text.optional(),
     country: countrySchema,
     region: text.optional(),
     city: text.optional(),
@@ -54,7 +55,6 @@ export const visitSchema = z
     coordinates: coordinatesSchema.optional(),
     date: isoDate.optional(),
     dateRange: z.tuple([rangeEndpoint, rangeEndpoint]).optional(),
-    tags: z.array(text).optional(),
     publishPrecision: precisionSchema.optional(),
   })
   .superRefine((visit, context) => {
@@ -89,17 +89,61 @@ export const configSchema = z
   .superRefine((config, context) => {
     const ids = new Set<string>();
     config.visits.forEach((visit, index) => {
-      if (ids.has(visit.id))
+      if (visit.id && ids.has(visit.id))
         context.addIssue({
           code: "custom",
           path: ["visits", index, "id"],
           message: `duplicate id: ${visit.id}`,
         });
-      ids.add(visit.id);
+      if (visit.id) ids.add(visit.id);
     });
+  })
+  .transform((config) => {
+    const used = new Set(
+      config.visits.flatMap((visit) => (visit.id ? [visit.id] : [])),
+    );
+    const occurrences = new Map<string, number>();
+    return {
+      ...config,
+      visits: config.visits.map((visit) => {
+        let id = visit.id;
+        if (!id) {
+          const identity = JSON.stringify([
+            visit.country,
+            normalize(visit.region ?? ""),
+            normalize(visit.city ?? ""),
+            (visit.publishPrecision ?? config.publishPrecision) === "exact"
+              ? (visit.coordinates ?? null)
+              : null,
+            ...dateBounds(visit),
+          ]);
+          const digest = createHash("sha256").update(identity).digest("hex");
+          const slug = (visit.city ?? visit.region ?? visit.country)
+            .normalize("NFKD")
+            .replace(/\p{Mark}/gu, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "");
+          const base = `${visit.country.toLowerCase()}-${slug || "place"}-${digest}`;
+          let occurrence = occurrences.get(base) ?? 0;
+          do {
+            occurrence += 1;
+            id = occurrence === 1 ? base : `${base}-${occurrence}`;
+          } while (used.has(id));
+          occurrences.set(base, occurrence);
+          used.add(id);
+        }
+        return {
+          ...visit,
+          id,
+          label: visit.label ?? visit.city ?? visit.region ?? visit.country,
+        };
+      }),
+    };
   });
-export type Visit = z.infer<typeof visitSchema>;
-export type Config = z.infer<typeof configSchema>;
+export type Config = z.input<typeof configSchema>;
+export type ValidatedConfig = z.output<typeof configSchema>;
+export type Visit = ValidatedConfig["visits"][number];
 export type ResolvedVisit = Visit;
 
 export const cacheSchema = z.record(
@@ -120,7 +164,7 @@ export const cacheSchema = z.record(
 export type Cache = z.infer<typeof cacheSchema>;
 export type PublicVisit = Pick<
   Visit,
-  "id" | "label" | "country" | "region" | "city" | "date" | "dateRange" | "tags"
+  "id" | "label" | "country" | "region" | "city" | "date" | "dateRange"
 > & { coordinates: [number, number]; visitCount?: number };
 export type Place = PublicVisit & { visitCount: number };
 export type QueryKind = "city" | "address";
@@ -168,7 +212,7 @@ export function dateBounds(value: {
     value.dateRange?.[1] || "9999-12-31",
   ];
 }
-export function validateConfig(input: unknown, cache?: Cache): Config {
+export function validateConfig(input: unknown, cache?: Cache): ValidatedConfig {
   const config = configSchema.parse(input);
   if (cache !== undefined) resolveVisits(config, cacheSchema.parse(cache));
   return config;
@@ -200,7 +244,10 @@ function missing(visit: Visit): never {
     `geocache miss for ${visit.id}; run npm run geocode or add explicit coordinates with publishPrecision: 'exact' for a deliberate public landmark`,
   );
 }
-export function resolveVisits(config: Config, cache: Cache): ResolvedVisit[] {
+export function resolveVisits(
+  config: ValidatedConfig,
+  cache: Cache,
+): ResolvedVisit[] {
   return config.visits.map((visit) => {
     // Country- and region-only records remain boundary visits, never city pins.
     if (!visit.city && !visit.address) return { ...visit };
@@ -228,11 +275,9 @@ export function resolveVisits(config: Config, cache: Cache): ResolvedVisit[] {
       throw new Error(
         `city precision for ${visit.id} requires a resolved city; add city and run npm run geocode or explicitly set publishPrecision: 'exact'`,
       );
-    const region = visit.region ?? cityEntry?.region ?? address?.region;
     return {
       ...visit,
       ...(city ? { city } : {}),
-      ...(region ? { region } : {}),
       coordinates: [...coordinates] as [number, number],
     };
   });
@@ -252,7 +297,6 @@ export function publicVisit(
     ...(visit.dateRange !== undefined
       ? { dateRange: [...visit.dateRange] as [string, string] }
       : {}),
-    ...(visit.tags !== undefined ? { tags: [...visit.tags] } : {}),
   };
 }
 export function collapseVisits(visits: ResolvedVisit[]): Place[] {
@@ -294,11 +338,6 @@ export function collapseVisits(visits: ResolvedVisit[]): Place[] {
           dated.some((visit) => visit.dateRange?.[1] === "") ? "" : end,
         ];
     }
-    const tags = [
-      ...new Set(group.flatMap((visit) => visit.tags ?? [])),
-    ].sort();
-    if (tags.length) place.tags = tags;
-    else delete place.tags;
     places.push(place);
   }
   return places.sort(
