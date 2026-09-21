@@ -1,4 +1,48 @@
 {
+  "0900a335b4c26c70e8cddff5a3d8d736c457412e14b2d8b8aad714cdaa6ea3c8": {
+    "coordinates": [
+      9.4633076,
+      53.4342967
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-NI",
+    "city": "Harsefeld",
+    "source": "https://nominatim.openstreetmap.org/search?q=Hollenbeck&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "16767c928684698741afc91a4ac199b2fc8d361316f6a4b88e3c84f1b83ef069": {
+    "coordinates": [
+      12.4409217,
+      53.3554035
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-MV",
+    "city": "Fincken",
+    "source": "https://nominatim.openstreetmap.org/search?q=Fincken&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "1ba7cab0d26c49d98e5d8ba6787cfcfb0219b19e69d89aae30cdd075d75a1b44": {
+    "coordinates": [
+      14.1862434,
+      53.6704395
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-MV",
+    "city": "Ahlbeck",
+    "source": "https://nominatim.openstreetmap.org/search?q=Ahlbeck&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "1f32c207f684757c459a8f9032d534b1e026a2c365978e037351ea39ea32ebe6": {
+    "coordinates": [
+      11.8613813,
+      58.1146082
+    ],
+    "kind": "city",
+    "country": "SE",
+    "region": "SE-O",
+    "city": "Ödsmål",
+    "source": "https://nominatim.openstreetmap.org/search?q=%C3%96dsm%C3%A5l&countrycodes=se&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
   "3021e6cc4a4ba781671c56b2d7f8e3ab2021a330a1d36389a313f248bf0367a0": {
     "coordinates": [
       -3.18916667,
@@ -10,6 +54,39 @@
     "city": "Edinburgh",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Edinburgh"
   },
+  "32132c8b1d9ef82d858a84e2f93b0009326926743e11ef1c30925101a2fc45ea": {
+    "coordinates": [
+      13.3951309,
+      52.5173885
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BE",
+    "city": "Berlin",
+    "source": "https://nominatim.openstreetmap.org/search?q=Berlin&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "61280d203e48c8b53fb80fdbb9a59e6f56fc4c94735fdc16706baf4233df8670": {
+    "coordinates": [
+      14.0058861,
+      52.21303
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BB",
+    "city": "Wendisch Rietz",
+    "source": "https://nominatim.openstreetmap.org/search?q=Wendisch+Rietz&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "631bf23a106031b65ddbe99277db42f174dd5cc33f6e199bb164b392dc52011f": {
+    "coordinates": [
+      23.8631552,
+      38.2846853
+    ],
+    "kind": "city",
+    "country": "GR",
+    "region": "GR-A2",
+    "city": "Kalamos",
+    "source": "https://nominatim.openstreetmap.org/search?q=Kalamos&countrycodes=gr&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
   "683ab1245b2a9e865db1059edfb17db59442fde2f65186757a26bf6475912219": {
     "coordinates": [
       11.575,
@@ -20,6 +97,28 @@
     "region": "DE-BY",
     "city": "Munich",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Munich"
+  },
+  "7c2effea71a1d35dd62fcc4a678c5cfa397941f520502f85fdc66696e294e24b": {
+    "coordinates": [
+      6.0007554,
+      58.4515121
+    ],
+    "kind": "city",
+    "country": "NO",
+    "region": "NO-11",
+    "city": "Egersund",
+    "source": "https://nominatim.openstreetmap.org/search?q=Egersund&countrycodes=no&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "8377ea96ff960cde7576afe823c01ddbd38b61357ff483b73575f215529d4a71": {
+    "coordinates": [
+      15.6397556,
+      38.1035389
+    ],
+    "kind": "city",
+    "country": "IT",
+    "region": "IT-78",
+    "city": "Reggio Calabria",
+    "source": "https://nominatim.openstreetmap.org/search?q=Reggio+Calabria&countrycodes=it&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
   },
   "8fd8cab9b29f679b0f5d94b1749907578307bea57c9f43942968052eb1483ed6": {
     "coordinates": [
@@ -43,6 +142,72 @@
     "city": "Paris",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Paris"
   },
+  "9e1c16ee7d22d29e78f429afc88c02a594a5ab4236ff5bcf0d52b233d228ef5f": {
+    "coordinates": [
+      13.5453834,
+      55.9332915
+    ],
+    "kind": "city",
+    "country": "SE",
+    "region": "SE-M",
+    "city": "Höör",
+    "source": "https://nominatim.openstreetmap.org/search?q=H%C3%B6%C3%B6r&countrycodes=se&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "a09dd88150bd5be11d656febb13762fc806d44d76c95eaa60116b511569df9c1": {
+    "coordinates": [
+      9.5803482,
+      59.8350302
+    ],
+    "kind": "city",
+    "country": "NO",
+    "region": "NO-33",
+    "city": "Lampeland",
+    "source": "https://nominatim.openstreetmap.org/search?q=Lampeland&countrycodes=no&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "b4a32af5c76861a35eb4b76b8f2ea8b314d63254286a093c21da30de6ac63b3c": {
+    "coordinates": [
+      10.0996971,
+      57.0034949
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Storvorde",
+    "source": "https://nominatim.openstreetmap.org/search?q=Storvorde&countrycodes=dk&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "d8205c775156b6d4a01d4aab09cfddc62e259d509229c17c0933262932c8a5e4": {
+    "coordinates": [
+      2.3483915,
+      48.8534951
+    ],
+    "kind": "city",
+    "country": "FR",
+    "region": "FR-IDF",
+    "city": "Paris",
+    "source": "https://nominatim.openstreetmap.org/search?q=Paris&countrycodes=fr&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "d9f86d111139be79904f4ae773bb618253b507e854582f4056067e3003699afc": {
+    "coordinates": [
+      11.5879359,
+      50.9281717
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-TH",
+    "city": "Jena",
+    "source": "https://nominatim.openstreetmap.org/search?q=Jena&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "db5bf28fc593d1d7c593beca44f100e48d490e1bb990395f951e88d85a65ef07": {
+    "coordinates": [
+      4.8924534,
+      52.3730796
+    ],
+    "kind": "city",
+    "country": "NL",
+    "region": "NL-NH",
+    "city": "Amsterdam",
+    "source": "https://nominatim.openstreetmap.org/search?q=Amsterdam&countrycodes=nl&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
   "de02f151b1db039ea5b03d6ca3d4a744cd10400c8304722fc80417cecd29bbbb": {
     "coordinates": [
       4.835,
@@ -54,6 +219,17 @@
     "city": "Lyon",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Lyon"
   },
+  "df7d4dae3dc8fd33767a71bdcce8434f14c97773e9423313a41e9896cd5d6a8b": {
+    "coordinates": [
+      13.9689477,
+      51.8680114
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BB",
+    "city": "Lübbenau/Spreewald",
+    "source": "https://nominatim.openstreetmap.org/search?q=L%C3%BCbbenau&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
   "f14a0add2984944711e81f38a8ce9f72be834fc3f6146939cb7f685d5c8636da": {
     "coordinates": [
       13.405,
@@ -64,6 +240,17 @@
     "region": "DE-BE",
     "city": "Berlin",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Berlin"
+  },
+  "f4a85c17cff758eaf9f9d685c9153fe81781a61f5429261591929abc7d3bba40": {
+    "coordinates": [
+      10.1974758,
+      57.5419085
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Bindslev",
+    "source": "https://nominatim.openstreetmap.org/search?q=Bindslev&countrycodes=dk&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
   },
   "f6b6f763cfe154c0fab1d66dd3f5cce61fb0cba2eb70d6c900bf72d958f1783a": {
     "coordinates": [

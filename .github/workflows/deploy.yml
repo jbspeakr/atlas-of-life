@@ -69,6 +69,18 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Require published basemap configuration
+        env:
+          VITE_BASEMAP_URL: ${{ vars.VITE_BASEMAP_URL }}
+          VITE_TILE_ORIGINS: ${{ vars.VITE_TILE_ORIGINS }}
+        run: |
+          if [ -z "${VITE_BASEMAP_URL//[[:space:]]/}" ]; then
+            echo "::error::vars.VITE_BASEMAP_URL is unset or empty. Actions secrets are a separate namespace and do not populate vars; set it as a repository or environment variable."
+            exit 1
+          fi
+          if [ -z "${VITE_TILE_ORIGINS//[[:space:]]/}" ]; then
+            echo "::warning::vars.VITE_TILE_ORIGINS is empty; redirect origins will be absent from the connect-src policy."
+          fi
       - name: Build immutable remote archive deployment
         run: npm run build
         env:
