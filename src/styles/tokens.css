@@ -1,0 +1,29 @@
+@font-face {
+  font-family: Fraunces;
+  src: url("/fonts/fraunces.woff2") format("woff2");
+  font-display: block;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Noto Sans";
+  src: url("/fonts/noto-sans.woff2") format("woff2");
+  font-display: block;
+  font-weight: 400;
+}
+:root {
+  --midnight: #080f18;
+  --basalt: #121c27;
+  --contour: #2b3947;
+  --lamplight: #efc784;
+  --parchment: #f1eee7;
+  --mist: #a7b2bf;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-display: clamp(2.2rem, 4.6vw, 4.5rem);
+  font-family: "Noto Sans", sans-serif;
+  color: var(--parchment);
+  background: var(--midnight);
+  font-synthesis: none;
+}

@@ -1,0 +1,18 @@
+{
+  "archive": "basemap.pmtiles",
+  "sha256": "38c66ec7053de0c6d269069aa943e4453e832af210b425c591f31cf78952ae35",
+  "bytes": 22331674,
+  "source": "https://build.protomaps.com/20260914.pmtiles",
+  "coverage": {
+    "global": [
+      0,
+      3
+    ],
+    "cities": [
+      4,
+      14
+    ]
+  },
+  "tool": "go-pmtiles 1.31.2",
+  "license": "OpenStreetMap ODbL 1.0; Protomaps"
+}

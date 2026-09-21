@@ -1,0 +1,12 @@
+node_modules/
+dist/
+src/generated/
+data/.geocache/
+.env*
+!.env.example
+verification/report.json
+verification/diffs/
+verification/traces/
+verification/hosting-results.json
+verification/artifacts/
+public/tiles/basemap.pmtiles
