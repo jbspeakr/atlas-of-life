@@ -10,6 +10,14 @@ Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev` for cached visits
 
 GitHub Pages deployment discovers its actual site base with `actions/configure-pages` **before** building. Custom domains such as `https://atlas.brnnnsthl.eu/` use `/`; project sites use their configured `/repository/` path. Do not derive the base from the repository name alone. For a manual root-domain build, run `VITE_BASE=/ npm run build`. Changing the deployment base requires rebuilding and redeploying; it does not repair an already-published HTML file.
 
+## Explore the atlas
+
+The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch or use `+`/`−` to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the year. The shortcut does not fire while editing a field.
+
+**Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. **Escape** closes the caption or directory and restores keyboard focus.
+
+The small year slider means “visited by this year”; its reset restores all years. Undated visits remain available throughout.
+
 ## Add a place
 
 Add an entry to `data/visits.ts` with only the fields you have:

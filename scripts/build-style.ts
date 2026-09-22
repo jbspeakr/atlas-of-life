@@ -85,11 +85,6 @@ const style: StyleSpecification = {
       promoteId: "country",
       data: geo("countries"),
     },
-    "countries-fine": {
-      type: "geojson",
-      promoteId: "country",
-      data: geo("countries-fine"),
-    },
     regions: {
       type: "geojson",
       promoteId: "region",
@@ -112,33 +107,23 @@ const style: StyleSpecification = {
   layers: [
     ...baseLayers,
     {
-      id: "country-glow",
-      type: "line",
-      source: "countries",
-      paint: {
-        "line-color": "#efc784",
-        "line-width": 6,
-        "line-blur": 5,
-        "line-opacity": withVisibility(bands.country),
-      },
-    },
-    {
       id: "countries",
       type: "fill",
       source: "countries",
       paint: {
         "fill-color": "#efc784",
-        "fill-opacity": withVisibility(bands.country, 0.4),
+        "fill-opacity": withVisibility(bands.country, 0.24),
+        "fill-antialias": false,
       },
     },
     {
       id: "country-outline",
       type: "line",
-      source: "countries-fine",
+      source: "countries",
       paint: {
-        "line-color": "#efc784",
-        "line-width": 0.65,
-        "line-opacity": withVisibility(bands.country),
+        "line-color": "#bcaa88",
+        "line-width": 0.8,
+        "line-opacity": withVisibility(bands.country, 0.7),
       },
     },
     {

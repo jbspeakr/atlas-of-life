@@ -60,7 +60,7 @@ declare global {
 export async function createMap(
   container: HTMLElement,
   onSelect: (id: string | null) => void,
-  onView: (message: string, zoom: number) => void,
+  onView: (message: string, zoom: number, visibleIds: string[]) => void,
   signal: AbortSignal,
 ): Promise<Atlas> {
   const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -91,25 +91,24 @@ export async function createMap(
     zoom: innerWidth < 700 ? 0.65 : 1.8,
     minZoom: 0.5,
     maxZoom: 16,
-    maxPitch: 60,
+    maxPitch: 0,
+    dragRotate: false,
+    touchPitch: false,
     attributionControl: false,
     canvasContextAttributes: { antialias: true },
     fadeDuration: media.matches || deterministic ? 0 : 200,
   });
-  map.addControl(
-    new maplibregl.NavigationControl({ showZoom: false, visualizePitch: true }),
-    "top-right",
-  );
+  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation();
   const canvas = map.getCanvas();
   canvas.setAttribute(
     "aria-label",
-    "World map. Use the chronological place index to explore with a keyboard.",
+    "World map. Use arrow keys to pan, plus and minus to zoom, or Browse places. Alt+W returns to the world.",
   );
-  canvas.tabIndex = -1;
+  canvas.tabIndex = 0;
   let selected: string | null = null;
   let animation = 0;
   let igniting = false;
-  let rotation = 0;
   let stopped = false;
   let filtering = 0;
   const countrySource = style.sources.countries as GeoJSONSourceSpecification;
@@ -120,11 +119,6 @@ export async function createMap(
   const features = [
     ...countries.features.map((f) => ({
       source: "countries",
-      id: String(f.id),
-      visits: visits.filter((v) => v.country === f.properties?.country),
-    })),
-    ...countries.features.map((f) => ({
-      source: "countries-fine",
       id: String(f.id),
       visits: visits.filter((v) => v.country === f.properties?.country),
     })),
@@ -143,22 +137,20 @@ export async function createMap(
     if (!igniting) return;
     igniting = false;
     cancelAnimationFrame(animation);
-    for (const feature of countries.features)
-      for (const source of ["countries", "countries-fine"]) {
-        states.set(source + feature.id, 1);
-        map.setFeatureState({ source, id: feature.id! }, { visibility: 1 });
-      }
+    for (const feature of countries.features) {
+      states.set("countries" + feature.id, 1);
+      map.setFeatureState({ source: "countries", id: feature.id! }, { visibility: 1 });
+    }
   };
   const fly = (bounds: LngLatBoundsLike, maxZoom: number) => {
     finishIgnition();
     stopped = true;
-    cancelAnimationFrame(rotation);
     const camera = map.cameraForBounds(bounds, {
       padding: {
-        top: 130,
-        bottom: 140,
-        left: innerWidth > 700 ? 340 : 35,
-        right: 35,
+        top: innerWidth > 700 ? 110 : 125,
+        bottom: innerWidth > 700 ? 100 : 190,
+        left: 40,
+        right: 40,
       },
       maxZoom,
     });
@@ -198,7 +190,6 @@ export async function createMap(
       onSelect(null);
       history.replaceState(null, "", location.pathname + location.search);
       stopped = true;
-      cancelAnimationFrame(rotation);
       map.flyTo({
         center: [10, 35],
         zoom: innerWidth < 700 ? 0.65 : 1.8,
@@ -216,7 +207,6 @@ export async function createMap(
         return;
       }
       stopped = true;
-      cancelAnimationFrame(rotation);
       igniting = false;
       cancelAnimationFrame(filtering);
       cancelAnimationFrame(animation);
@@ -248,7 +238,6 @@ export async function createMap(
     },
     destroy() {
       cancelAnimationFrame(animation);
-      cancelAnimationFrame(rotation);
       cancelAnimationFrame(filtering);
       media.removeEventListener("change", motionChanged);
       window.removeEventListener("hashchange", route);
@@ -260,7 +249,6 @@ export async function createMap(
     if (media.matches) {
       finishIgnition();
       cancelAnimationFrame(animation);
-      cancelAnimationFrame(rotation);
       cancelAnimationFrame(filtering);
       map.stop();
       for (const f of features)
@@ -298,15 +286,15 @@ export async function createMap(
   map.on("style.load", () => {
     if (!media.matches && !deterministic && !location.hash && !stopped) {
       igniting = true;
-      for (const f of countries.features)
-        for (const source of ["countries", "countries-fine"]) {
-          states.set(source + f.id, 0);
-          map.setFeatureState({ source, id: f.id! }, { visibility: 0 });
-        }
+      for (const f of countries.features) {
+        states.set("countries" + f.id, 0);
+        map.setFeatureState({ source: "countries", id: f.id! }, { visibility: 0 });
+      }
     }
   });
   map.on("load", () => {
     route();
+    reportView();
     if (!media.matches && !deterministic && !location.hash && !stopped) {
       const ordered = [...countries.features].sort((a, b) => {
         const first = (id: unknown) =>
@@ -316,15 +304,6 @@ export async function createMap(
             .sort()[0] ?? "9999";
         return first(a.id).localeCompare(first(b.id));
       });
-      let last = performance.now();
-      const rotate = (now: number) => {
-        if (stopped || media.matches || document.hidden) return;
-        const delta = Math.min(40, now - last);
-        last = now;
-        const center = map.getCenter();
-        map.setCenter([center.lng + delta * 0.00065, center.lat]);
-        rotation = requestAnimationFrame(rotate);
-      };
       const start = performance.now();
       const ignite = (now: number) => {
         let done = true;
@@ -334,19 +313,11 @@ export async function createMap(
             Math.max(0, (now - start - i * 260) / 700),
           );
           if (visibility < 1) done = false;
-          for (const source of ["countries", "countries-fine"]) {
-            map.setFeatureState({ source, id: f.id! }, { visibility });
-            states.set(source + f.id, visibility);
-          }
+          map.setFeatureState({ source: "countries", id: f.id! }, { visibility });
+          states.set("countries" + f.id, visibility);
         });
         if (!done) animation = requestAnimationFrame(ignite);
-        else {
-          igniting = false;
-          map.once("idle", () => {
-            last = performance.now();
-            rotation = requestAnimationFrame(rotate);
-          });
-        }
+        else igniting = false;
       };
       animation = requestAnimationFrame(ignite);
     }
@@ -355,7 +326,6 @@ export async function createMap(
     if (event.originalEvent) {
       finishIgnition();
       stopped = true;
-      cancelAnimationFrame(rotation);
       cancelAnimationFrame(animation);
       for (const f of features)
         map.setFeatureState(
@@ -364,17 +334,32 @@ export async function createMap(
         );
     }
   });
-  map.on("moveend", () => {
+  function reportView() {
+    const { width, height } = canvas.getBoundingClientRect();
+    const visibleIds = places.filter((place) => {
+      const point = map.project(place.coordinates);
+      if (point.x < 0 || point.y < 0 || point.x > width || point.y > height)
+        return false;
+      // A rear-hemisphere point can project inside the globe. A round trip
+      // must return the same location, not its visible-side counterpart.
+      const location = map.unproject(point);
+      const longitude = ((location.lng - place.coordinates[0] + 540) % 360) - 180;
+      return Math.abs(longitude) < 0.001 &&
+        Math.abs(location.lat - place.coordinates[1]) < 0.001;
+    }).map((place) => place.id);
     const z = map.getZoom();
     onView(
       z < 3.5
         ? "The world, with visited countries illuminated."
         : z < 6.5
           ? "Exploring visited regions."
-          : "Exploring places. Select a light or use the place index.",
+          : "Exploring places. Select a light or browse places in view.",
       z,
+      visibleIds,
     );
-  });
+  }
+  map.on("moveend", reportView);
+  map.on("resize", reportView);
   let hovered: string | number | undefined;
   map.on("mousemove", "pins", (event) => {
     const id = event.features?.[0]?.id;

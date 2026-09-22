@@ -2,6 +2,14 @@
 
 Only measured experiments belong here. Optimisation uses the ordered objective in the brief; correctness, publication safety, accessibility and network purity are never traded away. Visual changes require explicit approval. Failed checks are fixed, not retried into acceptance.
 
+## Quieter map controls and contextual discovery
+
+Removed the blurred country glow and mismatched fine-outline source in favor of subdued, matching fill/outline geometry. North-up navigation now excludes mouse, keyboard and touch rotation/pitch, and the camera no longer rotates on its own after ignition. Compact World navigation includes Alt+W; the timeline, title and selected-place caption take less space.
+
+Replaced the persistent chronological list with an on-demand, map-aware directory: In view / All places, city/region/country search, year-aware results and six-row pages. The global scope keeps distant places discoverable; projection round trips exclude the globe's rear hemisphere.
+
+Verification: TypeScript, lint and all 37 unit tests passed. Desktop and mobile views were inspected in Chromium. An isolated browser smoke run reached all 18 current places through pagination, exercised search and selection, checked viewport and rear-hemisphere exclusion, synchronized the directory and map with the year slider, tested Alt+W including its editing guard, and confirmed focus recovery from both list selection and a rendered pin. Keyboard, right-drag and two-finger rotation kept bearing and pitch at zero. Desktop, open-directory and mobile axe checks reported no WCAG A/AA violations; the 320px layout had no horizontal overflow. Existing runtime scenarios were updated for the collapsed directory and stationary camera. Visual baselines and performance approval were not regenerated.
+
 ## Date/city/country authoring and geographic discovery
 
 The owner dataset exposed incompatible geographic identifiers: Kalamos's Nominatim `GR-A2` versus gbOpen Attica `GR-AT` and Natural Earth `GR-A1`; Lampeland's `NO-33` versus the pinned 2022 Viken `NO-30`; and Italian macro-area polygons with empty ISO codes. The pipeline now discovers implicit membership spatially and keeps provider identifiers separate from geocoder provenance. It does not invent country-specific aliases or drop usable polygons lacking ISO codes.

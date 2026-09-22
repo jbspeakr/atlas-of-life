@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createMap,
@@ -32,11 +32,32 @@ const chronology = [...places].sort(
       b.date ?? b.dateRange?.[0] ?? "9999",
     ) || a.id.localeCompare(b.id),
 );
+const pageSize = 6;
+const searchablePlaces = chronology.map((place) => ({
+  ...place,
+  countryName: countryNames.of(place.country) ?? place.country,
+  searchText: [
+    place.label,
+    countryNames.of(place.country),
+    place.region ? regionLabels[place.region] : "",
+  ].join(" ").toLocaleLowerCase(),
+  firstVisit: Math.min(...(visitsByPlace.get(place.id) ?? []).map((visit) => {
+    const date = visit.date ?? visit.dateRange?.[0];
+    return date ? Number(date.slice(0, 4)) : -Infinity;
+  })),
+}));
 function App() {
   const host = useRef<HTMLDivElement>(null);
   const atlas = useRef<Atlas | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  const origin = useRef<string | null>(null);
+  const browseButton = useRef<HTMLButtonElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const origin = useRef<HTMLElement | null>(null);
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [scope, setScope] = useState<"view" | "all">("view");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [year, setYear] = useState(lastYear);
   const [view, setView] = useState(
@@ -52,18 +73,17 @@ function App() {
     void createMap(
       host.current,
       (id) => {
+        if (id) {
+          origin.current = document.activeElement as HTMLElement | null;
+          setExplorerOpen(false);
+        }
         setSelected(id);
-        if (id) origin.current = id;
-        else if (origin.current)
-          document
-            .querySelector<HTMLButtonElement>(
-              `[data-place-id="${origin.current}"]`,
-            )
-            ?.focus({ preventScroll: true });
       },
-      (message, z) => {
+      (message, z, ids) => {
         setView(message);
         setZoom(z);
+        setVisibleIds(ids);
+        setPage(0);
       },
       abort.signal,
     )
@@ -92,30 +112,56 @@ function App() {
   useEffect(() => {
     if (place) closeButton.current?.focus({ preventScroll: true });
   }, [place]);
+  useEffect(() => {
+    if (explorerOpen) searchInput.current?.focus({ preventScroll: true });
+  }, [explorerOpen]);
+  function restoreFocus() {
+    const target = origin.current?.isConnected ? origin.current : browseButton.current;
+    target?.focus({ preventScroll: true });
+  }
   function dismiss() {
     setSelected(null);
     history.replaceState(null, "", location.pathname + location.search);
-    if (origin.current)
-      document
-        .querySelector<HTMLButtonElement>(`[data-place-id="${origin.current}"]`)
-        ?.focus({ preventScroll: true });
+    restoreFocus();
   }
   useEffect(() => {
-    function escape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setSelected(null);
-        history.replaceState(null, "", location.pathname + location.search);
-        if (origin.current)
-          document
-            .querySelector<HTMLButtonElement>(
-              `[data-place-id="${origin.current}"]`,
-            )
-            ?.focus({ preventScroll: true });
+    function shortcuts(event: KeyboardEvent) {
+      const target = event.target;
+      const editing = target instanceof HTMLElement &&
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+      if (event.altKey && event.code === "KeyW" && !event.ctrlKey &&
+        !event.metaKey && !event.shiftKey && !editing && !event.repeat) {
+        event.preventDefault();
+        atlas.current?.reset();
+      } else if (event.key === "Escape") {
+        if (selected) {
+          setSelected(null);
+          history.replaceState(null, "", location.pathname + location.search);
+          restoreFocus();
+        } else if (explorerOpen) {
+          setExplorerOpen(false);
+          browseButton.current?.focus({ preventScroll: true });
+        }
       }
     }
-    window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, []);
+    window.addEventListener("keydown", shortcuts);
+    return () => window.removeEventListener("keydown", shortcuts);
+  }, [selected, explorerOpen]);
+  const eligiblePlaces = useMemo(
+    () => searchablePlaces.filter((place) => place.firstVisit <= year),
+    [year],
+  );
+  const inView = useMemo(() => {
+    const ids = new Set(visibleIds);
+    return eligiblePlaces.filter((place) => ids.has(place.id));
+  }, [eligiblePlaces, visibleIds]);
+  const results = useMemo(() => {
+    const text = query.trim().toLocaleLowerCase();
+    return (scope === "view" ? inView : eligiblePlaces)
+      .filter((place) => place.searchText.includes(text));
+  }, [scope, query, inView, eligiblePlaces]);
+  const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
   const placeVisits = place ? (visitsByPlace.get(place.id) ?? []) : [];
   return (
     <main className={zoom >= 6.5 ? "atlas atlas-close" : "atlas"}>
@@ -130,42 +176,98 @@ function App() {
         </div>
       </header>
       <nav className="navigation" aria-label="Map controls">
-        <button type="button" onClick={() => atlas.current?.reset()}>
-          <span aria-hidden="true">↗</span> Back to the world
+        <button
+          type="button"
+          aria-label="Back to the world"
+          aria-keyshortcuts="Alt+W"
+          title="Back to the world (Alt+W)"
+          onClick={() => atlas.current?.reset()}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <ellipse cx="12" cy="12" rx="3.5" ry="8" />
+            <path d="M4 12h16" />
+          </svg>
+          World <kbd>⌥ W</kbd>
         </button>
       </nav>
-      <section
-        className="place-index"
-        aria-label="Places in chronological order"
-      >
-        <h2>Places, so far</h2>
-        <ol>
-          {chronology.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                data-place-id={p.id}
-                aria-pressed={selected === p.id}
-                onClick={() => atlas.current?.select(p.id)}
-              >
-                <span className="place-mark" aria-hidden="true" />
-                <span className="index-name">{p.label}</span>
-                <span className="index-year">
-                  {(p.date ?? p.dateRange?.[0] ?? "").slice(0, 4)}
-                </span>
-                {p.visitCount > 1 && (
-                  <span
-                    className="visit-count"
-                    aria-label={`${p.visitCount} visits`}
-                  >
-                    ×{p.visitCount}
-                  </span>
-                )}
+      <aside className="place-browser" aria-label="Places">
+        <button
+          ref={browseButton}
+          className="browse-toggle"
+          type="button"
+          aria-label="Browse places"
+          aria-expanded={explorerOpen}
+          aria-controls="place-explorer"
+          onClick={() => setExplorerOpen(!explorerOpen)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6" />
+            <path d="m15 15 5 5" />
+          </svg>
+          Places <span className="browse-context">{inView.length} in view</span>
+          <span aria-hidden="true">{explorerOpen ? "−" : "+"}</span>
+        </button>
+        {explorerOpen && (
+          <section className="place-explorer" id="place-explorer" aria-label="Browse places">
+            <div className="explorer-heading">
+              <h2>Explore places</h2>
+              <button type="button" className="icon-button" aria-label="Close places"
+                onClick={() => {
+                  setExplorerOpen(false);
+                  browseButton.current?.focus({ preventScroll: true });
+                }}>×</button>
+            </div>
+            <div className="place-scope" role="group" aria-label="Place scope">
+              <button type="button" aria-pressed={scope === "view"}
+                onClick={() => { setScope("view"); setPage(0); }}>
+                In view <span>{inView.length}</span>
               </button>
-            </li>
-          ))}
-        </ol>
-      </section>
+              <button type="button" aria-pressed={scope === "all"}
+                onClick={() => { setScope("all"); setPage(0); }}>
+                All places <span>{eligiblePlaces.length}</span>
+              </button>
+            </div>
+            <input ref={searchInput} type="search" aria-label="Search places"
+              placeholder="Search city, region or country"
+              value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} />
+            <p className="explorer-context" role="status">
+              {results.length} {results.length === 1 ? "place" : "places"}
+              {scope === "view" ? " in this map view" : " across the world"}
+              {year < lastYear ? ` · through ${year}` : " · all years"}
+            </p>
+            <ol className="place-results">
+              {results.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((p) => (
+                <li key={p.id}>
+                  <button type="button" data-place-id={p.id}
+                    aria-pressed={selected === p.id}
+                    onClick={() => atlas.current?.select(p.id)}>
+                    <span className="place-mark" aria-hidden="true" />
+                    <span className="index-name">{p.label}<small>{p.countryName}</small></span>
+                    <span className="index-year">{Number.isFinite(p.firstVisit) ? p.firstVisit : "Undated"}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+            {results.length === 0 && (
+              <div className="places-empty">
+                <p>{query.trim() ? "No matching places." : "No visits here in this time range."}</p>
+                {scope === "view" && <button type="button"
+                  onClick={() => { setScope("all"); setPage(0); }}>Search all places</button>}
+                {query && <button type="button" onClick={() => { setQuery(""); setPage(0); }}>Clear search</button>}
+              </div>
+            )}
+            {pageCount > 1 && <nav className="place-pages" aria-label="Place pages">
+              <button type="button" aria-label="Previous places" disabled={currentPage === 0}
+                onClick={() => setPage(currentPage - 1)}>←</button>
+              <span>{currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, results.length)} of {results.length}</span>
+              <button type="button" aria-label="Next places" disabled={currentPage === pageCount - 1}
+                onClick={() => setPage(currentPage + 1)}>→</button>
+            </nav>}
+            <p className="explorer-hint">Move the map to explore · earliest visits first</p>
+          </section>
+        )}
+      </aside>
       {place && (
         <section
           className="place-caption"
@@ -221,29 +323,31 @@ function App() {
       )}
       <form className="timeline" onSubmit={(e) => e.preventDefault()}>
         <label htmlFor="year">
-          Through <output htmlFor="year">{Math.floor(year)}</output>
+          {year === lastYear ? "All years" : <>Through <output htmlFor="year">{year}</output></>}
         </label>
-        <span className="timeline-bound" aria-hidden="true">
-          {firstYear}
-        </span>
         <input
           id="year"
           aria-label="Year"
           type="range"
           min={firstYear}
-          max={lastYear || firstYear + 1}
-          step="0.05"
+          max={lastYear}
+          step="1"
           value={year}
           aria-valuetext={`Through ${Math.floor(year)}`}
           onChange={(e) => {
             const value = Number(e.target.value);
             setYear(value);
+            setPage(0);
             atlas.current?.filter(value);
           }}
         />
-        <span className="timeline-bound" aria-hidden="true">
-          {lastYear}
-        </span>
+        <button className="timeline-reset" type="button" aria-label="Show all years"
+          title="Show all years" disabled={year === lastYear}
+          onClick={() => {
+            setYear(lastYear);
+            setPage(0);
+            atlas.current?.filter(lastYear);
+          }}>↺</button>
       </form>
       <details className="attribution">
         <summary>© OpenStreetMap contributors · Map credits</summary>

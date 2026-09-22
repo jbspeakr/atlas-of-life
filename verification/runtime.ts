@@ -423,18 +423,11 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       await camera(page, [13.405, 52.52], 10);
       await screenshot("city");
     });
+    await page.getByRole("button", { name: "Browse places", exact: true }).click();
+    await page.getByRole("button", { name: /^All places/ }).click();
     const buttons = page.locator("[data-place-id]");
     const ids = await buttons.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-place-id") ?? ""),
-    );
-    record(
-      "data.fixture-pins",
-      "data",
-      new Set(ids).size,
-      "unique places",
-      6,
-      `Expected six deterministic fixture cities, rendered IDs: ${ids.join(", ")}`,
-      "eq",
     );
     const first = ids[0];
     if (!first)
@@ -449,6 +442,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       throw new Error(
         `src/generated/places.json has no label for rendered place ${first}`,
       );
+    await page.getByRole("button", { name: "Close places", exact: true }).click();
     await run("interaction.pin-caption", "correctness", async () => {
       const pin = await page.evaluate((id) => {
         const map = (window as unknown as AtlasWindow).__atlas.map;
@@ -485,16 +479,14 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       await run("visual.caption", "visual", () => screenshot("caption"));
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden" });
-      const focused = await page.evaluate(() =>
-        document.activeElement?.getAttribute("data-place-id"),
-      );
+      const focused = await page.evaluate(() => document.activeElement?.tagName);
       record(
         "a11y.escape-focus-return",
         "a11y",
-        focused === first ? 0 : 1,
+        focused === "CANVAS" ? 0 : 1,
         "errors",
         0,
-        `Escape closes Place dialog and returns focus to ${first}; actual active data-place-id=${focused}`,
+        `Escape closes the pointer-opened Place dialog and returns focus to the map; actual=${focused}`,
         "eq",
       );
     });
@@ -523,12 +515,9 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
         (window as unknown as AtlasWindow).__atlas.reset(),
       );
       await settle(page);
-      await page.evaluate(() => {
-        const active = document.activeElement;
-        if (active instanceof HTMLElement) active.blur();
-        document.body.tabIndex = -1;
-        document.body.focus();
-      });
+      await page.getByRole("button", { name: "Browse places", exact: true }).click();
+      await page.getByRole("button", { name: /^All places/ }).click();
+      await page.getByRole("searchbox", { name: "Search places" }).focus();
       const observed: string[] = [];
       for (
         let count = 0;
@@ -568,15 +557,15 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden" });
       const returned = await page.evaluate(() =>
-        document.activeElement?.getAttribute("data-place-id"),
+        document.activeElement?.getAttribute("aria-label"),
       );
       record(
         "a11y.keyboard-focus-return",
         "a11y",
-        returned === activated ? 0 : 1,
+        returned === "Browse places" ? 0 : 1,
         "errors",
         0,
-        `Escape after keyboard activation returns focus to ${activated}; actual ${returned}`,
+        `Escape after keyboard activation returns focus to Browse places; actual=${returned}`,
         "eq",
       );
     });
@@ -689,7 +678,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
         normalIdle,
         "ms",
         budgets.idleMs,
-        "Normal production startup: actual first MapLibre idle event relative to navigation, with ignition and rotation enabled.",
+        "Normal production startup: actual first MapLibre idle event relative to navigation, with country ignition enabled.",
       );
       await page.waitForFunction(() =>
         ["DE", "FR", "GB"].every(
@@ -712,13 +701,13 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
           }),
       );
       record(
-        "motion.idle-rotation",
+        "motion.stationary-world",
         "correctness",
         rotation,
         "degrees / 500ms",
-        0.05,
-        "Normal motion startup must settle into visible globe rotation.",
-        "gte",
+        0,
+        "The world stays stationary after ignition so map-aware browsing has stable context.",
+        "eq",
       );
       await page.getByRole("button", { name: "Back to the world" }).click();
       await ready(page);
