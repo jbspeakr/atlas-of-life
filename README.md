@@ -10,6 +10,24 @@ Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev` for cached visits
 
 GitHub Pages deployment discovers its actual site base with `actions/configure-pages` **before** building. Custom domains such as `https://atlas.brnnnsthl.eu/` use `/`; project sites use their configured `/repository/` path. Do not derive the base from the repository name alone. For a manual root-domain build, run `VITE_BASE=/ npm run build`. Changing the deployment base requires rebuilding and redeploying; it does not repair an already-published HTML file.
 
+## Record a cinematic globe and region tour
+
+Install FFmpeg with `ffprobe` and `libx264` (macOS: `brew install ffmpeg`) and Chromium with `npx playwright install chromium`, then run:
+
+```sh
+npm run record
+npm run record -- --format portrait --place Berlin --out recordings/berlin-tour
+npm run record -- --help
+```
+
+The default command independently renders portrait **1080×1920**, square **1080×1080** and landscape **1920×1080** movies into a unique UTC-stamped directory under `recordings/`. Each silent H.264/yuv420p MP4 is **24 seconds / 720 frames / 30 fps**, with BT.709 tags and fast-start playback, accompanied by a full-resolution regional `<format>-poster.png`. Lossless browser PNGs feed the encoder directly; every moving frame is rendered, so offline capture takes longer than playback. The real responsive controls, all-years timeline, typography and attribution remain intact. Music, editorial captions and publishing are separate.
+
+The camera establishes the globe, settles over the anchor's region, zooms in and holds, pulls back for a broad transfer, reveals a second region, then ends with a calm pullback. **Regional zoom reaches 4.75–5**, making the app's real regional fills and boundaries visible without street-level dives or place dialogs. Quintic minimum-jerk easing settles both velocity and acceleration at shot boundaries. Panning and zooming happen separately: regional zooms keep their centers locked, and travel happens at zoom 2.25. There is no oscillating waypoint path or forced reverse sweep to make a loop. Existing gold city pins remain visible, and representative names use fixed text anchors rather than hopping sides as the map moves. All capture-layer adjustments stay inside the recording browser; production application styles are unchanged.
+
+`--format` accepts `all` (default), `portrait`, `square` or `landscape`. `--place` accepts an exact public ID, otherwise a unique case-insensitive exact display label, and sets the first **regional focus**, not a city close-up. Without it, the first freshly generated public place anchors the tour. Up to four geographically varied entries provide readable labels; the most distant representative supplies the second regional focus. `--out` must name a directory that does **not** exist, even if empty. Help and invalid flags do not build or launch the browser. Failures and Ctrl-C remove unfinished `.partial.mp4` files and preserve completed outputs.
+
+Recording runs the ordinary build once with `VITE_BASE=/atlas/`, using the current public data, privacy rules and configured basemap. It serves `dist/` on dedicated port **4180**; do not run another build/verification concurrently. It does not substitute fixture data, change precision or switch basemaps. Regional reveals require complete global overview/regional tiles through z6, as supplied by the normal basemap workflow; they do not need city/street extract coverage. The committed z0–3 preview archive alone is not sufficient for this deeper tour.
+
 ## Explore the atlas
 
 The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch or use `+`/`−` to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the year. The shortcut does not fire while editing a field.

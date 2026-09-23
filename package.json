@@ -16,6 +16,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "verify": "node verification/entry.mjs",
+    "record": "tsx scripts/record.ts",
     "verify:approve": "tsx verification/approve.ts",
     "verify:hosting": "tsx verification/hosting.ts"
   },
