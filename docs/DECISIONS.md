@@ -16,7 +16,7 @@ Boundary names are drawn from build-time interior anchors, never from basemap la
 
 ## Motion
 
-The only autonomous entrance is countries lighting in first-visit order. Deterministic mode and reduced motion disable this; the camera remains stationary afterwards to keep browsing context stable. Zoom-dependent paint expressions keep semantic layers present, overlapping continuously. The compact timeline remains because dates are core geographic metadata; it changes feature-state, never source identity. Navigation uses bounding boxes and a weighted cubic easing. Mouse, keyboard and touch rotation/pitch are disabled so north stays up; no compass is needed. The small World button and Alt+W restore the overview, without altering the year filter.
+The only autonomous entrance is countries lighting in first-visit order. Deterministic mode and reduced motion disable this; the camera remains stationary afterwards to keep browsing context stable. Zoom-dependent paint expressions keep semantic layers present, overlapping continuously. The compact timeline remains because dates are core geographic metadata; it changes feature-state, never source identity. Its positions are the visits themselves rather than calendar years, so a dense year is scrubbable; "Through" is the default reading and "During" narrows to one month. The address bar describes what is on screen (place, moved camera, filter) so any view can be shared; programmatic camera moves never write it. Navigation uses bounding boxes and a weighted cubic easing. Mouse, keyboard and touch rotation/pitch are disabled so north stays up; no compass is needed. The small World button and Alt+W restore the overview, without altering the year filter.
 
 ## Verification contract
 

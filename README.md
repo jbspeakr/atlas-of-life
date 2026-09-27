@@ -36,7 +36,7 @@ The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch, the o
 
 Country names appear as you leave the world view and give way to region names, then to place names; hovering a country or region highlights its outline when it is the current click target. **Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. **Escape** closes the caption or directory and restores keyboard focus.
 
-The small year slider means “visited by this year”; its reset restores all years. Undated visits remain available throughout.
+The timeline scrubber has one tick per visit date and a final **All visits** position. **Through** (the default) means “first visited by this date”; **During** lights only visits under way in that month. Its reset restores all visits. Undated visits remain available throughout. The address bar follows what you see: a selected place, a camera you moved (`#/view/…`) and the timeline position (`?through=…&mode=only`), so any view can be shared.
 
 ## Add a place
 

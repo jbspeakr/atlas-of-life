@@ -9,6 +9,8 @@ import {
 import type { Atlas } from "./map/create-map";
 import { fold } from "./map/text";
 import { captionGeography } from "./map/caption";
+import { dateBounds, isDated, nights, visibleAt } from "./map/time";
+import type { TimeMode } from "./map/time";
 import regionLabelsData from "./generated/region-labels.json";
 const regionLabels: Record<string, string> = regionLabelsData;
 const deterministic =
@@ -30,6 +32,13 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
 import "./styles/map.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
+const monthFormatter = new Intl.DateTimeFormat(locale, {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const formatMonth = (date: string) =>
+  monthFormatter.format(new Date(`${date}T00:00:00Z`));
 const countryNames = new Intl.DisplayNames([locale], { type: "region" });
 const siteTitle = document.title;
 const narrow = matchMedia("(max-width: 700px)").matches;
@@ -40,6 +49,10 @@ const years = visits.flatMap((v) =>
 );
 const firstYear = Math.min(...years, new Date().getUTCFullYear());
 const lastYear = Math.max(...years, firstYear);
+// One scrubber position per distinct first-visit date; the last position means every visit.
+const positions = [
+  ...new Set(visits.filter(isDated).map((visit) => dateBounds(visit)[0])),
+].sort();
 const chronology = [...places].sort(
   (a, b) =>
     (a.date ?? a.dateRange?.[0] ?? "9999").localeCompare(
@@ -75,7 +88,8 @@ function App() {
   const [page, setPage] = useState(0);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [year, setYear] = useState(lastYear);
+  const [through, setThrough] = useState<string | null>(null);
+  const [mode, setMode] = useState<TimeMode>("cumulative");
   const [view, setView] = useState(
     "The world, with visited countries illuminated.",
   );
@@ -104,6 +118,11 @@ function App() {
         setView(message);
         setZoom(z);
         setVisibleIds(ids);
+        setPage(0);
+      },
+      (routedThrough, routedMode) => {
+        setThrough(routedThrough);
+        setMode(routedMode);
         setPage(0);
       },
       abort.signal,
@@ -141,9 +160,18 @@ function App() {
     target?.focus({ preventScroll: true });
   }
   function dismiss() {
-    setSelected(null);
-    history.replaceState(null, "", location.pathname + location.search);
-    restoreFocus();
+    // The controller owns selection and the URL; its callback restores focus.
+    if (atlas.current) atlas.current.deselect();
+    else {
+      setSelected(null);
+      restoreFocus();
+    }
+  }
+  function applyFilter(nextThrough: string | null, nextMode: TimeMode) {
+    setThrough(nextThrough);
+    setMode(nextMode);
+    setPage(0);
+    atlas.current?.filter(nextThrough, nextMode);
   }
   useEffect(() => {
     function shortcuts(event: KeyboardEvent) {
@@ -156,9 +184,7 @@ function App() {
         atlas.current?.reset();
       } else if (event.key === "Escape") {
         if (selected) {
-          setSelected(null);
-          history.replaceState(null, "", location.pathname + location.search);
-          restoreFocus();
+          dismiss();
         } else if (explorerOpen) {
           setExplorerOpen(false);
           browseButton.current?.focus({ preventScroll: true });
@@ -169,9 +195,19 @@ function App() {
     return () => window.removeEventListener("keydown", shortcuts);
   }, [selected, explorerOpen]);
   const eligiblePlaces = useMemo(
-    () => searchablePlaces.filter((place) => place.firstVisit <= year),
-    [year],
+    () =>
+      searchablePlaces.filter((place) =>
+        (visitsByPlace.get(place.id) ?? []).some(
+          (visit) => visibleAt(visit, through, mode) > 0,
+        ),
+      ),
+    [through, mode],
   );
+  const position = through === null ? positions.length : positions.indexOf(through);
+  const timeLabel =
+    through === null
+      ? "All visits"
+      : `${mode === "only" ? "During" : "Through"} ${formatMonth(through)}`;
   const inView = useMemo(() => {
     const ids = new Set(visibleIds);
     return eligiblePlaces.filter((place) => ids.has(place.id));
@@ -275,7 +311,7 @@ function App() {
             <p className="explorer-context" role="status">
               {results.length} {results.length === 1 ? "place" : "places"}
               {scope === "view" ? " in this map view" : " across the world"}
-              {year < lastYear ? ` · through ${year}` : " · all years"}
+              {through === null ? " · all visits" : ` · ${timeLabel.toLowerCase()}`}
             </p>
             <ol className="place-results">
               {results.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((p) => (
@@ -367,38 +403,65 @@ function App() {
               .filter(Boolean)
               .join(" · ")}
           </p>
+          {placeVisits.some((v) => nights(v)) && (
+            <p className="caption-nights">
+              {placeVisits
+                .map((v) => nights(v))
+                .filter((n): n is number => n !== undefined)
+                .reduce((a, b) => a + b, 0)}{" "}
+              {placeVisits.reduce((a, v) => a + (nights(v) ?? 0), 0) === 1 ? "night" : "nights"}
+            </p>
+          )}
           {place.visitCount > 1 && (
             <p className="caption-count">{place.visitCount} visits</p>
           )}
         </section>
       )}
       <form className="timeline" onSubmit={(e) => e.preventDefault()}>
-        <label htmlFor="year">
-          {year === lastYear ? "All years" : <>Through <output htmlFor="year">{year}</output></>}
+        <label htmlFor="through">
+          {through === null ? "All visits" : (
+            <>
+              {mode === "only" ? "During" : "Through"}{" "}
+              <output htmlFor="through">{formatMonth(through)}</output>
+            </>
+          )}
         </label>
-        <input
-          id="year"
-          aria-label="Year"
-          type="range"
-          min={firstYear}
-          max={lastYear}
-          step="1"
-          value={year}
-          aria-valuetext={`Through ${Math.floor(year)}`}
-          onChange={(e) => {
-            const value = Number(e.target.value);
-            setYear(value);
-            setPage(0);
-            atlas.current?.filter(value);
-          }}
-        />
-        <button className="timeline-reset" type="button" aria-label="Show all years"
-          title="Show all years" disabled={year === lastYear}
-          onClick={() => {
-            setYear(lastYear);
-            setPage(0);
-            atlas.current?.filter(lastYear);
-          }}>↺</button>
+        <div className="timeline-track">
+          <input
+            id="through"
+            aria-label={mode === "only" ? "Visited during" : "Visited through"}
+            type="range"
+            min={0}
+            max={positions.length}
+            step="1"
+            value={position < 0 ? positions.length : position}
+            aria-valuetext={timeLabel}
+            onChange={(e) => {
+              const index = Number(e.target.value);
+              applyFilter(index >= positions.length ? null : positions[index], mode);
+            }}
+          />
+          <span className="timeline-ticks" aria-hidden="true">
+            {positions.map((date, index) => (
+              <i
+                key={date}
+                className={index <= position ? "lit" : undefined}
+                style={{ left: `${(index / positions.length) * 100}%` }}
+              />
+            ))}
+          </span>
+        </div>
+        <div className="timeline-mode" role="group" aria-label="Time mode">
+          <button type="button" aria-pressed={mode === "cumulative"}
+            title="Everything visited by the selected date"
+            onClick={() => applyFilter(through, "cumulative")}>Through</button>
+          <button type="button" aria-pressed={mode === "only"}
+            title="Only visits under way during the selected month"
+            onClick={() => applyFilter(through, "only")}>During</button>
+        </div>
+        <button className="timeline-reset" type="button" aria-label="Show all visits"
+          title="Show all visits" disabled={through === null}
+          onClick={() => applyFilter(null, mode)}>↺</button>
       </form>
       <details className="attribution">
         <summary>© OpenStreetMap contributors · Map credits</summary>

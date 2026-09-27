@@ -319,7 +319,8 @@ kbd {
 .place-caption .visit-dates {
   font-size: 11px;
 }
-.place-caption .caption-count {
+.place-caption .caption-count,
+.place-caption .caption-nights {
   color: var(--lamplight);
 }
 .dismiss {
@@ -331,20 +332,64 @@ kbd {
   position: absolute;
   bottom: 48px;
   right: 28px;
-  width: 320px;
+  width: 500px;
   padding: 0 0 0 14px;
-  gap: 12px;
+  gap: 10px;
 }
 .timeline label {
-  min-width: 82px;
+  min-width: 108px;
   white-space: nowrap;
   color: var(--mist);
   font-variant-numeric: tabular-nums;
+}
+.timeline-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.timeline-ticks {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 50%;
+  height: 0;
+  pointer-events: none;
+}
+.timeline-ticks i {
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 6px;
+  margin-left: -0.5px;
+  background: var(--contour);
+}
+.timeline-ticks i.lit {
+  background: var(--lamplight);
+}
+.timeline-mode {
+  display: flex;
+  border-left: 1px solid var(--contour);
+}
+.timeline-mode button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mist);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.timeline-mode button[aria-pressed="true"] {
+  color: var(--lamplight);
 }
 .timeline output {
   color: var(--parchment);
 }
 .timeline input {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   width: 100%;
@@ -485,6 +530,8 @@ kbd {
   }
   .place-caption h2 { font-size: 1.8rem; }
   .timeline { left: 16px; right: 16px; bottom: 40px; width: auto; }
+  .timeline label { min-width: 96px; }
+  .timeline-mode { display: none; }
   .attribution { right: 16px; bottom: 5px; font-size: 9px; }
   .atlas-close header p,
   .atlas-close header .atlas-count { display: none; }

@@ -426,3 +426,67 @@ describe("label anchors and pointer bands", () => {
     }
   });
 });
+describe("time predicate and hash routes", () => {
+  it("lights visits cumulatively by first date and by month when only", async () => {
+    const { visibleAt, nights, dateBounds } = await import("../src/map/time.ts");
+    const trip = { dateRange: ["2025-06-24", "2025-07-01"] as [string, string] };
+    expect(visibleAt(trip, null)).toBe(1);
+    expect(visibleAt(trip, "2025-06-23")).toBe(0);
+    expect(visibleAt(trip, "2025-06-24")).toBe(1);
+    expect(visibleAt(trip, "2026-01-01")).toBe(1);
+    expect(visibleAt(trip, "2025-06-01", "only")).toBe(1);
+    expect(visibleAt(trip, "2025-07-15", "only")).toBe(1);
+    expect(visibleAt(trip, "2025-08-01", "only")).toBe(0);
+    expect(visibleAt({}, "2019-01-01")).toBe(1);
+    expect(visibleAt({ dateRange: ["", "2020-01-01"] }, "2019-01-01")).toBe(1);
+    expect(nights(trip)).toBe(7);
+    expect(nights({ date: "2024-04-25" })).toBeUndefined();
+    expect(nights({ dateRange: ["2020-01-01", ""] })).toBeUndefined();
+    const day = fc
+      .integer({ min: 0, max: 20000 })
+      .map((n) => new Date(n * 86_400_000).toISOString().slice(0, 10));
+    fc.assert(
+      fc.property(day, day, day, (a, b, c) => {
+        const [start, end] = [a, b].sort();
+        const visit = { dateRange: [start, end] as [string, string] };
+        const [s, e] = dateBounds(visit);
+        // Cumulative visibility is monotonic in the scrubber position.
+        return (
+          s === start && e === end &&
+          (c < start ? visibleAt(visit, c) === 0 : visibleAt(visit, c) === 1)
+        );
+      }),
+    );
+  });
+  it("round-trips place, view and filter routes and rejects malformed ones", async () => {
+    const { parseHash, formatHash } = await import("../src/map/router.ts");
+    expect(parseHash("")).toEqual({});
+    expect(parseHash("#/place/de-berlin-1a2b3c4d")).toEqual({ place: "de-berlin-1a2b3c4d" });
+    expect(parseHash("#/view/5.00/51.2000/10.4000?through=2025-06-24&mode=only")).toEqual({
+      view: { zoom: 5, lat: 51.2, lng: 10.4 },
+      through: "2025-06-24",
+      mode: "only",
+    });
+    expect(parseHash("#/view/99/200/10")).toEqual({});
+    expect(parseHash("#?through=yesterday&mode=maybe")).toEqual({});
+    expect(formatHash({})).toBe("");
+    expect(formatHash({ through: "2025-06-24" })).toBe("#?through=2025-06-24");
+    expect(parseHash("#/place/%E2%82%AC")).toEqual({ place: "€" });
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: 24, noNaN: true }),
+        fc.double({ min: -90, max: 90, noNaN: true }),
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        fc.boolean(),
+        (zoom, lat, lng, only) => {
+          const hash = formatHash({
+            view: { zoom, lat, lng },
+            through: "2024-01-01",
+            ...(only ? { mode: "only" as const } : {}),
+          });
+          return formatHash(parseHash(hash)) === hash;
+        },
+      ),
+    );
+  });
+});

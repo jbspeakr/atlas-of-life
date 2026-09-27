@@ -14,6 +14,8 @@ import placesData from "../generated/places.json";
 import visitsData from "../generated/visits.json";
 import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
+import { visibleAt, type TimeMode } from "./time";
+import { formatHash, parseHash } from "./router";
 export type Place = {
   id: string;
   label: string;
@@ -51,9 +53,10 @@ export type Atlas = {
   map: LibreMap;
   firstIdleMs: number;
   select: (id: string) => void;
+  deselect: () => void;
   reset: () => void;
   zoomBy: (delta: number) => void;
-  filter: (year: number) => void;
+  filter: (through: string | null, mode: TimeMode) => void;
   destroy: () => void;
 };
 declare global {
@@ -65,6 +68,7 @@ export async function createMap(
   container: HTMLElement,
   onSelect: (id: string | null) => void,
   onView: (message: string, zoom: number, visibleIds: string[]) => void,
+  onFilter: (through: string | null, mode: TimeMode) => void,
   signal: AbortSignal,
 ): Promise<Atlas> {
   const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -88,11 +92,12 @@ export async function createMap(
   style.sprite = new URL("sprites/dark", base).href;
   if (media.matches || deterministic)
     style.transition = { duration: 0, delay: 0 };
+  const home = { center: [10, 35] as [number, number], zoom: innerWidth < 700 ? 0.65 : 1.8 };
   const map = new maplibregl.Map({
     container,
     style,
-    center: [10, 35],
-    zoom: innerWidth < 700 ? 0.65 : 1.8,
+    center: home.center,
+    zoom: home.zoom,
     minZoom: 0.5,
     maxZoom: 16,
     maxPitch: 0,
@@ -111,6 +116,40 @@ export async function createMap(
   );
   canvas.tabIndex = 0;
   let selected: string | null = null;
+  let filterState: { through: string | null; mode: TimeMode } = {
+    through: null,
+    mode: "cumulative",
+  };
+  // The URL mirrors what the viewer can see: a place, a moved camera, a filter.
+  const currentRoute = () => {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const atHome =
+      Math.abs(zoom - home.zoom) < 0.01 &&
+      Math.abs(center.lat - home.center[1]) < 0.01 &&
+      Math.abs(center.lng - home.center[0]) < 0.01;
+    return {
+      ...(selected ? { place: selected } : {}),
+      ...(!selected && stopped && !atHome
+        ? { view: { zoom, lat: center.lat, lng: center.lng } }
+        : {}),
+      ...(filterState.through ? { through: filterState.through } : {}),
+      ...(filterState.mode === "only" ? { mode: filterState.mode } : {}),
+    };
+  };
+  const writeUrl = (method: "push" | "replace" = "replace") => {
+    const hash = formatHash(currentRoute());
+    if (hash === location.hash) return;
+    const url = location.pathname + location.search + hash;
+    if (method === "push") history.pushState(null, "", url);
+    else history.replaceState(null, "", url);
+  };
+  // Legacy links carried a 64-character digest; the current ID is its prefix.
+  const resolvePlace = (id: string): Place | undefined =>
+    placeByVisit.get(id) ??
+    visits
+      .filter((visit) => id.startsWith(visit.id) && placeByVisit.has(visit.id))
+      .map((visit) => placeByVisit.get(visit.id)!)[0];
   let animation = 0;
   let igniting = false;
   let stopped = false;
@@ -214,12 +253,11 @@ export async function createMap(
     map,
     firstIdleMs: 0,
     select(id) {
-      const place = placeByVisit.get(id);
+      const place = resolvePlace(id);
       if (!place) return;
       selected = place.id;
       onSelect(place.id);
-      if (location.hash !== "#/place/" + place.id)
-        history.pushState(null, "", "#/place/" + place.id);
+      writeUrl("push");
       const [x, y] = place.coordinates;
       fly(
         [
@@ -228,6 +266,12 @@ export async function createMap(
         ],
         11,
       );
+    },
+    deselect() {
+      if (!selected) return;
+      selected = null;
+      onSelect(null);
+      writeUrl();
     },
     zoomBy(delta) {
       finishIgnition();
@@ -242,11 +286,11 @@ export async function createMap(
       finishIgnition();
       selected = null;
       onSelect(null);
-      history.replaceState(null, "", location.pathname + location.search);
-      stopped = true;
+      stopped = false;
+      writeUrl();
       map.flyTo({
-        center: [10, 35],
-        zoom: innerWidth < 700 ? 0.65 : 1.8,
+        center: home.center,
+        zoom: home.zoom,
         bearing: 0,
         pitch: 0,
         speed: 0.72,
@@ -255,12 +299,13 @@ export async function createMap(
         animate: !media.matches,
       });
     },
-    filter(year) {
+    filter(through, mode) {
+      filterState = { through, mode };
       if (!map.getSource("pins")) {
-        map.once("style.load", () => atlas.filter(year));
+        map.once("style.load", () => atlas.filter(through, mode));
         return;
       }
-      stopped = true;
+      writeUrl();
       igniting = false;
       cancelAnimationFrame(filtering);
       cancelAnimationFrame(animation);
@@ -269,12 +314,7 @@ export async function createMap(
         const key = f.source + f.id;
         const target = Math.max(
           0,
-          ...f.visits.map((v) => {
-            const date = v.date ?? v.dateRange?.[0];
-            if (!date) return 1;
-            const first = Number(date.slice(0, 4));
-            return Math.min(1, Math.max(0, (year - first + 0.5) * 2));
-          }),
+          ...f.visits.map((v) => visibleAt(v, through, mode)),
         );
         return { ...f, key, from: states.get(key) ?? 1, target };
       });
@@ -313,20 +353,35 @@ export async function createMap(
     }
   }
   function route() {
-    const match = location.hash.match(/^#\/place\/(.+)$/);
-    if (match) {
-      try {
-        const place = placeByVisit.get(decodeURIComponent(match[1]));
-        if (!place) {
-          selected = null;
-          onSelect(null);
-          return;
-        }
-        history.replaceState(null, "", "#/place/" + place.id);
-        atlas.select(place.id);
-      } catch {
+    const parsed = parseHash(location.hash);
+    const through = parsed.through ?? null;
+    const mode: TimeMode = parsed.mode ?? "cumulative";
+    if (through !== filterState.through || mode !== filterState.mode) {
+      onFilter(through, mode);
+      atlas.filter(through, mode);
+    }
+    if (parsed.place) {
+      const place = resolvePlace(parsed.place);
+      if (!place) {
+        selected = null;
         onSelect(null);
+        return;
       }
+      // A legacy or alias link becomes its canonical form in place, never a second entry.
+      selected = place.id;
+      writeUrl();
+      atlas.select(place.id);
+    } else if (parsed.view) {
+      selected = null;
+      onSelect(null);
+      finishIgnition();
+      stopped = true;
+      map.jumpTo({
+        center: [parsed.view.lng, parsed.view.lat],
+        zoom: parsed.view.zoom,
+        bearing: 0,
+        pitch: 0,
+      });
     } else {
       selected = null;
       onSelect(null);
@@ -416,6 +471,11 @@ export async function createMap(
     );
   }
   map.on("moveend", reportView);
+  map.on("moveend", () => {
+    // Only a camera the viewer moved becomes part of the link; ignition and
+    // programmatic resets never write a view.
+    if (stopped && !selected) writeUrl();
+  });
   map.on("zoomend", refineForZoom);
   map.on("resize", reportView);
   let hovered: { source: string; id: string | number } | undefined;
@@ -474,7 +534,7 @@ export async function createMap(
     } else if (selected) {
       selected = null;
       onSelect(null);
-      history.replaceState(null, "", location.pathname + location.search);
+      writeUrl();
     }
   });
   window.__atlas = atlas;

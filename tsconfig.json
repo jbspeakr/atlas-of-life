@@ -26,5 +26,8 @@
     "data/visits.ts",
     "verification",
     "vite.config.ts"
+  ],
+  "exclude": [
+    "verification/artifacts"
   ]
 }

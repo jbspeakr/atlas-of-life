@@ -570,7 +570,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       );
     });
     await run("interaction.timeline", "correctness", async () => {
-      const slider = page.getByRole("slider", { name: "Year", exact: true });
+      const slider = page.getByRole("slider", { name: /^Visited/ });
       await camera(page, [-0.1276, 51.5072], 10);
       const point = await page.evaluate(() => {
         const map = (window as unknown as AtlasWindow).__atlas.map;
@@ -601,7 +601,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
         drop,
         "red-channel drop",
         80,
-        `src/generated/style.json: London pin must visibly extinguish at year 2019; center red ${before.data[center]} → ${after.data[center]}. Missing promoteId/feature-state binding leaves the pin lit.`,
+        `src/generated/style.json: London pin must visibly extinguish at the earliest scrubber position (2019); center red ${before.data[center]} → ${after.data[center]}. Missing promoteId/feature-state binding leaves the pin lit.`,
         "gte",
       );
       await run("a11y.timeline", "a11y", () => axe("timeline"));
