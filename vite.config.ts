@@ -41,16 +41,38 @@ export default defineConfig(({ mode }) => {
     base: env.VITE_BASE || "./",
     plugins: [
       {
-        name: "atlas-csp",
+        name: "atlas-html",
         apply: "build",
-        transformIndexHtml() {
-          return [
+        transformIndexHtml(html) {
+          const site = env.VITE_SITE_URL?.trim();
+          const tags: {
+            tag: string;
+            attrs: Record<string, string>;
+            injectTo: "head-prepend" | "head";
+          }[] = [
             {
               tag: "meta",
               attrs: { "http-equiv": "Content-Security-Policy", content: csp },
               injectTo: "head-prepend",
             },
           ];
+          if (site) {
+            // Social scrapers require absolute image and canonical URLs.
+            const origin = new URL(site);
+            if (origin.protocol !== "https:")
+              throw new Error("VITE_SITE_URL must use HTTPS");
+            const base = origin.href.endsWith("/") ? origin.href : `${origin.href}/`;
+            html = html
+              .replaceAll(
+                `content="${env.VITE_BASE || "./"}social/card.png"`,
+                `content="${base}social/card.png"`,
+              );
+            tags.push(
+              { tag: "meta", attrs: { property: "og:url", content: base }, injectTo: "head" },
+              { tag: "link", attrs: { rel: "canonical", href: base }, injectTo: "head" },
+            );
+          }
+          return { html, tags };
         },
       },
       {

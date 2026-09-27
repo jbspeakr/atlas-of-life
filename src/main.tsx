@@ -7,9 +7,21 @@ import {
   visitsByPlace,
 } from "./map/create-map";
 import type { Atlas } from "./map/create-map";
+import { fold } from "./map/text";
+import { captionGeography } from "./map/caption";
 import regionLabelsData from "./generated/region-labels.json";
 const regionLabels: Record<string, string> = regionLabelsData;
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+const deterministic =
+  new URLSearchParams(location.search).get("deterministic") === "1";
+const locale = (() => {
+  const preferred = deterministic ? "en-GB" : navigator.language || "en-GB";
+  try {
+    return Intl.DisplayNames.supportedLocalesOf([preferred])[0] ?? "en-GB";
+  } catch {
+    return "en-GB";
+  }
+})();
+const dateFormatter = new Intl.DateTimeFormat(locale, {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -18,7 +30,9 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 import "./styles/map.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
-const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countryNames = new Intl.DisplayNames([locale], { type: "region" });
+const siteTitle = document.title;
+const narrow = matchMedia("(max-width: 700px)").matches;
 const years = visits.flatMap((v) =>
   [v.date, ...(v.dateRange ?? [])]
     .filter((s): s is string => Boolean(s))
@@ -36,11 +50,13 @@ const pageSize = 6;
 const searchablePlaces = chronology.map((place) => ({
   ...place,
   countryName: countryNames.of(place.country) ?? place.country,
-  searchText: [
-    place.label,
-    countryNames.of(place.country),
-    place.region ? regionLabels[place.region] : "",
-  ].join(" ").toLocaleLowerCase(),
+  searchText: fold(
+    [
+      place.label,
+      countryNames.of(place.country),
+      place.region ? regionLabels[place.region] : "",
+    ].join(" "),
+  ),
   firstVisit: Math.min(...(visitsByPlace.get(place.id) ?? []).map((visit) => {
     const date = visit.date ?? visit.dateRange?.[0];
     return date ? Number(date.slice(0, 4)) : -Infinity;
@@ -54,7 +70,7 @@ function App() {
   const searchInput = useRef<HTMLInputElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const [explorerOpen, setExplorerOpen] = useState(false);
-  const [scope, setScope] = useState<"view" | "all">("view");
+  const [scope, setScope] = useState<"view" | "all">(narrow ? "all" : "view");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
@@ -66,6 +82,11 @@ function App() {
   const [zoom, setZoom] = useState(1.8);
   const [error, setError] = useState("");
   const place = places.find((p) => p.id === selected);
+  const selectedRef = useRef<string | null>(null);
+  selectedRef.current = selected;
+  useEffect(() => {
+    document.title = place ? `${place.label} · ${siteTitle}` : siteTitle;
+  }, [place]);
   useEffect(() => {
     if (!host.current) return;
     const abort = new AbortController();
@@ -76,7 +97,7 @@ function App() {
         if (id) {
           origin.current = document.activeElement as HTMLElement | null;
           setExplorerOpen(false);
-        }
+        } else if (selectedRef.current) restoreFocus();
         setSelected(id);
       },
       (message, z, ids) => {
@@ -156,7 +177,7 @@ function App() {
     return eligiblePlaces.filter((place) => ids.has(place.id));
   }, [eligiblePlaces, visibleIds]);
   const results = useMemo(() => {
-    const text = query.trim().toLocaleLowerCase();
+    const text = fold(query);
     return (scope === "view" ? inView : eligiblePlaces)
       .filter((place) => place.searchText.includes(text));
   }, [scope, query, inView, eligiblePlaces]);
@@ -189,6 +210,26 @@ function App() {
             <path d="M4 12h16" />
           </svg>
           World <kbd>⌥ W</kbd>
+        </button>
+        <button
+          type="button"
+          className="zoom-button"
+          aria-label="Zoom in"
+          aria-keyshortcuts="+"
+          title="Zoom in (+)"
+          onClick={() => atlas.current?.zoomBy(1)}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          className="zoom-button"
+          aria-label="Zoom out"
+          aria-keyshortcuts="-"
+          title="Zoom out (−)"
+          onClick={() => atlas.current?.zoomBy(-1)}
+        >
+          −
         </button>
       </nav>
       <aside className="place-browser" aria-label="Places">
@@ -286,13 +327,23 @@ function App() {
           </button>
           <h2>{place.label}</h2>
           <p id="place-geography">
-            {place.region && (
-              <>
-                {regionLabels[place.region] ?? place.region}{" "}
-                <span aria-hidden="true">/</span>{" "}
-              </>
-            )}
-            {countryNames.of(place.country)}
+            {(() => {
+              const geography = captionGeography(
+                place,
+                regionLabels,
+                countryNames.of(place.country) ?? place.country,
+              );
+              return (
+                <>
+                  {geography.region && (
+                    <>
+                      {geography.region} <span aria-hidden="true">/</span>{" "}
+                    </>
+                  )}
+                  {geography.country}
+                </>
+              );
+            })()}
           </p>
           <p className="visit-dates">
             {placeVisits

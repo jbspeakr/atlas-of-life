@@ -2,6 +2,12 @@
 
 Only measured experiments belong here. Optimisation uses the ordered objective in the brief; correctness, publication safety, accessibility and network purity are never traded away. Visual changes require explicit approval. Failed checks are fixed, not retried into acceptance.
 
+## Small UX release
+
+Folded search (NFKD, marks stripped) shares one rule with authoring slugs in `src/map/text.ts`; four of the owner's eighteen places were previously unreachable from an ASCII keyboard. Captions omit a region whose label repeats the place name, so Berlin no longer reads "Berlin / Berlin / Germany". The document title follows the selected place, an SVG favicon replaces the empty data URI, and Open Graph/Twitter tags reference a rendered `public/social/card.png`; `VITE_SITE_URL` makes those URLs absolute in the Pages build. Clicking empty map to dismiss a caption now restores focus like the close button. Narrow screens default the directory to All places and cap it at 52svh so the globe stays visible. On-screen zoom buttons expose `zoomBy` on the controller. Display names and dates follow `navigator.language` unless `?deterministic=1` pins British English.
+
+Verification: TypeScript, lint and 59 unit tests passed; quick verification passed all 19 gates. A software-rendered browser smoke run confirmed folded search for four accented names, the deduplicated Berlin caption, title updates, focus restoration after a map-click dismiss, ±1 zoom steps, the narrow-screen default scope and panel height, with zero page errors. The zoom buttons change every approved screenshot; visual baselines and performance approval require the GPU runner and were not regenerated here.
+
 ## Calmer camera motion and regional depth
 
 The owner reported that the globe flight felt like a shaky steadicam and requested regional depth. Replaced the offset waypoint zigzags and independent sinusoidal zoom with deliberate pan/dolly/hold shots. Quintic minimum-jerk interpolation reaches zero velocity and acceleration at joins. The center stays fixed during every zoom; inter-region travel happens at zoom 2.25, after pulling back. Regional reveals reach zoom 5 in portrait/landscape and 4.75 in square, where the app's regional fills and outlines are fully visible. Both regions get a 1.5-second hold. The closing shot now pulls back over the second region instead of reversing course to force a loop.

@@ -49,6 +49,7 @@ export type Atlas = {
   firstIdleMs: number;
   select: (id: string) => void;
   reset: () => void;
+  zoomBy: (delta: number) => void;
   filter: (year: number) => void;
   destroy: () => void;
 };
@@ -183,6 +184,15 @@ export async function createMap(
         ],
         11,
       );
+    },
+    zoomBy(delta) {
+      finishIgnition();
+      stopped = true;
+      map.easeTo({
+        zoom: map.getZoom() + delta,
+        duration: media.matches ? 0 : 320,
+        easing: ease,
+      });
     },
     reset() {
       finishIgnition();

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { placeKey } from "../src/map/place-key.ts";
+import { slug as toSlug } from "../src/map/text.ts";
 
 // Assigned ISO 3166-1 codes plus Natural Earth's documented XK territory identifier.
 const countries: Record<string, true> = Object.fromEntries(
@@ -118,12 +119,7 @@ export const configSchema = z
             ...dateBounds(visit),
           ]);
           const digest = createHash("sha256").update(identity).digest("hex");
-          const slug = (visit.city ?? visit.region ?? visit.country)
-            .normalize("NFKD")
-            .replace(/\p{Mark}/gu, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "");
+          const slug = toSlug(visit.city ?? visit.region ?? visit.country);
           const base = `${visit.country.toLowerCase()}-${slug || "place"}-${digest}`;
           let occurrence = occurrences.get(base) ?? 0;
           do {

@@ -364,3 +364,33 @@ it("actual MapLibre zoom expressions have continuous overlapping bands", () => {
         .length * 0.25,
     ).toBeGreaterThanOrEqual(0.5);
 });
+describe("text folding and captions", () => {
+  it("matches diacritics-free input against accented place names", async () => {
+    const { fold, slug } = await import("../src/map/text.ts");
+    for (const [typed, actual] of [
+      ["odsmal", "Ödsmål"],
+      ["hoor", "Höör"],
+      ["lubbenau", "Lübbenau"],
+      ["swinemunde", "Swinemünde"],
+    ])
+      expect(fold(actual)).toContain(fold(typed));
+    expect(fold("Ödsmål")).toBe(fold("ödsmål"));
+    expect(slug("Wendisch  Rietz")).toBe("wendisch-rietz");
+    fc.assert(
+      fc.property(fc.string(), (value) => fold(fold(value)) === fold(value)),
+    );
+  });
+  it("omits a region whose label merely repeats the place", async () => {
+    const { captionGeography } = await import("../src/map/caption.ts");
+    const labels = { "DE-BE": "Berlin", "GR-AT": "Attica" };
+    expect(
+      captionGeography({ label: "Berlin", region: "DE-BE" }, labels, "Germany"),
+    ).toEqual({ country: "Germany" });
+    expect(
+      captionGeography({ label: "Kalamos", region: "GR-AT" }, labels, "Greece"),
+    ).toEqual({ region: "Attica", country: "Greece" });
+    expect(captionGeography({ label: "Kalamos" }, labels, "Greece")).toEqual({
+      country: "Greece",
+    });
+  });
+});

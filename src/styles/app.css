@@ -67,6 +67,15 @@ header p {
   position: absolute;
   right: 28px;
   top: 28px;
+  display: flex;
+  gap: 8px;
+}
+.navigation .zoom-button {
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  font-size: var(--text-lg);
+  line-height: 1;
 }
 .navigation button,
 .browse-toggle,
@@ -457,13 +466,15 @@ kbd {
   header p { font-size: 11px; }
   .atlas-count { font-size: 10px; line-height: 1.6; }
   .atlas-count span { margin: 0 2px; }
-  .navigation { top: 20px; right: 16px; }
+  .navigation { top: 20px; right: 16px; gap: 6px; }
   .navigation button { padding: 0 10px; gap: 6px; }
   .navigation kbd { display: none; }
+  .navigation .zoom-button { display: none; }
+  .explorer-hint { display: none; }
   .place-browser { left: 16px; bottom: 94px; }
   .place-explorer {
     width: min(320px, calc(100vw - 32px));
-    max-height: calc(100svh - 260px);
+    max-height: min(52svh, calc(100svh - 260px));
   }
   .place-caption {
     left: 16px;

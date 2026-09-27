@@ -30,7 +30,9 @@ Recording runs the ordinary build once with `VITE_BASE=/atlas/`, using the curre
 
 ## Explore the atlas
 
-The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch or use `+`/`−` to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the year. The shortcut does not fire while editing a field.
+The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch, the on-screen **+**/**−** buttons or the `+`/`−` keys to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the year. The shortcut does not fire while editing a field. Search folds accents, so `odsmal` finds Ödsmål. Country and date names follow the browser language; `?deterministic=1` pins them to British English for verification.
+
+`npm run social` renders `public/social/card.png`, the 1200×630 image referenced by the Open Graph and Twitter tags. Set `VITE_SITE_URL` to the absolute site URL so those tags carry absolute URLs; the Pages workflow derives it from `configure-pages`.
 
 **Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. **Escape** closes the caption or directory and restores keyboard focus.
 
