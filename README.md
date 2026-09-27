@@ -34,7 +34,7 @@ The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch, the o
 
 `npm run social` renders `public/social/card.png`, the 1200×630 image referenced by the Open Graph and Twitter tags. Set `VITE_SITE_URL` to the absolute site URL so those tags carry absolute URLs; the Pages workflow derives it from `configure-pages`.
 
-**Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. **Escape** closes the caption or directory and restores keyboard focus.
+Country names appear as you leave the world view and give way to region names, then to place names; hovering a country or region highlights its outline when it is the current click target. **Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. **Escape** closes the caption or directory and restores keyboard focus.
 
 The small year slider means “visited by this year”; its reset restores all years. Undated visits remain available throughout.
 

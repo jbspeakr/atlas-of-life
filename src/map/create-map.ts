@@ -11,6 +11,7 @@ import styleUrl from "../generated/style.json?url";
 import placesData from "../generated/places.json";
 import visitsData from "../generated/visits.json";
 import { placeKey } from "./place-key";
+import { activeLayer } from "./layers";
 export type Place = {
   id: string;
   label: string;
@@ -132,6 +133,17 @@ export async function createMap(
       source: "pins",
       id: p.id,
       visits: visitsByPlace.get(p.id) ?? [],
+    })),
+    // Label anchors follow their boundary's visibility.
+    ...countries.features.map((f) => ({
+      source: "anchors",
+      id: String(f.id),
+      visits: visits.filter((v) => v.country === f.properties?.country),
+    })),
+    ...regions.features.map((f) => ({
+      source: "anchors",
+      id: String(f.id),
+      visits: visits.filter((v) => v.region === f.properties?.region),
     })),
   ];
   const finishIgnition = () => {
@@ -370,25 +382,37 @@ export async function createMap(
   }
   map.on("moveend", reportView);
   map.on("resize", reportView);
-  let hovered: string | number | undefined;
-  map.on("mousemove", "pins", (event) => {
-    const id = event.features?.[0]?.id;
-    if (hovered !== undefined && hovered !== id)
-      map.setFeatureState({ source: "pins", id: hovered }, { hover: false });
-    if (id !== undefined)
-      map.setFeatureState({ source: "pins", id }, { hover: true });
-    hovered = id;
-    canvas.style.cursor = "pointer";
-  });
-  map.on("mouseleave", "pins", () => {
-    if (hovered !== undefined)
-      map.setFeatureState({ source: "pins", id: hovered }, { hover: false });
+  let hovered: { source: string; id: string | number } | undefined;
+  const unhover = () => {
+    if (hovered) map.setFeatureState(hovered, { hover: false });
     hovered = undefined;
     canvas.style.cursor = "";
+  };
+  // Only the band's pointer target responds, so a region under the cursor does
+  // not light while the viewer is still choosing a country.
+  for (const source of ["countries", "regions", "pins"] as const) {
+    map.on("mousemove", source, (event) => {
+      if (activeLayer(map.getZoom()) !== source) {
+        if (hovered?.source === source) unhover();
+        return;
+      }
+      const id = event.features?.[0]?.id;
+      if (id === undefined) return;
+      if (hovered && (hovered.source !== source || hovered.id !== id))
+        map.setFeatureState(hovered, { hover: false });
+      hovered = { source, id };
+      map.setFeatureState(hovered, { hover: true });
+      canvas.style.cursor = "pointer";
+    });
+    map.on("mouseleave", source, () => {
+      if (hovered?.source === source) unhover();
+    });
+  }
+  map.on("zoomend", () => {
+    if (hovered && activeLayer(map.getZoom()) !== hovered.source) unhover();
   });
   map.on("click", (event) => {
-    const z = map.getZoom();
-    const layer = z >= 6.5 ? "pins" : z >= 3.5 ? "regions" : "countries";
+    const layer = activeLayer(map.getZoom());
     const feature = map.queryRenderedFeatures(event.point, {
       layers: [layer],
     })[0];

@@ -394,3 +394,35 @@ describe("text folding and captions", () => {
     });
   });
 });
+describe("label anchors and pointer bands", () => {
+  it("selects the band's pointer target at the documented thresholds", async () => {
+    const { activeLayer } = await import("../src/map/layers.ts");
+    expect(activeLayer(1.8)).toBe("countries");
+    expect(activeLayer(3.49)).toBe("countries");
+    expect(activeLayer(3.5)).toBe("regions");
+    expect(activeLayer(6.49)).toBe("regions");
+    expect(activeLayer(6.5)).toBe("pins");
+  });
+  it("label bands extinguish under feature-state and hand over between zooms", async () => {
+    const { withVisibility } = await import("../src/map/expressions.ts");
+    for (const key of ["countryLabel", "regionLabel"] as const) {
+      const parsed = expression.createExpression(withVisibility(bands[key]));
+      expect(parsed.result).toBe("success");
+      if (parsed.result !== "success") return;
+      const at = (zoom: number, visibility: number) =>
+        Number(parsed.value.evaluate({ zoom }, undefined, { visibility }));
+      expect(at(3.5, 0)).toBe(0);
+      expect(at(5.5, 0)).toBe(0);
+      expect(at(key === "countryLabel" ? 3.5 : 5.5, 1)).toBe(1);
+    }
+    const country = expression.createExpression(bands.countryLabel);
+    const region = expression.createExpression(bands.regionLabel);
+    if (country.result !== "success" || region.result !== "success") throw new Error();
+    // Country names fade out as region names arrive; neither is fully lit at the same zoom.
+    for (let zoom = 0; zoom <= 16; zoom += 0.25) {
+      const c = Number(country.value.evaluate({ zoom }));
+      const r = Number(region.value.evaluate({ zoom }));
+      expect(c + r).toBeLessThanOrEqual(1.5);
+    }
+  });
+});

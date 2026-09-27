@@ -149,7 +149,35 @@ async function main(): Promise<void> {
     return { ...visit, coordinates };
   });
   const places = collapseVisits(anchored);
+  // Label anchors: one interior point per published boundary, keyed like its polygon.
+  // Deliberately without a country field so the payload audit does not read them as places.
+  const anchors = {
+    type: "FeatureCollection",
+    features: [
+      ...countryFine.features.map((feature) => ({
+        type: "Feature",
+        id: String(feature.id),
+        properties: {
+          id: String(feature.id),
+          kind: "country",
+          label: feature.properties.label,
+        },
+        geometry: { type: "Point", coordinates: feature.properties.anchor },
+      })),
+      ...regionFine.features.map((feature) => ({
+        type: "Feature",
+        id: String(feature.id),
+        properties: {
+          id: String(feature.id),
+          kind: "region",
+          label: feature.properties.label,
+        },
+        geometry: { type: "Point", coordinates: feature.properties.anchor },
+      })),
+    ],
+  };
   const files: Record<string, string> = {
+    "anchors.json": JSON.stringify(anchors),
     "countries.geojson": JSON.stringify(countryCoarse),
     "countries-fine.geojson": JSON.stringify(countryFine),
     "regions.geojson": JSON.stringify(regionCoarse),
