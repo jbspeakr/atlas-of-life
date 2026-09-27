@@ -611,6 +611,65 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       place.date ??
       (Array.isArray(place.dateRange) ? place.dateRange[0] : place.dateRange?.start) ??
       "";
+    await run("offline.archive", "correctness", async () => {
+      // Bundled fixture: save the archive, register the worker, go offline, reload, render.
+      const offlinePage = await context.newPage();
+      await offlinePage.addInitScript(
+        'globalThis.__name = (target, value) => Object.defineProperty(target, "name", {value, configurable:true});',
+      );
+      const offlineCdp = await context.newCDPSession(offlinePage);
+      await offlineCdp.send("Network.enable");
+      await offlinePage.goto(`${server!.origin}/atlas/`, { waitUntil: "load" });
+      await ready(offlinePage);
+      await offlinePage.evaluate(async () => {
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration.active) throw new Error("Service worker not active");
+      });
+      await offlinePage.waitForFunction(async () => {
+        const keys = await caches.keys();
+        if (!keys.some((key) => key.startsWith("atlas-shell-"))) return false;
+        const cache = await caches.open(keys.find((key) => key.startsWith("atlas-shell-"))!);
+        return (await cache.keys()).length > 5;
+      });
+      await offlinePage.locator(".attribution summary").click();
+      await offlinePage.getByRole("button", { name: "Save the map for offline use" }).click();
+      await offlinePage.getByText(/Map saved for offline use/).waitFor({ timeout: 60000 });
+      await offlineCdp.send("Network.emulateNetworkConditions", {
+        offline: true,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
+      await offlinePage.reload({ waitUntil: "load" });
+      await ready(offlinePage);
+      await camera(offlinePage, [13.405, 52.52], 10);
+      const pins = await offlinePage.evaluate(
+        () => (window as unknown as AtlasWindow).__atlas.map.queryRenderedFeatures({ layers: ["pins"] }).length,
+      );
+      const tiles = await offlinePage.evaluate(
+        () => (window as unknown as AtlasWindow).__atlas.map.queryRenderedFeatures({ layers: ["overview-earth"] }).length,
+      );
+      await offlineCdp.send("Network.emulateNetworkConditions", {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
+      await offlinePage.evaluate(async () => {
+        for (const key of await caches.keys()) await caches.delete(key);
+        for (const registration of await navigator.serviceWorker.getRegistrations()) await registration.unregister();
+      });
+      await offlinePage.close();
+      record(
+        "offline.archive",
+        "correctness",
+        pins > 0 && tiles > 0 ? 0 : 1,
+        "errors",
+        0,
+        `Offline reload after saving the bundled archive rendered ${pins} pins and ${tiles} basemap earth features from the worker caches.`,
+        "eq",
+      );
+    });
     await run("a11y.numbers", "a11y", async () => {
       await page.goto(url, { waitUntil: "load" });
       await ready(page);

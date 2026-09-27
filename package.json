@@ -21,7 +21,8 @@
     "verify:hosting": "tsx verification/hosting.ts",
     "social": "tsx scripts/build-social.ts",
     "add": "tsx scripts/add.ts",
-    "import": "tsx scripts/import.ts"
+    "import": "tsx scripts/import.ts",
+    "icons": "tsx scripts/build-icons.ts"
   },
   "dependencies": {
     "@protomaps/basemaps": "5.7.2",

@@ -14,6 +14,13 @@ import { dateBounds, isDated, nights, visibleAt } from "./map/time";
 import type { TimeMode } from "./map/time";
 import regionLabelsData from "./generated/region-labels.json";
 import statsData from "./generated/stats.json";
+import {
+  archiveSaved,
+  offlineSupported,
+  registerServiceWorker,
+  removeArchive,
+  saveArchive,
+} from "./map/offline";
 import type { Stats } from "../scripts/stats";
 const stats = statsData as unknown as Stats;
 const regionLabels: Record<string, string> = regionLabelsData;
@@ -45,6 +52,8 @@ const formatMonth = (date: string) =>
   monthFormatter.format(new Date(`${date}T00:00:00Z`));
 const countryNames = new Intl.DisplayNames([locale], { type: "region" });
 const siteTitle = document.title;
+if (!deterministic) registerServiceWorker(import.meta.env.BASE_URL);
+const megabytes = (bytes: number) => `${(bytes / 1_048_576).toFixed(0)} MB`;
 const narrow = matchMedia("(max-width: 700px)").matches;
 const years = visits.flatMap((v) =>
   [v.date, ...(v.dateRange ?? [])]
@@ -110,6 +119,10 @@ function App() {
   const [error, setError] = useState("");
   const [touring, setTouring] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [offline, setOffline] = useState<
+    { state: "unavailable" } | { state: "absent" } | { state: "saving"; received: number; total: number } | { state: "saved"; bytes: number } | { state: "error"; message: string }
+  >({ state: "unavailable" });
+  const offlineAbort = useRef<AbortController | null>(null);
   const statsButton = useRef<HTMLButtonElement>(null);
   const statsClose = useRef<HTMLButtonElement>(null);
   const place = places.find((p) => p.id === selected);
@@ -153,6 +166,10 @@ function App() {
         }
         controller = value;
         atlas.current = value;
+        if (value.archive.bundled && offlineSupported() && !deterministic)
+          void archiveSaved(value.archive.url).then((bytes) =>
+            setOffline(bytes === null ? { state: "absent" } : { state: "saved", bytes }),
+          );
         value.map.on("error", (event) =>
           setError(
             "The map could not load its geographic data. " +
@@ -657,6 +674,44 @@ function App() {
       <details className="attribution">
         <summary>© OpenStreetMap contributors · Map credits</summary>
         <div>
+          {offline.state !== "unavailable" && (
+            <p className="offline" role="status">
+              {offline.state === "absent" && (
+                <button type="button" onClick={() => {
+                  const url = atlas.current?.archive.url;
+                  if (!url) return;
+                  const abort = new AbortController();
+                  offlineAbort.current = abort;
+                  setOffline({ state: "saving", received: 0, total: 0 });
+                  saveArchive(url, (received, total) => setOffline({ state: "saving", received, total }), abort.signal)
+                    .then((bytes) => setOffline({ state: "saved", bytes }))
+                    .catch((error: unknown) =>
+                      setOffline(abort.signal.aborted ? { state: "absent" } : { state: "error", message: error instanceof Error ? error.message : String(error) }));
+                }}>Save the map for offline use</button>
+              )}
+              {offline.state === "saving" && (
+                <>
+                  Saving map… {megabytes(offline.received)}{offline.total ? ` of ${megabytes(offline.total)}` : ""}{" "}
+                  <button type="button" onClick={() => offlineAbort.current?.abort()}>Cancel</button>
+                </>
+              )}
+              {offline.state === "saved" && (
+                <>
+                  Map saved for offline use ({megabytes(offline.bytes)}){" "}
+                  <button type="button" onClick={() => {
+                    const url = atlas.current?.archive.url;
+                    if (url) void removeArchive(url).then(() => setOffline({ state: "absent" }));
+                  }}>Remove</button>
+                </>
+              )}
+              {offline.state === "error" && (
+                <>
+                  Could not save the map: {offline.message}{" "}
+                  <button type="button" onClick={() => setOffline({ state: "absent" })}>Dismiss</button>
+                </>
+              )}
+            </p>
+          )}
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"

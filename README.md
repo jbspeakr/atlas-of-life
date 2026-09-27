@@ -50,6 +50,10 @@ Use uppercase country codes (`DE`, `GR`, `GB`) and `YYYY-MM-DD` dates. A single-
 
 Or let the command do it: `NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02` validates, appends, geocodes and prints the resolved point; `npm run import -- file.csv` does the same for a spreadsheet export. Otherwise run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, using your own contact email or URL, then `npm run build`. Commit the config and updated geocache/source manifest, then redeploy `dist/`. No region codes or coordinates need to be authored. Same-named cities can require an optional qualifier rather than a guessed location. See [data authoring](docs/DATA.md) for identity stability, precision and boundary-provider limitations.
 
+## Install and offline
+
+The site ships a web manifest and icons, so it can be installed from the browser menu. A build-generated service worker precaches the application shell (page, scripts, styles, fonts, sprites, glyphs) and serves it when the network is gone. With a bundled archive, open the map credits and choose **Save the map for offline use** to keep the tile archive in the browser; the worker then answers byte-range requests from that copy. **Remove** deletes it. Verification never registers the worker (`?deterministic=1` skips registration) and the `data.offline-shell` gate fails if a shell asset is missing from the precache or an archive is listed.
+
 ## Privacy first
 
 Publication precision defaults to `city`. Even explicit street coordinates are replaced by the warm city's coordinates unless that visit explicitly requests `publishPrecision: 'exact'`. Coordinates alone do not bypass the publication policy. Exact coordinates bypass geocoding when exact publication was intentionally selected. Source addresses, precision flags and cache provenance never enter production payloads. Do not publish your repository with real private addresses in it: **the build protects `dist/`, not Git history**. See [data authoring](docs/DATA.md).

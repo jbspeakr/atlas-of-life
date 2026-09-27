@@ -611,6 +611,23 @@ kbd {
 .attribution a:hover {
   text-decoration: underline;
 }
+.attribution .offline {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--contour);
+  color: var(--mist);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.attribution .offline button {
+  border: 1px solid var(--contour);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--parchment);
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  min-height: 32px;
+}
 .sr-only {
   position: absolute;
   width: 1px;

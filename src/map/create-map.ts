@@ -62,6 +62,8 @@ const ease = (t: number) => t * t * (3 - 2 * t);
 export type Atlas = {
   map: LibreMap;
   firstIdleMs: number;
+  /** The basemap archive URL and whether it is served from this origin. */
+  archive: { url: string; bundled: boolean };
   select: (id: string) => void;
   deselect: () => void;
   focusTrip: (id: string) => void;
@@ -275,6 +277,7 @@ export async function createMap(
   const atlas: Atlas = {
     map,
     firstIdleMs: 0,
+    archive: { url: archive, bundled: new URL(archive).origin === location.origin },
     play() {
       if (touring || !places.length) return;
       const stops = selectTourStops(places, places[0]);

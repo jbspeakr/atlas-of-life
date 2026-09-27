@@ -1,6 +1,16 @@
 import { defineConfig, loadEnv } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join, relative } from "node:path";
+import { serviceWorkerSource } from "./scripts/service-worker.ts";
+const walk = (dir: string): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir).flatMap((name) => {
+        const p = join(dir, name);
+        return statSync(p).isDirectory() ? walk(p) : [p];
+      })
+    : [];
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const remote =
@@ -92,6 +102,35 @@ export default defineConfig(({ mode }) => {
           if (remote) {
             rmSync("dist/tiles", { recursive: true, force: true });
           }
+        },
+      },
+      {
+        name: "atlas-service-worker",
+        apply: "build",
+        enforce: "post",
+        closeBundle() {
+          // Precache the shell: page, hashed assets, fonts, sprites, glyph ranges, icons.
+          // Tiles are never precached; a saved archive is served by range from its own cache.
+          const files = walk("dist")
+            .map((file) => relative("dist", file).split("\\").join("/"))
+            .filter(
+              (file) =>
+                file.startsWith("assets/") ||
+                file.startsWith("fonts/") ||
+                file.startsWith("sprites/") ||
+                file.startsWith("glyphs/Noto Sans Regular/") ||
+                file.startsWith("icons/") ||
+                ["favicon.svg", "manifest.webmanifest"].includes(file),
+            )
+            .filter((file) => !file.endsWith(".txt"))
+            .sort();
+          const precache = ["./", ...files];
+          const version = createHash("sha256")
+            .update(precache.join("\n"))
+            .update(existsSync("dist/index.html") ? statSync("dist/index.html").size.toString() : "")
+            .digest("hex")
+            .slice(0, 12);
+          writeFileSync("dist/sw.js", serviceWorkerSource(precache, version));
         },
       },
       ...(env.ANALYZE
