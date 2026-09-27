@@ -328,6 +328,37 @@ kbd {
   right: 0;
   top: 0;
 }
+.caption-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px -8px -6px;
+  font-size: var(--text-xs);
+  color: var(--mist);
+  line-height: 1.5;
+}
+.caption-steps span {
+  flex: 1;
+  min-width: 0;
+}
+.caption-steps em {
+  font-style: normal;
+  color: var(--parchment);
+}
+.caption-steps button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--parchment);
+  font-size: var(--text-base);
+}
+.place-mark-route {
+  width: 12px;
+  height: 1px;
+  flex-basis: 12px;
+  border-radius: 0;
+}
 .timeline {
   position: absolute;
   bottom: 48px;

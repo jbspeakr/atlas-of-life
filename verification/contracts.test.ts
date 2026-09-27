@@ -490,3 +490,99 @@ describe("time predicate and hash routes", () => {
     );
   });
 });
+describe("journeys", () => {
+  const visit = (
+    id: string,
+    country: string,
+    start: string,
+    end: string,
+    extra: Partial<import("../scripts/trips.ts").TripVisit> = {},
+  ): import("../scripts/trips.ts").TripVisit => ({
+    id,
+    placeId: `place-${id}`,
+    country,
+    coordinates: [10, 50],
+    ...(start === end ? { date: start } : { dateRange: [start, end] as [string, string] }),
+    ...extra,
+  });
+  it("chains contiguous and overlapping visits, splits on a two-day gap, excludes singles", async () => {
+    const { inferTrips } = await import("../scripts/trips.ts");
+    const trips = inferTrips([
+      visit("a", "DE", "2025-05-24", "2025-05-25"),
+      visit("b", "DK", "2025-05-25", "2025-06-01"),
+      visit("c", "DK", "2025-06-02", "2025-06-03"), // one-day gap joins
+      visit("d", "NO", "2025-06-06", "2025-06-07"), // three-day gap splits
+      visit("e", "SE", "2025-06-07", "2025-06-07"),
+      visit("f", "FR", "2026-05-14", "2026-05-18"), // alone
+      visit("g", "GB", "2020-01-01", ""), // open range never joins
+      { id: "h", placeId: "place-h", country: "IT", coordinates: [12, 41] },
+    ]);
+    expect(trips.map((trip) => trip.stops)).toEqual([
+      ["place-a", "place-b", "place-c"],
+      ["place-d", "place-e"],
+    ]);
+    expect(trips[0]).toMatchObject({ start: "2025-05-24", end: "2025-06-03", label: "Germany and Denmark, 2025" });
+    expect(trips[1].label).toBe("Norway and Sweden, 2025");
+    expect(trips[0].id).toMatch(/^trip-germany-and-denmark-2025-[a-f0-9]{8}$/);
+  });
+  it("groups authored trip labels across gaps and prefers the authored label", async () => {
+    const { inferTrips } = await import("../scripts/trips.ts");
+    const trips = inferTrips([
+      visit("a", "DE", "2025-01-01", "2025-01-02", { trip: "Winter" }),
+      visit("b", "AT", "2025-03-01", "2025-03-02", { trip: "Winter" }),
+      visit("c", "CH", "2025-03-02", "2025-03-03"),
+    ]);
+    expect(trips).toHaveLength(1);
+    expect(trips[0]).toMatchObject({ label: "Winter", stops: ["place-a", "place-b"] });
+  });
+  it("collapses consecutive stops at the same place and spans years in the label", async () => {
+    const { inferTrips } = await import("../scripts/trips.ts");
+    const trips = inferTrips([
+      { ...visit("a", "DE", "2025-12-30", "2025-12-31"), placeId: "berlin" },
+      { ...visit("b", "DE", "2025-12-31", "2026-01-01"), placeId: "berlin" },
+      visit("c", "PL", "2026-01-01", "2026-01-03"),
+    ]);
+    expect(trips[0].stops).toEqual(["berlin", "place-c"]);
+    expect(trips[0].label).toBe("Germany and Poland, 2025–2026");
+  });
+  it("densifies great circles every 100 km, keeps endpoints exact and unwraps the dateline", async () => {
+    const { densify } = await import("../scripts/trips.ts");
+    const line = densify([[13.405, 52.52], [23.86, 38.28]]);
+    expect(line[0]).toEqual([13.405, 52.52]);
+    expect(line[line.length - 1]).toEqual([23.86, 38.28]);
+    expect(line.length).toBeGreaterThan(15);
+    const crossing = densify([[179, 0], [-179, 0]]);
+    for (let i = 1; i < crossing.length; i++)
+      expect(Math.abs(crossing[i][0] - crossing[i - 1][0])).toBeLessThan(180);
+    fc.assert(
+      fc.property(
+        fc.double({ min: -179, max: 179, noNaN: true }),
+        fc.double({ min: -80, max: 80, noNaN: true }),
+        fc.double({ min: -179, max: 179, noNaN: true }),
+        fc.double({ min: -80, max: 80, noNaN: true }),
+        (x1, y1, x2, y2) => {
+          const out = densify([[x1, y1], [x2, y2]]);
+          return out.every(([, lat]) => Math.abs(lat) <= 90.0001) &&
+            out.slice(1).every((p, i) => Math.abs(p[0] - out[i][0]) < 180);
+        },
+      ),
+    );
+  });
+  it("accepts and publishes only the journey fields", async () => {
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Berlin", date: "2024-04-25", trip: "Spring" }],
+    });
+    expect(config.visits[0].trip).toBe("Spring");
+    const { payloadViolations } = await import("../verification/payload.ts");
+    expect(
+      payloadViolations("trips.json", JSON.stringify([
+        { id: "trip-x", label: "X", start: "2025-01-01", end: "2025-01-02", stops: ["a"] },
+      ])),
+    ).toEqual([]);
+    expect(
+      payloadViolations("trips.json", JSON.stringify([
+        { id: "trip-x", label: "X", start: "2025-01-01", end: "2025-01-02", stops: ["a"], notes: "private" },
+      ])),
+    ).toHaveLength(1);
+  });
+});

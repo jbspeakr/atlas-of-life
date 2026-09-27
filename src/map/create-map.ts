@@ -12,6 +12,7 @@ import countriesFineUrl from "../generated/countries-fine.geojson?url";
 import regionsFineUrl from "../generated/regions-fine.geojson?url";
 import placesData from "../generated/places.json";
 import visitsData from "../generated/visits.json";
+import tripsData from "../generated/trips.json";
 import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
 import { visibleAt, type TimeMode } from "./time";
@@ -28,8 +29,16 @@ export type Place = {
   visitCount: number;
 };
 type PublicVisit = Omit<Place, "visitCount"> & { visitCount?: number };
+export type Trip = {
+  id: string;
+  label: string;
+  start: string;
+  end: string;
+  stops: string[];
+};
 export const places = placesData as Place[];
 export const visits = visitsData as PublicVisit[];
+export const trips = tripsData as Trip[];
 export const visitsByPlace = new Map<string, PublicVisit[]>();
 const placeByVisit = new Map<string, Place>();
 const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
@@ -54,6 +63,7 @@ export type Atlas = {
   firstIdleMs: number;
   select: (id: string) => void;
   deselect: () => void;
+  focusTrip: (id: string) => void;
   reset: () => void;
   zoomBy: (delta: number) => void;
   filter: (through: string | null, mode: TimeMode) => void;
@@ -205,6 +215,12 @@ export async function createMap(
       id: p.id,
       visits: visitsByPlace.get(p.id) ?? [],
     })),
+    // A journey lights with its first stop and follows the same filter.
+    ...trips.map((trip) => ({
+      source: "routes",
+      id: trip.id,
+      visits: trip.stops.flatMap((stop) => visitsByPlace.get(stop) ?? []),
+    })),
     // Label anchors follow their boundary's visibility.
     ...countries.features.map((f) => ({
       source: "anchors",
@@ -265,6 +281,22 @@ export async function createMap(
           [x + 0.035, y + 0.022],
         ],
         11,
+      );
+    },
+    focusTrip(id) {
+      const trip = trips.find((candidate) => candidate.id === id);
+      if (!trip) return;
+      const points = trip.stops
+        .map((stop) => places.find((place) => place.id === stop)?.coordinates)
+        .filter((point): point is [number, number] => Boolean(point));
+      if (!points.length) return;
+      atlas.deselect();
+      fly(
+        [
+          [Math.min(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1]))],
+          [Math.max(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))],
+        ],
+        6,
       );
     },
     deselect() {

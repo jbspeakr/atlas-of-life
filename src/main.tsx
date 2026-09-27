@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   createMap,
   places,
+  trips,
   visits,
   visitsByPlace,
 } from "./map/create-map";
@@ -60,6 +61,15 @@ const chronology = [...places].sort(
     ) || a.id.localeCompare(b.id),
 );
 const pageSize = 6;
+const tripByPlace = new Map<string, { trip: (typeof trips)[number]; index: number }>();
+for (const trip of trips)
+  trip.stops.forEach((stop, index) => {
+    if (!tripByPlace.has(stop)) tripByPlace.set(stop, { trip, index });
+  });
+const searchableTrips = trips.map((trip) => ({
+  ...trip,
+  searchText: fold(trip.label),
+}));
 const searchablePlaces = chronology.map((place) => ({
   ...place,
   countryName: countryNames.of(place.country) ?? place.country,
@@ -83,7 +93,7 @@ function App() {
   const searchInput = useRef<HTMLInputElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const [explorerOpen, setExplorerOpen] = useState(false);
-  const [scope, setScope] = useState<"view" | "all">(narrow ? "all" : "view");
+  const [scope, setScope] = useState<"view" | "all" | "trips">(narrow ? "all" : "view");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
@@ -212,12 +222,38 @@ function App() {
     const ids = new Set(visibleIds);
     return eligiblePlaces.filter((place) => ids.has(place.id));
   }, [eligiblePlaces, visibleIds]);
+  const eligibleTrips = useMemo(
+    () =>
+      searchableTrips.filter((trip) =>
+        trip.stops.some((stop) =>
+          (visitsByPlace.get(stop) ?? []).some(
+            (visit) => visibleAt(visit, through, mode) > 0,
+          ),
+        ),
+      ),
+    [through, mode],
+  );
   const results = useMemo(() => {
     const text = fold(query);
     return (scope === "view" ? inView : eligiblePlaces)
       .filter((place) => place.searchText.includes(text));
   }, [scope, query, inView, eligiblePlaces]);
-  const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
+  const tripResults = useMemo(() => {
+    const text = fold(query);
+    return eligibleTrips.filter((trip) => trip.searchText.includes(text));
+  }, [query, eligibleTrips]);
+  const listed = scope === "trips" ? tripResults.length : results.length;
+  const pageCount = Math.max(1, Math.ceil(listed / pageSize));
+  // Previous/next step through the journey when the place is part of one, else the chronology.
+  const membership = place ? tripByPlace.get(place.id) : undefined;
+  const sequence = membership
+    ? membership.trip.stops
+    : chronology.map((candidate) => candidate.id);
+  const sequenceIndex = place ? sequence.indexOf(place.id) : -1;
+  const step = (delta: number) => {
+    const next = sequence[sequenceIndex + delta];
+    if (next) atlas.current?.select(next);
+  };
   const currentPage = Math.min(page, pageCount - 1);
   const placeVisits = place ? (visitsByPlace.get(place.id) ?? []) : [];
   return (
@@ -304,16 +340,43 @@ function App() {
                 onClick={() => { setScope("all"); setPage(0); }}>
                 All places <span>{eligiblePlaces.length}</span>
               </button>
+              {trips.length > 0 && (
+                <button type="button" aria-pressed={scope === "trips"}
+                  onClick={() => { setScope("trips"); setPage(0); }}>
+                  Journeys <span>{eligibleTrips.length}</span>
+                </button>
+              )}
             </div>
             <input ref={searchInput} type="search" aria-label="Search places"
               placeholder="Search city, region or country"
               value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} />
             <p className="explorer-context" role="status">
-              {results.length} {results.length === 1 ? "place" : "places"}
-              {scope === "view" ? " in this map view" : " across the world"}
+              {scope === "trips"
+                ? `${tripResults.length} ${tripResults.length === 1 ? "journey" : "journeys"}`
+                : `${results.length} ${results.length === 1 ? "place" : "places"}${scope === "view" ? " in this map view" : " across the world"}`}
               {through === null ? " · all visits" : ` · ${timeLabel.toLowerCase()}`}
             </p>
-            <ol className="place-results">
+            {scope === "trips" && (
+              <ol className="place-results">
+                {tripResults.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((trip) => (
+                  <li key={trip.id}>
+                    <button type="button" data-trip-id={trip.id}
+                      onClick={() => {
+                        setExplorerOpen(false);
+                        atlas.current?.focusTrip(trip.id);
+                        browseButton.current?.focus({ preventScroll: true });
+                      }}>
+                      <span className="place-mark place-mark-route" aria-hidden="true" />
+                      <span className="index-name">{trip.label}<small>
+                        {dateFormatter.format(new Date(`${trip.start}T00:00:00Z`))} — {dateFormatter.format(new Date(`${trip.end}T00:00:00Z`))}
+                      </small></span>
+                      <span className="index-year">{trip.stops.length} stops</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {scope !== "trips" && <ol className="place-results">
               {results.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((p) => (
                 <li key={p.id}>
                   <button type="button" data-place-id={p.id}
@@ -325,10 +388,10 @@ function App() {
                   </button>
                 </li>
               ))}
-            </ol>
-            {results.length === 0 && (
+            </ol>}
+            {listed === 0 && (
               <div className="places-empty">
-                <p>{query.trim() ? "No matching places." : "No visits here in this time range."}</p>
+                <p>{query.trim() ? `No matching ${scope === "trips" ? "journeys" : "places"}.` : scope === "trips" ? "No journeys in this time range." : "No visits here in this time range."}</p>
                 {scope === "view" && <button type="button"
                   onClick={() => { setScope("all"); setPage(0); }}>Search all places</button>}
                 {query && <button type="button" onClick={() => { setQuery(""); setPage(0); }}>Clear search</button>}
@@ -337,7 +400,7 @@ function App() {
             {pageCount > 1 && <nav className="place-pages" aria-label="Place pages">
               <button type="button" aria-label="Previous places" disabled={currentPage === 0}
                 onClick={() => setPage(currentPage - 1)}>←</button>
-              <span>{currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, results.length)} of {results.length}</span>
+              <span>{currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, listed)} of {listed}</span>
               <button type="button" aria-label="Next places" disabled={currentPage === pageCount - 1}
                 onClick={() => setPage(currentPage + 1)}>→</button>
             </nav>}
@@ -351,6 +414,12 @@ function App() {
           role="dialog"
           aria-label="Place"
           aria-describedby="place-geography"
+          onKeyDown={(event) => {
+            const target = event.target;
+            if (target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
+            if (event.key === "ArrowLeft") { event.preventDefault(); step(-1); }
+            if (event.key === "ArrowRight") { event.preventDefault(); step(1); }
+          }}
         >
           <button
             className="dismiss"
@@ -415,6 +484,19 @@ function App() {
           {place.visitCount > 1 && (
             <p className="caption-count">{place.visitCount} visits</p>
           )}
+          <nav className="caption-steps" aria-label="Journey">
+            <button type="button" aria-label={membership ? "Previous stop" : "Previous visit"}
+              aria-keyshortcuts="ArrowLeft" disabled={sequenceIndex <= 0}
+              onClick={() => step(-1)}>←</button>
+            <span>
+              {membership
+                ? <>Part of <em>{membership.trip.label}</em> · stop {sequenceIndex + 1} of {sequence.length}</>
+                : <>Visit {sequenceIndex + 1} of {sequence.length}</>}
+            </span>
+            <button type="button" aria-label={membership ? "Next stop" : "Next visit"}
+              aria-keyshortcuts="ArrowRight" disabled={sequenceIndex >= sequence.length - 1}
+              onClick={() => step(1)}>→</button>
+          </nav>
         </section>
       )}
       <form className="timeline" onSubmit={(e) => e.preventDefault()}>

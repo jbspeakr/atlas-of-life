@@ -57,6 +57,10 @@ The complete bundled path was run against the source discovered at `https://maps
 
 Natural Earth's full country bbox includes overseas territories; the interior anchor uses the largest polygon instead of an offshore centroid. `XK` is accepted as the explicitly documented Natural Earth Kosovo identifier, although it is not an assigned ISO alpha-2 code; upstream region lookup uses `XKX`. Country/region-only visits work without a geocode. A coarse earth underlay, reading lower zoom tiles from the **same archive**, keeps land continuous outside high-detail extracts. All non-visited basemap colours are desaturated blue-grey rather than inheriting warm road colours from the stock theme. The mobile globe uses a smaller camera scale so it fits 375px instead of cropping into a continent view. Additional glyph ranges are fetched at build time only from the pinned asset revision, then self-hosted; fixtures forbid missing-range downloads.
 
+## Journeys
+
+Journeys are inferred from adjacency of dates, not authored itineraries, because the owner's workflow is country, city and dates only; the optional `trip` label exists for the rare gap or a deliberate public name. Routes are great circles between published city coordinates, never streets or tracks, so they disclose nothing beyond the pins. Stepping is exposed in the caption, where the viewer already is, rather than as another panel.
+
 ## Maintainer and accessibility choices
 
 Date filtering combines with map feature-state visibility and retains the one-accent palette. Tags and tag URL filtering have been removed: they are not part of the owner's date/city/country workflow. There is no deck.gl or terrain dependency: native MapLibre circles, text collision placement and a hovered halo cover the requested effects without another rendering stack. Repeated-visit aliases replace their canonical hash instead of pushing another history entry, so browser Back cannot become trapped.

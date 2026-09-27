@@ -607,6 +607,33 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       await run("a11y.timeline", "a11y", () => axe("timeline"));
       await slider.press("End");
     });
+    const firstDate = (place: Place) =>
+      place.date ??
+      (Array.isArray(place.dateRange) ? place.dateRange[0] : place.dateRange?.start) ??
+      "";
+    await run("interaction.caption-step", "correctness", async () => {
+      await page.goto(`${url}#/place/${encodeURIComponent(first)}`, { waitUntil: "load" });
+      await ready(page);
+      const dialog = page.getByRole("dialog", { name: "Place", exact: true });
+      await dialog.waitFor({ state: "visible" });
+      const before = await dialog.innerText();
+      await page.getByRole("button", { name: /^Next (stop|visit)$/ }).click();
+      await settle(page);
+      const after = await dialog.innerText();
+      const second = places
+        .filter((place) => place.id !== first)
+        .sort((left, right) => firstDate(left).localeCompare(firstDate(right)))[0];
+      record(
+        "interaction.caption-step",
+        "correctness",
+        after !== before && second && after.includes(second.label) ? 0 : 1,
+        "errors",
+        0,
+        `Next from ${first} must open the following place in journey or chronology order; expected ${second?.label}, actual: ${after}`,
+        "eq",
+      );
+      await page.keyboard.press("Escape");
+    });
     await run("interaction.deep-link", "correctness", async () => {
       const deepLink = `${url}#/place/${encodeURIComponent(first)}`;
       await page.goto(deepLink, { waitUntil: "load" });

@@ -59,6 +59,8 @@ export const visitSchema = z
     date: isoDate.optional(),
     dateRange: z.tuple([rangeEndpoint, rangeEndpoint]).optional(),
     publishPrecision: precisionSchema.optional(),
+    // Optional public journey label; visits sharing it form one journey regardless of gaps.
+    trip: text.optional(),
   })
   .superRefine((visit, context) => {
     if (

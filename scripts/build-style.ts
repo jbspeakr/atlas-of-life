@@ -71,6 +71,9 @@ const anchors = JSON.parse(
 const anchorLabels = anchors.features.map((feature) =>
   String(feature.properties?.label),
 );
+const routes = JSON.parse(
+  readFileSync("src/generated/routes.json", "utf8"),
+) as FeatureCollection;
 const visible: ExpressionSpecification = [
   "coalesce",
   ["feature-state", "visibility"],
@@ -108,6 +111,11 @@ const style: StyleSpecification = {
       type: "geojson",
       promoteId: "id",
       data: anchors,
+    },
+    routes: {
+      type: "geojson",
+      promoteId: "trip",
+      data: routes,
     },
     pins: {
       type: "geojson",
@@ -162,6 +170,17 @@ const style: StyleSpecification = {
         "line-color": "#efc784",
         "line-width": hoverWidth(0.8, 1.6),
         "line-opacity": withVisibility(bands.region),
+      },
+    },
+    {
+      id: "routes",
+      type: "line",
+      source: "routes",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#efc784",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.4, 16, 2],
+        "line-opacity": withVisibility(bands.route),
       },
     },
     {

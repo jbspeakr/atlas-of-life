@@ -4,6 +4,14 @@ Only measured experiments belong here. Optimisation uses the ordered objective i
 
 
 
+
+## Journeys
+
+`scripts/trips.ts` chains dated city visits into journeys at build time: a visit joins when it starts no later than the day after the journey's latest end, visits sharing an authored `trip` label always group, open-ended and undated visits never join, and a journey needs two or more visits. Labels list the countries in visiting order with the year span ("Germany, Denmark and Norway, 2025"). The build publishes `trips.json` and `routes.json`, the latter densified along great circles every 100 km with longitudes unwrapped across the antimeridian; the last vertex keeps the published place coordinate, so the precision audit still holds. The payload audit gained a journey allowlist (`id`, `label`, `start`, `end`, `stops`). The owner data yields three journeys, including the Ahlbeck day trip to Swinemünde that overlaps its stay.
+
+A `routes` line layer in lamplight arrives with the region band beneath the pins and follows the same feature-state filter as its first stop. Captions add "Part of … · stop n of m" with previous/next controls, ArrowLeft/ArrowRight while the caption has focus, and fall back to chronology ("Visit n of 18") outside a journey. The directory has a Journeys scope whose entries fly to the journey's bounds at zoom ≤ 6.
+
+Verification: TypeScript, lint and 68 unit tests passed, including chaining, gap, authored-label, same-place collapse, year-span, densify endpoint and dateline properties (a property test caught the last vertex not being unwrapped). Quick verification passed. A software-rendered smoke run on the owner build rendered five route features at zoom 4.6, stepped Hollenbeck → Storvorde → Bindslev by button and arrow key with the URL following, stepped chronology from Berlin, listed and searched three journeys, flew to the Germany–Poland journey at zoom 6, and extinguished the 2026 route under a mid-2025 filter. A new runtime scenario presses Next from the first fixture place. Baselines await the GPU runner.
 ## Time and URL state
 
 The three-position year slider could not separate the owner's eleven 2025 visits. The scrubber is now ordinal: one tick per distinct first-visit date plus a final "All visits" position, labelled by month. `src/map/time.ts` owns the predicate the map filter, the directory and the build share: cumulative means first visited by the selected date, and the new "During" mode lights only visits under way in the selected month, using lexical month bounds rather than calendar maths. `dateBounds` moved there and is re-exported from `scripts/config.ts`. Captions add whole nights for closed ranges.

@@ -10,6 +10,14 @@ const allowlist: Record<string, true> = {
   dateRange: true,
   visitCount: true,
 };
+// Journeys are derived from public visits; their labels are generated or authored for publication.
+const tripAllowlist: Record<string, true> = {
+  id: true,
+  label: true,
+  start: true,
+  end: true,
+  stops: true,
+};
 /** Audit object shapes in both standalone JSON and minified production JavaScript. */
 export function payloadViolations(
   filename: string,
@@ -35,6 +43,13 @@ export function payloadViolations(
         violations.push(
           `${filename}: place ${String(object.id)} coordinates ${JSON.stringify(object.coordinates)} do not match precision-safe ${JSON.stringify(safe)}`,
         );
+    }
+    if ("id" in object && "label" in object && Array.isArray(object.stops)) {
+      for (const key of Object.keys(object))
+        if (tripAllowlist[key] !== true)
+          violations.push(
+            `${filename}: journey ${String(object.id)} contains forbidden field ${key}`,
+          );
     }
     if (object.type === "Feature" && object.geometry && object.properties) {
       const geometry = object.geometry as Record<string, unknown>;

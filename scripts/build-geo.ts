@@ -11,6 +11,8 @@ import {
   resolveVisits,
   validateConfig,
 } from "./config.ts";
+import { inferTrips, routeFeatures } from "./trips.ts";
+import { placeKey } from "../src/map/place-key.ts";
 import {
   BoundaryRepository,
   geometryMetadata,
@@ -149,6 +151,29 @@ async function main(): Promise<void> {
     return { ...visit, coordinates };
   });
   const places = collapseVisits(anchored);
+  const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
+  const trips = inferTrips(
+    anchored.flatMap((visit) => {
+      if (!visit.city && !visit.address) return [];
+      const place = placeByKey.get(placeKey(visit));
+      if (!place) return [];
+      return [
+        {
+          id: visit.id,
+          placeId: place.id,
+          country: visit.country,
+          coordinates: visit.coordinates,
+          ...(visit.trip ? { trip: visit.trip } : {}),
+          ...(visit.date !== undefined ? { date: visit.date } : {}),
+          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+        },
+      ];
+    }),
+  );
+  const routes = routeFeatures(
+    trips,
+    new Map(places.map((place) => [place.id, place.coordinates])),
+  );
   // Label anchors: one interior point per published boundary, keyed like its polygon.
   // Deliberately without a country field so the payload audit does not read them as places.
   const anchors = {
@@ -183,6 +208,8 @@ async function main(): Promise<void> {
     "regions.geojson": JSON.stringify(regionCoarse),
     "regions-fine.geojson": JSON.stringify(regionFine),
     "places.json": JSON.stringify(places),
+    "trips.json": JSON.stringify(trips),
+    "routes.json": JSON.stringify(routes),
     "visits.json": JSON.stringify(anchored.map(publicVisit)),
   };
   let geometryBytes = 0;
@@ -214,7 +241,7 @@ async function main(): Promise<void> {
   );
   await repository.save();
   console.log(
-    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits`,
+    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits, ${trips.length} journeys`,
   );
 }
 
