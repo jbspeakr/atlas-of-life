@@ -6,6 +6,12 @@ Only measured experiments belong here. Optimisation uses the ordered objective i
 
 
 
+
+## By the numbers
+
+`scripts/stats.ts` computes totals at build time from published visits, places and journeys only: countries, regions, places, visits, journeys, nights away, the longest stay, visits and nights per start year, and places with first year per country. `stats.json` joins the payload audit, which now also fails on any coordinate or address inside statistics. The header count line became a button that opens a compact panel with a definition list, a nights-by-year table whose lamplight bar is a proportional aside to the printed number, and a places-by-country table. Only one of directory, caption and numbers is open at a time; Escape closes and returns focus. Sizing the panel exposed that the open directory could overlap the header on an 800 px tall desktop viewport, so its maximum height now reserves 260 px.
+
+Verification: TypeScript, lint and 69 unit tests passed, including an independent recomputation on the fixture (three countries, 17 nights, Paris the longest stay, seven years). Quick verification passed. A software-rendered smoke run on the owner build read 9 countries, 68 nights, 3 journeys, Storvorde at 7 nights, the 2025 row (11 visits, 42 nights) and Germany (7 places since 2024), confirmed focus moves to the close control and back to the count on Escape, that selecting a place closes the panel, and that the phone layout stays inside a 16 px gutter. A runtime scenario runs axe on the open panel and checks the focus round trip. Baselines await the GPU runner.
 ## In-app tour
 
 The pure camera choreography (`selectTourStops`, `createGlobeTour`, `cameraAtFrame`) moved from `scripts/recording.ts` to `src/map/tour.ts`; the recorder re-exports it, so the twenty recording tests and `npm run record` are unchanged. The controller gained `play()` and `stop()`: play deselects, loads both fine LODs, and drives `jumpTo` from a requestAnimationFrame loop mapping elapsed time to the recorder's 720-frame timeline; under reduced motion it instead holds each keyframe for 1.5 s. Any user movestart, Escape, World, a selection or a reset stops it; view reports and URL writes pause while it runs and resume on stop. A Tour/Stop button sits beside World. The first run threw "Frame must be an integer" because a frame timestamp can precede the `performance.now()` taken at start; the index is now clamped at zero.

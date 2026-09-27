@@ -67,7 +67,11 @@ export function payloadViolations(
     for (const child of Object.values(object)) inspect(child);
   }
   if (/\.(json|geojson)$/.test(filename)) {
-    inspect(JSON.parse(text));
+    const parsed: unknown = JSON.parse(text);
+    inspect(parsed);
+    // Statistics are totals only; a coordinate anywhere inside them is a leak.
+    if (/stats\.json$/.test(filename) && /"coordinates"|"address"/.test(text))
+      violations.push(`${filename}: statistics must not carry coordinates or addresses`);
     return violations;
   }
   if (!/\.js$/.test(filename)) return violations;

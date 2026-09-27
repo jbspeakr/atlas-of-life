@@ -611,6 +611,27 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       place.date ??
       (Array.isArray(place.dateRange) ? place.dateRange[0] : place.dateRange?.start) ??
       "";
+    await run("a11y.numbers", "a11y", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.getByRole("button", { name: "By the numbers", exact: true }).click();
+      const panel = page.getByRole("region", { name: "By the numbers", exact: true });
+      await panel.waitFor({ state: "visible" });
+      const opened = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+      await axe("numbers");
+      await page.keyboard.press("Escape");
+      await panel.waitFor({ state: "hidden" });
+      const returned = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+      record(
+        "a11y.numbers-focus",
+        "a11y",
+        opened === "Close numbers" && returned === "By the numbers" ? 0 : 1,
+        "errors",
+        0,
+        `Opening the numbers panel focuses its close control (${opened}); Escape returns focus to the count (${returned}).`,
+        "eq",
+      );
+    });
     await run("interaction.tour-yields", "correctness", async () => {
       await page.goto(url, { waitUntil: "load" });
       await ready(page);

@@ -12,6 +12,7 @@ import {
   validateConfig,
 } from "./config.ts";
 import { inferTrips, routeFeatures } from "./trips.ts";
+import { computeStats } from "./stats.ts";
 import { placeKey } from "../src/map/place-key.ts";
 import {
   BoundaryRepository,
@@ -209,6 +210,9 @@ async function main(): Promise<void> {
     "regions-fine.geojson": JSON.stringify(regionFine),
     "places.json": JSON.stringify(places),
     "trips.json": JSON.stringify(trips),
+    "stats.json": JSON.stringify(
+      computeStats(anchored.map(publicVisit), places, trips.length),
+    ),
     "routes.json": JSON.stringify(routes),
     "visits.json": JSON.stringify(anchored.map(publicVisit)),
   };

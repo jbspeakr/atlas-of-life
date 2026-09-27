@@ -13,6 +13,9 @@ import { captionGeography } from "./map/caption";
 import { dateBounds, isDated, nights, visibleAt } from "./map/time";
 import type { TimeMode } from "./map/time";
 import regionLabelsData from "./generated/region-labels.json";
+import statsData from "./generated/stats.json";
+import type { Stats } from "../scripts/stats";
+const stats = statsData as unknown as Stats;
 const regionLabels: Record<string, string> = regionLabelsData;
 const deterministic =
   new URLSearchParams(location.search).get("deterministic") === "1";
@@ -106,6 +109,9 @@ function App() {
   const [zoom, setZoom] = useState(1.8);
   const [error, setError] = useState("");
   const [touring, setTouring] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const statsButton = useRef<HTMLButtonElement>(null);
+  const statsClose = useRef<HTMLButtonElement>(null);
   const place = places.find((p) => p.id === selected);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected;
@@ -122,6 +128,7 @@ function App() {
         if (id) {
           origin.current = document.activeElement as HTMLElement | null;
           setExplorerOpen(false);
+          setStatsOpen(false);
         } else if (selectedRef.current) restoreFocus();
         setSelected(id);
       },
@@ -167,6 +174,13 @@ function App() {
   useEffect(() => {
     if (explorerOpen) searchInput.current?.focus({ preventScroll: true });
   }, [explorerOpen]);
+  useEffect(() => {
+    if (statsOpen) statsClose.current?.focus({ preventScroll: true });
+  }, [statsOpen]);
+  function closeStats() {
+    setStatsOpen(false);
+    statsButton.current?.focus({ preventScroll: true });
+  }
   function restoreFocus() {
     const target = origin.current?.isConnected ? origin.current : browseButton.current;
     target?.focus({ preventScroll: true });
@@ -197,6 +211,8 @@ function App() {
       } else if (event.key === "Escape") {
         if (touring) {
           atlas.current?.stop();
+        } else if (statsOpen) {
+          closeStats();
         } else if (selected) {
           dismiss();
         } else if (explorerOpen) {
@@ -207,7 +223,7 @@ function App() {
     }
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [selected, explorerOpen, touring]);
+  }, [selected, explorerOpen, touring, statsOpen]);
   const eligiblePlaces = useMemo(
     () =>
       searchablePlaces.filter((place) =>
@@ -266,12 +282,85 @@ function App() {
       <header>
         <h1>Atlas of a Life</h1>
         <p>A little more of the world.</p>
-        <div className="atlas-count">
-          {new Set(visits.map((v) => v.country)).size} countries{" "}
-          <span aria-hidden="true">·</span> {places.length} places{" "}
+        <button
+          ref={statsButton}
+          type="button"
+          className="atlas-count"
+          aria-expanded={statsOpen}
+          aria-controls="atlas-stats"
+          aria-label="By the numbers"
+          onClick={() => {
+            setExplorerOpen(false);
+            setStatsOpen(!statsOpen);
+          }}
+        >
+          {stats.countries} countries{" "}
+          <span aria-hidden="true">·</span> {stats.places} places{" "}
           <span aria-hidden="true">·</span> {firstYear}–{lastYear}
-        </div>
+        </button>
       </header>
+      {statsOpen && (
+        <section className="atlas-stats" id="atlas-stats" aria-label="By the numbers">
+          <div className="explorer-heading">
+            <h2>By the numbers</h2>
+            <button ref={statsClose} type="button" className="icon-button" aria-label="Close numbers"
+              onClick={closeStats}>×</button>
+          </div>
+          <dl className="stats-totals">
+            <div><dt>Countries</dt><dd>{stats.countries}</dd></div>
+            <div><dt>Regions</dt><dd>{stats.regions}</dd></div>
+            <div><dt>Places</dt><dd>{stats.places}</dd></div>
+            <div><dt>Visits</dt><dd>{stats.visits}</dd></div>
+            <div><dt>Journeys</dt><dd>{stats.journeys}</dd></div>
+            <div><dt>Nights away</dt><dd>{stats.nights}</dd></div>
+          </dl>
+          {stats.longestStay && (
+            <p className="stats-note">
+              Longest stay <em>{stats.longestStay.label}</em>, {stats.longestStay.nights} nights
+            </p>
+          )}
+          {stats.years.length > 0 && (
+            <table className="stats-years">
+              <caption>Nights away by year</caption>
+              <thead>
+                <tr><th scope="col">Year</th><th scope="col">Visits</th><th scope="col">Nights</th></tr>
+              </thead>
+              <tbody>
+                {stats.years.map((row) => {
+                  const most = Math.max(1, ...stats.years.map((y) => y.nights));
+                  return (
+                    <tr key={row.year}>
+                      <th scope="row">{row.year}</th>
+                      <td>{row.visits}</td>
+                      <td>
+                        <span className="stats-bar" aria-hidden="true">
+                          <i style={{ width: `${(row.nights / most) * 100}%` }} />
+                        </span>
+                        {row.nights}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          <table className="stats-countries">
+            <caption>Places by country</caption>
+            <thead>
+              <tr><th scope="col">Country</th><th scope="col">Places</th><th scope="col">First</th></tr>
+            </thead>
+            <tbody>
+              {stats.byCountry.map((row) => (
+                <tr key={row.country}>
+                  <th scope="row">{countryNames.of(row.country) ?? row.country}</th>
+                  <td>{row.places}</td>
+                  <td>{row.firstYear ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
       <nav className="navigation" aria-label="Map controls">
         <button
           type="button"
@@ -329,7 +418,10 @@ function App() {
           aria-label="Browse places"
           aria-expanded={explorerOpen}
           aria-controls="place-explorer"
-          onClick={() => setExplorerOpen(!explorerOpen)}
+          onClick={() => {
+            setStatsOpen(false);
+            setExplorerOpen(!explorerOpen);
+          }}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="6" />

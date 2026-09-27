@@ -586,3 +586,24 @@ describe("journeys", () => {
     ).toHaveLength(1);
   });
 });
+describe("statistics", () => {
+  it("derives totals from published visits only and matches an independent recomputation", async () => {
+    const { computeStats } = await import("../scripts/stats.ts");
+    const { readFileSync } = await import("node:fs");
+    const cache = JSON.parse(readFileSync("verification/fixtures/geocache.json", "utf8"));
+    const fixture = (await import("./fixtures/visits.ts")).default;
+    const resolved = resolveVisits(validateConfig(fixture, cache), cache);
+    const { publicVisit } = await import("../scripts/config.ts");
+    const anchored = resolved.filter((visit) => visit.coordinates) as (typeof resolved[number] & { coordinates: [number, number] })[];
+    const places = collapseVisits(anchored);
+    const stats = computeStats(anchored.map(publicVisit), places, 0);
+    expect(stats.countries).toBe(3);
+    expect(stats.places).toBe(places.length);
+    expect(stats.visits).toBe(anchored.length);
+    expect(stats.nights).toBe(4 + 5 + 4 + 4);
+    expect(stats.longestStay).toEqual({ label: "Paris", nights: 5 });
+    expect(stats.years.map((row) => row.year)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025]);
+    expect(stats.byCountry[0]).toEqual({ country: "DE", places: 2, firstYear: 2019 });
+    expect(JSON.stringify(stats)).not.toMatch(/coordinates|address/);
+  });
+});
