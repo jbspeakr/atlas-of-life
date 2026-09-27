@@ -2,6 +2,10 @@
 
 This plan turns the review findings into ten sequenced releases. Each release is one pull request, ends green under `npm run verify -- --quick`, and gets a full GPU verification plus, where it changes pixels, an explicit `npm run verify:approve` on the Mac runner. Every release adds an entry to `docs/EVOLUTION.md` with measured numbers and, where it decides something, a paragraph in `docs/DECISIONS.md`.
 
+## Status
+
+All ten releases are implemented on this branch, one commit each, in the order below. Every release passed TypeScript, lint, the unit contracts (73 at the end) and quick verification, plus a software-rendered browser smoke run on the owner build recorded in `docs/EVOLUTION.md`. Two things remain that this environment cannot do: the full GPU verification (`npm run verify`) and the visual baseline approval (`npm run verify:approve`) on the self-hosted Mac runner, because releases 1, 2, 4, 5 and 7 change every approved screenshot. Run both before merging, and set a new metric baseline with `npm run verify -- --set-baseline` once green.
+
 ## Ground rules carried from the decisions log
 
 - **Publication allowlist stays closed.** Anything new that ships to the browser is either derived from the existing public fields (id, label, country, region, city, coordinates, dates, visitCount) or is an explicitly documented new public field. `verification/payload.ts` is extended for every new generated file, never bypassed.
