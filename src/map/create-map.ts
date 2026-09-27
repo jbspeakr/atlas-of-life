@@ -17,6 +17,7 @@ import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
 import { visibleAt, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
+import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
 export type Place = {
   id: string;
   label: string;
@@ -64,6 +65,8 @@ export type Atlas = {
   select: (id: string) => void;
   deselect: () => void;
   focusTrip: (id: string) => void;
+  play: () => void;
+  stop: () => void;
   reset: () => void;
   zoomBy: (delta: number) => void;
   filter: (through: string | null, mode: TimeMode) => void;
@@ -79,6 +82,7 @@ export async function createMap(
   onSelect: (id: string | null) => void,
   onView: (message: string, zoom: number, visibleIds: string[]) => void,
   onFilter: (through: string | null, mode: TimeMode) => void,
+  onTour: (playing: boolean) => void,
   signal: AbortSignal,
 ): Promise<Atlas> {
   const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -161,6 +165,9 @@ export async function createMap(
       .filter((visit) => id.startsWith(visit.id) && placeByVisit.has(visit.id))
       .map((visit) => placeByVisit.get(visit.id)!)[0];
   let animation = 0;
+  let touring = false;
+  let tourFrame = 0;
+  let tourTimer = 0;
   let igniting = false;
   let stopped = false;
   let filtering = 0;
@@ -268,7 +275,60 @@ export async function createMap(
   const atlas: Atlas = {
     map,
     firstIdleMs: 0,
+    play() {
+      if (touring || !places.length) return;
+      const stops = selectTourStops(places, places[0]);
+      const { width, height } = canvas.getBoundingClientRect();
+      const tour = createGlobeTour(stops, { width, height });
+      finishIgnition();
+      atlas.deselect();
+      for (const id of Object.keys(fineSources)) loadFine(id);
+      touring = true;
+      stopped = true;
+      onTour(true);
+      const apply = (camera: { center: [number, number]; zoom: number }) =>
+        map.jumpTo({ center: camera.center, zoom: camera.zoom, bearing: 0, pitch: 0 });
+      if (media.matches) {
+        // Reduced motion: hold each shot instead of flying between them.
+        let index = 0;
+        const next = () => {
+          if (!touring) return;
+          if (index >= tour.keyframes.length) {
+            atlas.stop();
+            return;
+          }
+          apply(tour.keyframes[index].camera);
+          index += 1;
+          tourTimer = window.setTimeout(next, 1500);
+        };
+        next();
+        return;
+      }
+      const start = performance.now();
+      const frame = (now: number) => {
+        if (!touring) return;
+        // A frame timestamp can precede the performance.now() taken at start.
+        const index = Math.max(0, Math.min(719, Math.floor(((now - start) / 1000) * 30)));
+        apply(cameraAtFrame(index, tour));
+        if (index >= 719) {
+          atlas.stop();
+          return;
+        }
+        tourFrame = requestAnimationFrame(frame);
+      };
+      tourFrame = requestAnimationFrame(frame);
+    },
+    stop() {
+      if (!touring) return;
+      touring = false;
+      cancelAnimationFrame(tourFrame);
+      clearTimeout(tourTimer);
+      onTour(false);
+      reportView();
+      writeUrl();
+    },
     select(id) {
+      atlas.stop();
       const place = resolvePlace(id);
       if (!place) return;
       selected = place.id;
@@ -315,6 +375,7 @@ export async function createMap(
       });
     },
     reset() {
+      atlas.stop();
       finishIgnition();
       selected = null;
       onSelect(null);
@@ -363,6 +424,9 @@ export async function createMap(
       filtering = requestAnimationFrame(frame);
     },
     destroy() {
+      touring = false;
+      cancelAnimationFrame(tourFrame);
+      clearTimeout(tourTimer);
       cancelAnimationFrame(animation);
       cancelAnimationFrame(filtering);
       media.removeEventListener("change", motionChanged);
@@ -468,6 +532,7 @@ export async function createMap(
   });
   map.on("movestart", (event) => {
     if (event.originalEvent) {
+      atlas.stop();
       finishIgnition();
       stopped = true;
       cancelAnimationFrame(animation);
@@ -502,8 +567,10 @@ export async function createMap(
       visibleIds,
     );
   }
-  map.on("moveend", reportView);
   map.on("moveend", () => {
+    // A playing tour moves every frame; the view report and URL wait for it to end.
+    if (touring) return;
+    reportView();
     // Only a camera the viewer moved becomes part of the link; ignition and
     // programmatic resets never write a view.
     if (stopped && !selected) writeUrl();

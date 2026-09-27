@@ -105,6 +105,7 @@ function App() {
   );
   const [zoom, setZoom] = useState(1.8);
   const [error, setError] = useState("");
+  const [touring, setTouring] = useState(false);
   const place = places.find((p) => p.id === selected);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected;
@@ -135,6 +136,7 @@ function App() {
         setMode(routedMode);
         setPage(0);
       },
+      setTouring,
       abort.signal,
     )
       .then((value) => {
@@ -193,7 +195,9 @@ function App() {
         event.preventDefault();
         atlas.current?.reset();
       } else if (event.key === "Escape") {
-        if (selected) {
+        if (touring) {
+          atlas.current?.stop();
+        } else if (selected) {
           dismiss();
         } else if (explorerOpen) {
           setExplorerOpen(false);
@@ -203,7 +207,7 @@ function App() {
     }
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [selected, explorerOpen]);
+  }, [selected, explorerOpen, touring]);
   const eligiblePlaces = useMemo(
     () =>
       searchablePlaces.filter((place) =>
@@ -282,6 +286,19 @@ function App() {
             <path d="M4 12h16" />
           </svg>
           World <kbd>⌥ W</kbd>
+        </button>
+        <button
+          type="button"
+          className="tour-button"
+          aria-pressed={touring}
+          aria-label={touring ? "Stop the tour" : "Play a tour of the atlas"}
+          title={touring ? "Stop the tour (Escape)" : "Play a 24-second tour"}
+          onClick={() => (touring ? atlas.current?.stop() : atlas.current?.play())}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            {touring ? <rect x="7" y="7" width="10" height="10" /> : <path d="M8 5.5v13l10-6.5z" />}
+          </svg>
+          {touring ? "Stop" : "Tour"}
         </button>
         <button
           type="button"

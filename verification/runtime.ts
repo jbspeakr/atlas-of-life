@@ -611,6 +611,44 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       place.date ??
       (Array.isArray(place.dateRange) ? place.dateRange[0] : place.dateRange?.start) ??
       "";
+    await run("interaction.tour-yields", "correctness", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.getByRole("button", { name: "Play a tour of the atlas" }).click();
+      await page.waitForTimeout(600);
+      const moving = await page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const map = (window as unknown as AtlasWindow).__atlas.map;
+            const before = map.getCenter().lng + map.getZoom();
+            setTimeout(() => resolve(map.getCenter().lng + map.getZoom() !== before), 200);
+          }),
+      );
+      const box = (await page.locator(".maplibregl-canvas").boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 4 });
+      await page.mouse.up();
+      await settle(page);
+      const still = await page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const map = (window as unknown as AtlasWindow).__atlas.map;
+            const before = map.getCenter().lng + map.getZoom();
+            setTimeout(() => resolve(map.getCenter().lng + map.getZoom() === before), 300);
+          }),
+      );
+      const label = await page.getByRole("button", { name: /tour/i }).first().getAttribute("aria-label");
+      record(
+        "interaction.tour-yields",
+        "correctness",
+        moving && still && label === "Play a tour of the atlas" ? 0 : 1,
+        "errors",
+        0,
+        `Tour moved the camera (${moving}), a drag stopped it (${still}) and the control reads Play again (${label}).`,
+        "eq",
+      );
+    });
     await run("interaction.caption-step", "correctness", async () => {
       await page.goto(`${url}#/place/${encodeURIComponent(first)}`, { waitUntil: "load" });
       await ready(page);

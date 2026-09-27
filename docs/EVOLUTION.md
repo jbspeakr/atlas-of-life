@@ -5,6 +5,12 @@ Only measured experiments belong here. Optimisation uses the ordered objective i
 
 
 
+
+## In-app tour
+
+The pure camera choreography (`selectTourStops`, `createGlobeTour`, `cameraAtFrame`) moved from `scripts/recording.ts` to `src/map/tour.ts`; the recorder re-exports it, so the twenty recording tests and `npm run record` are unchanged. The controller gained `play()` and `stop()`: play deselects, loads both fine LODs, and drives `jumpTo` from a requestAnimationFrame loop mapping elapsed time to the recorder's 720-frame timeline; under reduced motion it instead holds each keyframe for 1.5 s. Any user movestart, Escape, World, a selection or a reset stops it; view reports and URL writes pause while it runs and resume on stop. A Tour/Stop button sits beside World. The first run threw "Frame must be an integer" because a frame timestamp can precede the `performance.now()` taken at start; the index is now clamped at zero.
+
+Verification: TypeScript, lint and 68 unit tests passed; quick verification passed. A software-rendered smoke run on the owner build confirmed play deselects the open caption, the camera moves within 1.5 s, the control reads Stop, Escape and a drag each halt it with the URL then describing the stopped camera, and reduced motion holds a shot for 500 ms before jumping. A runtime scenario (`interaction.tour-yields`) asserts the same yield-to-drag behaviour on the fixture. Tour frame timing is not yet a gated metric; the p95 gate remains the camera choreography.
 ## Journeys
 
 `scripts/trips.ts` chains dated city visits into journeys at build time: a visit joins when it starts no later than the day after the journey's latest end, visits sharing an authored `trip` label always group, open-ended and undated visits never join, and a journey needs two or more visits. Labels list the countries in visiting order with the year span ("Germany, Denmark and Norway, 2025"). The build publishes `trips.json` and `routes.json`, the latter densified along great circles every 100 km with longitudes unwrapped across the antimeridian; the last vertex keeps the published place coordinate, so the precision audit still holds. The payload audit gained a journey allowlist (`id`, `label`, `start`, `end`, `stops`). The owner data yields three journeys, including the Ahlbeck day trip to Swinemünde that overlaps its stay.

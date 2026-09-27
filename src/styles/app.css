@@ -70,6 +70,10 @@ header p {
   display: flex;
   gap: 8px;
 }
+.navigation .tour-button[aria-pressed="true"] {
+  border-color: var(--lamplight);
+  color: var(--lamplight);
+}
 .navigation .zoom-button {
   justify-content: center;
   width: 44px;
@@ -545,7 +549,11 @@ kbd {
   .navigation { top: 20px; right: 16px; gap: 6px; }
   .navigation button { padding: 0 10px; gap: 6px; }
   .navigation kbd { display: none; }
-  .navigation .zoom-button { display: none; }
+  .navigation .tour-button[aria-pressed="true"] {
+  border-color: var(--lamplight);
+  color: var(--lamplight);
+}
+.navigation .zoom-button { display: none; }
   .explorer-hint { display: none; }
   .place-browser { left: 16px; bottom: 94px; }
   .place-explorer {
