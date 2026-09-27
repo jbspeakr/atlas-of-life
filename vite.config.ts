@@ -103,7 +103,8 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
-    build: { target: "es2022", sourcemap: false },
+    // Fine geometry LODs are emitted as hashed assets; never inline them as data URIs.
+    build: { target: "es2022", sourcemap: false, assetsInlineLimit: 0 },
     server: { host: "127.0.0.1" },
   };
 });

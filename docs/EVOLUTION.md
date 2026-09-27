@@ -2,6 +2,19 @@
 
 Only measured experiments belong here. Optimisation uses the ordered objective in the brief; correctness, publication safety, accessibility and network purity are never traded away. Visual changes require explicit approval. Failed checks are fixed, not retried into acceptance.
 
+
+## Progressive geometry
+
+`style.json` previously embedded the fine region LOD and was fetched in full before the map was constructed. It now embeds only the coarse country and region LODs; the fine LODs are emitted as hashed assets (`build.assetsInlineLimit: 0` forbids data URIs) and swapped in with `setData` once the viewer zooms past 3 for regions and 4.5 for countries. After each swap the tracked feature state is re-applied on the next idle so a swap cannot relight a filtered-out boundary. Deterministic mode loads both fine LODs at load so approved captures compare fine geometry regardless of camera history. `budget.geometry-inline` (120 KB) gates the embedded bytes; `budget.geometry` keeps gating the total.
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| Owner `style.json` gzip | 320,640 bytes | 104,310 bytes |
+| Owner inline geometry gzip | 258,521 bytes (regions-fine) | 98,445 bytes (coarse) |
+| Fixture inline geometry gzip | 107,630 bytes | 48,920 bytes |
+| Fine LOD requests at world view | – | 0 |
+
+Verification: TypeScript, lint and 61 unit tests passed; quick verification passed with the new inline gate. A software-rendered smoke run on the owner build made no fine request at the world view, requested both fine assets after zooming to 5, raised region vertex count from 880 to 10,937, kept Attica extinguished and Berlin lit across the swap under a 2024 filter, and loaded both fine LODs at load in deterministic mode. First-view bytes and the frame-time gate need the GPU runner.
 ## Readable middle band
 
 The build now emits `anchors.json`: one interior label point per published country and region, keyed like its polygon and deliberately without a `country` field so the payload audit does not read anchors as places. Two symbol layers draw those names in mist with a midnight halo: uppercase country names from zoom 2 to 5 and region names from 4 to 7.5, each multiplied by the same feature-state visibility as its fill so the year filter extinguishes names with shapes. Ramps span 1.25 zoom so quarter-zoom samples never jump more than 0.2; the initial 0.75-zoom ramps failed the existing continuity contract at 0.33 and were widened rather than the contract loosened. The band order in `bands` keeps country, region and pin first because the overlap contract indexes them positionally.

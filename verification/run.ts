@@ -170,6 +170,18 @@ check(
   "bytes",
 );
 check(
+  "budget.geometry-inline",
+  "budget",
+  ["countries", "regions"]
+    .map((name) => `src/generated/${name}.geojson`)
+    .filter(existsSync)
+    .reduce((n, p) => n + gzipSync(readFileSync(p)).length, 0) ||
+    Number.MAX_SAFE_INTEGER,
+  budgets.geometryInlineGzip,
+  "src/generated/{countries,regions}.geojson: coarse LODs embedded in style.json and fetched before the map exists; fine LODs load on zoom",
+  "bytes",
+);
+check(
   "budget.largest-generated",
   "budget",
   generated.length

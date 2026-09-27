@@ -92,7 +92,7 @@ Quick mode runs static, unit, cold fixture generation and payload budgets in und
 
 Normal-motion startup and camera performance are measured separately from deterministic visual capture. Cold FCP uses CDP 150 ms latency / 1.6 Mbps down; warm FCP proves HTTP cache use. Static serving uses ordinary gzip compression for text, but never compresses PMTiles byte ranges. Performance measurements require real GPU acceleration; software renderers fail visibly. The hosted `quick` job runs static, unit, fixture-build, style and budget gates on `ubuntu-latest` and gates deployment. GPU-dependent runtime, performance and visual checks belong to the commented full job, which targets a provisioned self-hosted `macOS`, `ARM64`, `atlas-gpu` runner; that runner must be supplied before the full run can execute in CI.
 
-Measured sizes live in `verification/report.json`, which every run rewrites; the fixture build is the one CI measures. The owner's larger geography emits about **615 KB gzip** of boundary LODs across all files, above the 400 KB target and below the 1 MB hard limit; see [evolution](docs/EVOLUTION.md) for how progressive loading addresses it. The full report is authoritative; evolution records measured changes rather than visual guesses.
+Measured sizes live in `verification/report.json`, which every run rewrites; the fixture build is the one CI measures. The owner's larger geography emits about **615 KB gzip** of boundary LODs across all files, above the 400 KB target and below the 1 MB hard limit; of which only the coarse LODs (about 98 KB gzip) travel with the style; fine LODs load when you zoom past the region band. The full report is authoritative; evolution records measured changes rather than visual guesses.
 
 ## Static hosting and security
 

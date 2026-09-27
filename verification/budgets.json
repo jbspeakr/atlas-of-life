@@ -13,5 +13,6 @@
   "visualDiff": 0,
   "fcpWarmMs": 1500,
   "fcpColdMs": 3000,
-  "layoutShift": 0
+  "layoutShift": 0,
+  "geometryInlineGzip": 120000
 }

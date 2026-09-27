@@ -186,15 +186,18 @@ async function main(): Promise<void> {
     "visits.json": JSON.stringify(anchored.map(publicVisit)),
   };
   let geometryBytes = 0;
+  let inlineBytes = 0;
   for (const [name, text] of Object.entries(files)) {
     const bytes = gzipSync(text, { level: 9 }).byteLength;
     if (name.endsWith(".geojson")) geometryBytes += bytes;
+    if (name === "countries.geojson" || name === "regions.geojson")
+      inlineBytes += bytes;
     console.log(
       `${name}: ${Buffer.byteLength(text).toLocaleString("en-US")} bytes; gzip ${bytes.toLocaleString("en-US")} bytes`,
     );
   }
   console.log(
-    `Geometry total gzip: ${geometryBytes.toLocaleString("en-US")} bytes (target 400,000; maximum 1,000,000)`,
+    `Geometry inline gzip: ${inlineBytes.toLocaleString("en-US")} bytes (coarse LODs in style.json; target 120,000); total gzip ${geometryBytes.toLocaleString("en-US")} bytes (target 400,000; maximum 1,000,000)`,
   );
   if (geometryBytes > 1_000_000)
     throw new Error(

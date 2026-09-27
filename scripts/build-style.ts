@@ -97,10 +97,12 @@ const style: StyleSpecification = {
       promoteId: "country",
       data: geo("countries"),
     },
+    // Coarse LODs ship inline; the fine LODs are hashed assets the app swaps in
+    // once the viewer zooms past the band where their detail becomes visible.
     regions: {
       type: "geojson",
       promoteId: "region",
-      data: geo("regions-fine"),
+      data: geo("regions"),
     },
     anchors: {
       type: "geojson",

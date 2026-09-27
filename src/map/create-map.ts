@@ -8,6 +8,8 @@ import type {
 import type { FeatureCollection } from "geojson";
 import { Protocol } from "pmtiles";
 import styleUrl from "../generated/style.json?url";
+import countriesFineUrl from "../generated/countries-fine.geojson?url";
+import regionsFineUrl from "../generated/regions-fine.geojson?url";
 import placesData from "../generated/places.json";
 import visitsData from "../generated/visits.json";
 import { placeKey } from "./place-key";
@@ -118,6 +120,36 @@ export async function createMap(
   const countries = countrySource.data as FeatureCollection;
   const regions = regionSource.data as FeatureCollection;
   const states = new Map<string, number>();
+  // Progressive geometry: fine boundary LODs load once the viewer zooms past
+  // the band where their detail is visible, then the tracked feature state is
+  // re-applied so a swap can never relight a filtered-out boundary.
+  const fineLoaded = new Set<string>();
+  const fineSources: Record<string, { url: string; zoom: number }> = {
+    regions: { url: regionsFineUrl, zoom: 3 },
+    countries: { url: countriesFineUrl, zoom: 4.5 },
+  };
+  const loadFine = (id: string) => {
+    if (fineLoaded.has(id)) return;
+    const source = map.getSource(id);
+    if (!source || !("setData" in source)) return;
+    fineLoaded.add(id);
+    (source as maplibregl.GeoJSONSource).setData(
+      new URL(fineSources[id].url, location.href).href,
+    );
+    map.once("idle", () => {
+      for (const [key, visibility] of states)
+        if (key.startsWith(id))
+          map.setFeatureState(
+            { source: id, id: key.slice(id.length) },
+            { visibility },
+          );
+    });
+  };
+  const refineForZoom = () => {
+    const z = map.getZoom();
+    for (const [id, fine] of Object.entries(fineSources))
+      if (z >= fine.zoom) loadFine(id);
+  };
   const features = [
     ...countries.features.map((f) => ({
       source: "countries",
@@ -317,6 +349,9 @@ export async function createMap(
   map.on("load", () => {
     route();
     reportView();
+    // Deterministic captures compare fine geometry regardless of camera history.
+    if (deterministic) for (const id of Object.keys(fineSources)) loadFine(id);
+    refineForZoom();
     if (!media.matches && !deterministic && !location.hash && !stopped) {
       const ordered = [...countries.features].sort((a, b) => {
         const first = (id: unknown) =>
@@ -381,6 +416,7 @@ export async function createMap(
     );
   }
   map.on("moveend", reportView);
+  map.on("zoomend", refineForZoom);
   map.on("resize", reportView);
   let hovered: { source: string; id: string | number } | undefined;
   const unhover = () => {
