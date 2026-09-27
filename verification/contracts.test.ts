@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import ts from "typescript";
 import fc from "fast-check";
 import {
   validateConfig,
@@ -607,3 +608,75 @@ describe("statistics", () => {
     expect(JSON.stringify(stats)).not.toMatch(/coordinates|address/);
   });
 });
+describe("authoring commands", () => {
+  const source = `import type { Config } from "../scripts/config.ts";
+
+const config: Config = {
+  publishPrecision: "city",
+  visits: [
+    {
+      country: "DE",
+      city: "Berlin",
+      date: "2024-04-25",
+    },
+  ],
+};
+export default config;
+`;
+  it("parses arguments into a validated visit", async () => {
+    const { parseVisitArgs } = await import("../scripts/authoring.ts");
+    expect(parseVisitArgs(["de", "Wendisch Rietz", "2025-04-04..2025-04-06", "--trip", "Spring"]).visit).toEqual({
+      country: "DE",
+      city: "Wendisch Rietz",
+      trip: "Spring",
+      dateRange: ["2025-04-04", "2025-04-06"],
+    });
+    expect(parseVisitArgs(["GR", "Kalamos", "2025-04-27", "--dry-run"])).toMatchObject({ dryRun: true, geocode: true });
+    expect(() => parseVisitArgs(["XX", "Nowhere", "2025-01-01"])).toThrow();
+    expect(() => parseVisitArgs(["DE", "Berlin", "2025-13-01"])).toThrow();
+    expect(() => parseVisitArgs(["DE", "Berlin"])).toThrow(/Usage/);
+  });
+  it("inserts a visit at the end of the array without touching other bytes", async () => {
+    const { insertVisit } = await import("../scripts/authoring.ts");
+    const result = insertVisit(source, { country: "GR", city: "Kalamos", dateRange: ["2025-04-27", "2025-05-02"] });
+    const expected = source.replace(
+      `      date: "2024-04-25",
+    },
+  ],`,
+      `      date: "2024-04-25",
+    },
+    {
+      country: "GR",
+      city: "Kalamos",
+      dateRange: ["2025-04-27", "2025-05-02"],
+    },
+  ],`,
+    );
+    expect(result).toBe(expected);
+    // Inserting into an emptied array and into an array without a trailing comma both parse.
+    const empty = insertVisit(source.replace(/visits: \[[\s\S]*?\],/, "visits: [],"), { country: "FR", city: "Paris", date: "2026-05-14" });
+    expect(empty).toContain('city: "Paris"');
+    const noComma = insertVisit(source.replace("    },\n  ],", "    }\n  ],"), { country: "FR", city: "Paris", date: "2026-05-14" });
+    expect(noComma).toContain('    },\n    {\n      country: "FR"');
+    for (const text of [result, empty, noComma])
+      expect(() => validateConfig(evalConfig(text))).not.toThrow();
+  });
+  it("refuses duplicates by country, folded city and dates", async () => {
+    const { duplicateOf } = await import("../scripts/authoring.ts");
+    const config = { visits: [{ country: "SE", city: "Ödsmål", dateRange: ["2025-06-18", "2025-06-24"] as [string, string] }] };
+    expect(duplicateOf(config, { country: "SE", city: "odsmal", dateRange: ["2025-06-18", "2025-06-24"] })).toBeDefined();
+    expect(duplicateOf(config, { country: "SE", city: "Ödsmål", date: "2025-06-18" })).toBeUndefined();
+  });
+  it("reads quoted CSV rows into visits with line numbers", async () => {
+    const { parseCsv, visitFromRow } = await import("../scripts/authoring.ts");
+    const rows = parseCsv('country,city,start,end,label,trip\r\nde,"Wendisch Rietz",2025-04-04,2025-04-06,,\nGR,Kalamos,2025-04-27,,,"Spring, 2025"\n\n');
+    expect(rows.map((row) => row.line)).toEqual([2, 3]);
+    expect(visitFromRow(rows[0])).toEqual({ country: "DE", city: "Wendisch Rietz", dateRange: ["2025-04-04", "2025-04-06"] });
+    expect(visitFromRow(rows[1])).toEqual({ country: "GR", city: "Kalamos", date: "2025-04-27", trip: "Spring, 2025" });
+    expect(() => visitFromRow({ line: 9, fields: { country: "GR", city: "", start: "2025-01-01" } })).toThrow(/line 9/);
+  });
+});
+function evalConfig(text: string): unknown {
+  const js = ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return new Function(`${js.replace(/export default config;\s*$/, "")}\nreturn config;`)();
+}

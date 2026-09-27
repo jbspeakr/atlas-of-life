@@ -48,7 +48,7 @@ Add an entry to `data/visits.ts` with only the fields you have:
 
 Use uppercase country codes (`DE`, `GR`, `GB`) and `YYYY-MM-DD` dates. A single-day visit uses `date` instead of `dateRange`. IDs and city labels are generated automatically; tags are not supported.
 
-Run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, using your own contact email or URL, then `npm run build`. Commit the config and updated geocache/source manifest, then redeploy `dist/`. No region codes or coordinates need to be authored. Same-named cities can require an optional qualifier rather than a guessed location. See [data authoring](docs/DATA.md) for identity stability, precision and boundary-provider limitations.
+Or let the command do it: `NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02` validates, appends, geocodes and prints the resolved point; `npm run import -- file.csv` does the same for a spreadsheet export. Otherwise run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, using your own contact email or URL, then `npm run build`. Commit the config and updated geocache/source manifest, then redeploy `dist/`. No region codes or coordinates need to be authored. Same-named cities can require an optional qualifier rather than a guessed location. See [data authoring](docs/DATA.md) for identity stability, precision and boundary-provider limitations.
 
 ## Privacy first
 

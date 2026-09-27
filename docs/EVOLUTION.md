@@ -7,6 +7,12 @@ Only measured experiments belong here. Optimisation uses the ordered objective i
 
 
 
+
+## Authoring commands
+
+`npm run add -- DE "Wendisch Rietz" 2025-04-04..2025-04-06 [--region] [--label] [--trip] [--dry-run] [--no-geocode]` validates the visit with the same schema as the build, refuses a duplicate (same country, folded city and dates), appends to `data/visits.ts` by locating the `visits` array with the TypeScript compiler API and inserting after its last element in the file's two-space, trailing-comma style, then warms the geocache through the existing `geocodeConfig` and prints the resolved point and region code. `npm run import -- file.csv` applies the same path to a `country,city,start,end,label,trip[,region]` spreadsheet export, skips rows already present, and aborts before writing on any invalid row, naming the line. Validation issues are rendered as one readable line rather than a Zod dump. Reverse-geocoded GPX or timeline imports are deliberately absent because of Nominatim's usage policy.
+
+Verification: TypeScript, lint and 73 unit tests passed, including byte-exact insertion into a populated array, an emptied array and an array without a trailing comma (each re-parsed through the compiler and re-validated), duplicate refusal by folded name, and quoted CSV rows with CRLF endings. Against the owner's real file, a duplicate Berlin entry was refused, a Lyon dry run printed the exact text that would be appended without writing, and a three-row CSV dry run skipped Berlin, reported an invalid country on its line, and wrote nothing. Quick verification passed.
 ## By the numbers
 
 `scripts/stats.ts` computes totals at build time from published visits, places and journeys only: countries, regions, places, visits, journeys, nights away, the longest stay, visits and nights per start year, and places with first year per country. `stats.json` joins the payload audit, which now also fails on any coordinate or address inside statistics. The header count line became a button that opens a compact panel with a definition list, a nights-by-year table whose lamplight bar is a proportional aside to the printed number, and a places-by-country table. Only one of directory, caption and numbers is open at a time; Escape closes and returns focus. Sizing the panel exposed that the open directory could overlap the header on an 800 px tall desktop viewport, so its maximum height now reserves 260 px.

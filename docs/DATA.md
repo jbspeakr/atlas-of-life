@@ -18,7 +18,17 @@ const config: Config = {
 export default config;
 ```
 
-After adding cities, run:
+The quickest route is the add command, which validates, appends to `data/visits.ts` in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache for the new city and prints its resolved coordinates:
+
+```sh
+NOMINATIM_CONTACT=you@example.org npm run add -- DE "Wendisch Rietz" 2025-04-04..2025-04-06
+npm run add -- GR Kalamos 2025-04-27 --trip "Spring 2025" --dry-run
+npm run import -- trips.csv
+```
+
+`--region`, `--label` and `--trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. The import command reads a CSV with the header `country,city,start,end,label,trip[,region]`, skips rows already present and aborts on any invalid row before writing. GPX or timeline exports are deliberately not imported: they would need reverse geocoding of many points against Nominatim's usage policy.
+
+If you edit the file by hand instead, after adding cities run:
 
 ```sh
 NOMINATIM_CONTACT=you@example.org npm run geocode
