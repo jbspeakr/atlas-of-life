@@ -65,12 +65,27 @@ const places = JSON.parse(
   coordinates: [number, number];
   visitCount: number;
 }[];
+const anchors = JSON.parse(
+  readFileSync("src/generated/anchors.json", "utf8"),
+) as FeatureCollection;
+const anchorLabels = anchors.features.map((feature) =>
+  String(feature.properties?.label),
+);
+const routes = JSON.parse(
+  readFileSync("src/generated/routes.json", "utf8"),
+) as FeatureCollection;
 const visible: ExpressionSpecification = [
   "coalesce",
   ["feature-state", "visibility"],
   1,
 ];
 const pinOpacity = withVisibility(bands.pin);
+const hoverWidth = (rest: number, hover: number): ExpressionSpecification => [
+  "case",
+  ["boolean", ["feature-state", "hover"], false],
+  hover,
+  rest,
+];
 const style: StyleSpecification = {
   version: 8,
   name: "Atlas — lamplight",
@@ -85,10 +100,22 @@ const style: StyleSpecification = {
       promoteId: "country",
       data: geo("countries"),
     },
+    // Coarse LODs ship inline; the fine LODs are hashed assets the app swaps in
+    // once the viewer zooms past the band where their detail becomes visible.
     regions: {
       type: "geojson",
       promoteId: "region",
-      data: geo("regions-fine"),
+      data: geo("regions"),
+    },
+    anchors: {
+      type: "geojson",
+      promoteId: "id",
+      data: anchors,
+    },
+    routes: {
+      type: "geojson",
+      promoteId: "trip",
+      data: routes,
     },
     pins: {
       type: "geojson",
@@ -122,7 +149,7 @@ const style: StyleSpecification = {
       source: "countries",
       paint: {
         "line-color": "#bcaa88",
-        "line-width": 0.8,
+        "line-width": hoverWidth(0.8, 1.6),
         "line-opacity": withVisibility(bands.country, 0.7),
       },
     },
@@ -141,8 +168,19 @@ const style: StyleSpecification = {
       source: "regions",
       paint: {
         "line-color": "#efc784",
-        "line-width": 0.8,
+        "line-width": hoverWidth(0.8, 1.6),
         "line-opacity": withVisibility(bands.region),
+      },
+    },
+    {
+      id: "routes",
+      type: "line",
+      source: "routes",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#efc784",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.4, 16, 2],
+        "line-opacity": withVisibility(bands.route),
       },
     },
     {
@@ -222,6 +260,46 @@ const style: StyleSpecification = {
       },
     },
     {
+      id: "country-labels",
+      type: "symbol",
+      source: "anchors",
+      filter: ["==", ["get", "kind"], "country"],
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 2, 11, 4.5, 13],
+        "text-letter-spacing": 0.08,
+        "text-transform": "uppercase",
+        "text-allow-overlap": false,
+        "symbol-sort-key": 0,
+      },
+      paint: {
+        "text-color": "#a7b2bf",
+        "text-halo-color": "#080f18",
+        "text-halo-width": 1.5,
+        "text-opacity": withVisibility(bands.countryLabel),
+      },
+    },
+    {
+      id: "region-labels",
+      type: "symbol",
+      source: "anchors",
+      filter: ["==", ["get", "kind"], "region"],
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 7, 13],
+        "text-allow-overlap": false,
+        "symbol-sort-key": 1,
+      },
+      paint: {
+        "text-color": "#a7b2bf",
+        "text-halo-color": "#080f18",
+        "text-halo-width": 1.5,
+        "text-opacity": withVisibility(bands.regionLabel),
+      },
+    },
+    {
       id: "place-labels",
       type: "symbol",
       source: "pins",
@@ -269,15 +347,14 @@ style.layers.splice(1, 0, {
   paint: { "fill-color": "#121c27" },
 });
 const labels = Object.fromEntries(
-  geo("regions").features.map((feature) => [
-    String(feature.id),
-    String(feature.properties?.label),
-  ]),
+  anchors.features
+    .filter((feature) => feature.properties?.kind === "region")
+    .map((feature) => [String(feature.id), String(feature.properties?.label)]),
 );
 writeFileSync("src/generated/region-labels.json", JSON.stringify(labels));
 const ranges = new Set(
-  places.flatMap((place) =>
-    [...place.label].map(
+  [...places.map((place) => place.label), ...anchorLabels].flatMap((label) =>
+    [...label].map(
       (character) => Math.floor(character.codePointAt(0)! / 256) * 256,
     ),
   ),

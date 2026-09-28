@@ -1,6 +1,16 @@
 import { defineConfig, loadEnv } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join, relative } from "node:path";
+import { serviceWorkerSource } from "./scripts/service-worker.ts";
+const walk = (dir: string): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir).flatMap((name) => {
+        const p = join(dir, name);
+        return statSync(p).isDirectory() ? walk(p) : [p];
+      })
+    : [];
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const remote =
@@ -41,16 +51,38 @@ export default defineConfig(({ mode }) => {
     base: env.VITE_BASE || "./",
     plugins: [
       {
-        name: "atlas-csp",
+        name: "atlas-html",
         apply: "build",
-        transformIndexHtml() {
-          return [
+        transformIndexHtml(html) {
+          const site = env.VITE_SITE_URL?.trim();
+          const tags: {
+            tag: string;
+            attrs: Record<string, string>;
+            injectTo: "head-prepend" | "head";
+          }[] = [
             {
               tag: "meta",
               attrs: { "http-equiv": "Content-Security-Policy", content: csp },
               injectTo: "head-prepend",
             },
           ];
+          if (site) {
+            // Social scrapers require absolute image and canonical URLs.
+            const origin = new URL(site);
+            if (origin.protocol !== "https:")
+              throw new Error("VITE_SITE_URL must use HTTPS");
+            const base = origin.href.endsWith("/") ? origin.href : `${origin.href}/`;
+            html = html
+              .replaceAll(
+                `content="${env.VITE_BASE || "./"}social/card.png"`,
+                `content="${base}social/card.png"`,
+              );
+            tags.push(
+              { tag: "meta", attrs: { property: "og:url", content: base }, injectTo: "head" },
+              { tag: "link", attrs: { rel: "canonical", href: base }, injectTo: "head" },
+            );
+          }
+          return { html, tags };
         },
       },
       {
@@ -72,6 +104,35 @@ export default defineConfig(({ mode }) => {
           }
         },
       },
+      {
+        name: "atlas-service-worker",
+        apply: "build",
+        enforce: "post",
+        closeBundle() {
+          // Precache the shell: page, hashed assets, fonts, sprites, glyph ranges, icons.
+          // Tiles are never precached; a saved archive is served by range from its own cache.
+          const files = walk("dist")
+            .map((file) => relative("dist", file).split("\\").join("/"))
+            .filter(
+              (file) =>
+                file.startsWith("assets/") ||
+                file.startsWith("fonts/") ||
+                file.startsWith("sprites/") ||
+                file.startsWith("glyphs/Noto Sans Regular/") ||
+                file.startsWith("icons/") ||
+                ["favicon.svg", "manifest.webmanifest"].includes(file),
+            )
+            .filter((file) => !file.endsWith(".txt"))
+            .sort();
+          const precache = ["./", ...files];
+          const version = createHash("sha256")
+            .update(precache.join("\n"))
+            .update(existsSync("dist/index.html") ? statSync("dist/index.html").size.toString() : "")
+            .digest("hex")
+            .slice(0, 12);
+          writeFileSync("dist/sw.js", serviceWorkerSource(precache, version));
+        },
+      },
       ...(env.ANALYZE
         ? [
             visualizer({
@@ -81,7 +142,8 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
-    build: { target: "es2022", sourcemap: false },
+    // Fine geometry LODs are emitted as hashed assets; never inline them as data URIs.
+    build: { target: "es2022", sourcemap: false, assetsInlineLimit: 0 },
     server: { host: "127.0.0.1" },
   };
 });

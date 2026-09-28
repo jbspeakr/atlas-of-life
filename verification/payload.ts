@@ -10,6 +10,14 @@ const allowlist: Record<string, true> = {
   dateRange: true,
   visitCount: true,
 };
+// Journeys are derived from public visits; their labels are generated or authored for publication.
+const tripAllowlist: Record<string, true> = {
+  id: true,
+  label: true,
+  start: true,
+  end: true,
+  stops: true,
+};
 /** Audit object shapes in both standalone JSON and minified production JavaScript. */
 export function payloadViolations(
   filename: string,
@@ -36,6 +44,13 @@ export function payloadViolations(
           `${filename}: place ${String(object.id)} coordinates ${JSON.stringify(object.coordinates)} do not match precision-safe ${JSON.stringify(safe)}`,
         );
     }
+    if ("id" in object && "label" in object && Array.isArray(object.stops)) {
+      for (const key of Object.keys(object))
+        if (tripAllowlist[key] !== true)
+          violations.push(
+            `${filename}: journey ${String(object.id)} contains forbidden field ${key}`,
+          );
+    }
     if (object.type === "Feature" && object.geometry && object.properties) {
       const geometry = object.geometry as Record<string, unknown>;
       const props = object.properties as Record<string, unknown>;
@@ -52,7 +67,11 @@ export function payloadViolations(
     for (const child of Object.values(object)) inspect(child);
   }
   if (/\.(json|geojson)$/.test(filename)) {
-    inspect(JSON.parse(text));
+    const parsed: unknown = JSON.parse(text);
+    inspect(parsed);
+    // Statistics are totals only; a coordinate anywhere inside them is a leak.
+    if (/stats\.json$/.test(filename) && /"coordinates"|"address"/.test(text))
+      violations.push(`${filename}: statistics must not carry coordinates or addresses`);
     return violations;
   }
   if (!/\.js$/.test(filename)) return violations;

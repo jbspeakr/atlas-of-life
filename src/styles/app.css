@@ -59,6 +59,106 @@ header p {
 .atlas-count {
   font-size: 11px;
   color: var(--mist);
+  pointer-events: auto;
+  border: 0;
+  background: transparent;
+  padding: 6px 0;
+  margin: -6px 0;
+  text-shadow: inherit;
+}
+.atlas-count:hover,
+.atlas-count[aria-expanded="true"] {
+  color: var(--parchment);
+}
+.atlas-stats {
+  position: absolute;
+  left: 32px;
+  top: 150px;
+  z-index: 2;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100svh - 270px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--contour);
+  border-radius: 10px;
+  background: #0c151efa;
+  box-shadow: 0 8px 30px #0003;
+  font-size: var(--text-xs);
+}
+.stats-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px;
+  margin: 8px 0 14px;
+}
+.stats-totals div {
+  border-top: 1px solid var(--contour);
+  padding-top: 8px;
+}
+.stats-totals dt {
+  color: var(--mist);
+  font-size: 10px;
+}
+.stats-totals dd {
+  margin: 2px 0 0;
+  font: 400 1.4rem/1.1 Fraunces, serif;
+  font-variant-numeric: tabular-nums;
+}
+.stats-note {
+  color: var(--mist);
+  margin: 0 0 14px;
+}
+.stats-note em {
+  font-style: normal;
+  color: var(--parchment);
+}
+.atlas-stats table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.atlas-stats caption {
+  text-align: left;
+  color: var(--mist);
+  font-size: 10px;
+  padding-bottom: 6px;
+}
+.atlas-stats th,
+.atlas-stats td {
+  text-align: left;
+  font-weight: 400;
+  padding: 5px 6px 5px 0;
+  border-top: 1px solid var(--contour);
+}
+.atlas-stats thead th {
+  color: var(--mist);
+  font-size: 10px;
+  border-top: 0;
+}
+.atlas-stats td:not(:first-child),
+.atlas-stats thead th:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+.stats-bar {
+  display: inline-block;
+  vertical-align: middle;
+  width: 96px;
+  height: 4px;
+  margin-right: 10px;
+  background: var(--contour);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stats-bar i {
+  display: block;
+  height: 100%;
+  background: var(--lamplight);
+  border-radius: 2px;
 }
 .atlas-count span {
   margin: 0 5px;
@@ -67,6 +167,19 @@ header p {
   position: absolute;
   right: 28px;
   top: 28px;
+  display: flex;
+  gap: 8px;
+}
+.navigation .tour-button[aria-pressed="true"] {
+  border-color: var(--lamplight);
+  color: var(--lamplight);
+}
+.navigation .zoom-button {
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  font-size: var(--text-lg);
+  line-height: 1;
 }
 .navigation button,
 .browse-toggle,
@@ -123,7 +236,7 @@ kbd {
   left: 0;
   bottom: 54px;
   width: 320px;
-  max-height: calc(100svh - 220px);
+  max-height: calc(100svh - 260px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -310,7 +423,8 @@ kbd {
 .place-caption .visit-dates {
   font-size: 11px;
 }
-.place-caption .caption-count {
+.place-caption .caption-count,
+.place-caption .caption-nights {
   color: var(--lamplight);
 }
 .dismiss {
@@ -318,24 +432,99 @@ kbd {
   right: 0;
   top: 0;
 }
+.caption-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px -8px -6px;
+  font-size: var(--text-xs);
+  color: var(--mist);
+  line-height: 1.5;
+}
+.caption-steps span {
+  flex: 1;
+  min-width: 0;
+}
+.caption-steps em {
+  font-style: normal;
+  color: var(--parchment);
+}
+.caption-steps button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--parchment);
+  font-size: var(--text-base);
+}
+.place-mark-route {
+  width: 12px;
+  height: 1px;
+  flex-basis: 12px;
+  border-radius: 0;
+}
 .timeline {
   position: absolute;
   bottom: 48px;
   right: 28px;
-  width: 320px;
+  width: 500px;
   padding: 0 0 0 14px;
-  gap: 12px;
+  gap: 10px;
 }
 .timeline label {
-  min-width: 82px;
+  min-width: 108px;
   white-space: nowrap;
   color: var(--mist);
   font-variant-numeric: tabular-nums;
+}
+.timeline-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.timeline-ticks {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 50%;
+  height: 0;
+  pointer-events: none;
+}
+.timeline-ticks i {
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 6px;
+  margin-left: -0.5px;
+  background: var(--contour);
+}
+.timeline-ticks i.lit {
+  background: var(--lamplight);
+}
+.timeline-mode {
+  display: flex;
+  border-left: 1px solid var(--contour);
+}
+.timeline-mode button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mist);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.timeline-mode button[aria-pressed="true"] {
+  color: var(--lamplight);
 }
 .timeline output {
   color: var(--parchment);
 }
 .timeline input {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   width: 100%;
@@ -422,6 +611,23 @@ kbd {
 .attribution a:hover {
   text-decoration: underline;
 }
+.attribution .offline {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--contour);
+  color: var(--mist);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.attribution .offline button {
+  border: 1px solid var(--contour);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--parchment);
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  min-height: 32px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -457,13 +663,19 @@ kbd {
   header p { font-size: 11px; }
   .atlas-count { font-size: 10px; line-height: 1.6; }
   .atlas-count span { margin: 0 2px; }
-  .navigation { top: 20px; right: 16px; }
+  .navigation { top: 20px; right: 16px; gap: 6px; }
   .navigation button { padding: 0 10px; gap: 6px; }
   .navigation kbd { display: none; }
+  .navigation .tour-button[aria-pressed="true"] {
+  border-color: var(--lamplight);
+  color: var(--lamplight);
+}
+.navigation .zoom-button { display: none; }
+  .explorer-hint { display: none; }
   .place-browser { left: 16px; bottom: 94px; }
   .place-explorer {
     width: min(320px, calc(100vw - 32px));
-    max-height: calc(100svh - 260px);
+    max-height: min(52svh, calc(100svh - 260px));
   }
   .place-caption {
     left: 16px;
@@ -474,9 +686,13 @@ kbd {
   }
   .place-caption h2 { font-size: 1.8rem; }
   .timeline { left: 16px; right: 16px; bottom: 40px; width: auto; }
+  .timeline label { min-width: 96px; }
+  .timeline-mode { display: none; }
   .attribution { right: 16px; bottom: 5px; font-size: 9px; }
   .atlas-close header p,
   .atlas-close header .atlas-count { display: none; }
+  .atlas-stats { left: 16px; top: 120px; max-height: calc(100svh - 300px); }
+  .stats-bar { width: 48px; }
 }
 @media (max-height: 550px) and (min-width: 701px) {
   .place-explorer { max-height: calc(100svh - 130px); }

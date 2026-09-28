@@ -1,6 +1,6 @@
 import type { ExpressionSpecification } from "maplibre-gl";
 export const bands: Record<
-  "country" | "region" | "pin",
+  "country" | "region" | "pin" | "countryLabel" | "regionLabel" | "route",
   ExpressionSpecification
 > = {
   country: [
@@ -36,6 +36,56 @@ export const bands: Record<
     0.08,
   ],
   pin: ["interpolate", ["linear"], ["zoom"], 0, 0, 5.75, 0, 7.25, 1, 16, 1],
+  // Journey lines arrive with the regions and stay thin beneath the pins.
+  route: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    0,
+    0,
+    3,
+    0,
+    4.25,
+    0.55,
+    16,
+    0.55,
+  ],
+  // Names appear once their fills are the subject and yield to the next band.
+  // Ramps span 1.25 zoom so quarter-zoom samples never jump more than 0.2.
+  countryLabel: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    0,
+    0,
+    2,
+    0,
+    3.25,
+    1,
+    3.75,
+    1,
+    5,
+    0,
+    16,
+    0,
+  ],
+  regionLabel: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    0,
+    0,
+    4,
+    0,
+    5.25,
+    1,
+    6.25,
+    1,
+    7.5,
+    0,
+    16,
+    0,
+  ],
 };
 export function withVisibility(
   band: ExpressionSpecification,

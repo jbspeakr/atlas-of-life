@@ -570,7 +570,7 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       );
     });
     await run("interaction.timeline", "correctness", async () => {
-      const slider = page.getByRole("slider", { name: "Year", exact: true });
+      const slider = page.getByRole("slider", { name: /^Visited/ });
       await camera(page, [-0.1276, 51.5072], 10);
       const point = await page.evaluate(() => {
         const map = (window as unknown as AtlasWindow).__atlas.map;
@@ -601,11 +601,156 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
         drop,
         "red-channel drop",
         80,
-        `src/generated/style.json: London pin must visibly extinguish at year 2019; center red ${before.data[center]} → ${after.data[center]}. Missing promoteId/feature-state binding leaves the pin lit.`,
+        `src/generated/style.json: London pin must visibly extinguish at the earliest scrubber position (2019); center red ${before.data[center]} → ${after.data[center]}. Missing promoteId/feature-state binding leaves the pin lit.`,
         "gte",
       );
       await run("a11y.timeline", "a11y", () => axe("timeline"));
       await slider.press("End");
+    });
+    const firstDate = (place: Place) =>
+      place.date ??
+      (Array.isArray(place.dateRange) ? place.dateRange[0] : place.dateRange?.start) ??
+      "";
+    await run("offline.archive", "correctness", async () => {
+      // Bundled fixture: save the archive, register the worker, go offline, reload, render.
+      const offlinePage = await context.newPage();
+      await offlinePage.addInitScript(
+        'globalThis.__name = (target, value) => Object.defineProperty(target, "name", {value, configurable:true});',
+      );
+      const offlineCdp = await context.newCDPSession(offlinePage);
+      await offlineCdp.send("Network.enable");
+      await offlinePage.goto(`${server!.origin}/atlas/`, { waitUntil: "load" });
+      await ready(offlinePage);
+      await offlinePage.evaluate(async () => {
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration.active) throw new Error("Service worker not active");
+      });
+      await offlinePage.waitForFunction(async () => {
+        const keys = await caches.keys();
+        if (!keys.some((key) => key.startsWith("atlas-shell-"))) return false;
+        const cache = await caches.open(keys.find((key) => key.startsWith("atlas-shell-"))!);
+        return (await cache.keys()).length > 5;
+      });
+      await offlinePage.locator(".attribution summary").click();
+      await offlinePage.getByRole("button", { name: "Save the map for offline use" }).click();
+      await offlinePage.getByText(/Map saved for offline use/).waitFor({ timeout: 60000 });
+      await offlineCdp.send("Network.emulateNetworkConditions", {
+        offline: true,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
+      await offlinePage.reload({ waitUntil: "load" });
+      await ready(offlinePage);
+      await camera(offlinePage, [13.405, 52.52], 10);
+      const pins = await offlinePage.evaluate(
+        () => (window as unknown as AtlasWindow).__atlas.map.queryRenderedFeatures({ layers: ["pins"] }).length,
+      );
+      const tiles = await offlinePage.evaluate(
+        () => (window as unknown as AtlasWindow).__atlas.map.queryRenderedFeatures({ layers: ["overview-earth"] }).length,
+      );
+      await offlineCdp.send("Network.emulateNetworkConditions", {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
+      await offlinePage.evaluate(async () => {
+        for (const key of await caches.keys()) await caches.delete(key);
+        for (const registration of await navigator.serviceWorker.getRegistrations()) await registration.unregister();
+      });
+      await offlinePage.close();
+      record(
+        "offline.archive",
+        "correctness",
+        pins > 0 && tiles > 0 ? 0 : 1,
+        "errors",
+        0,
+        `Offline reload after saving the bundled archive rendered ${pins} pins and ${tiles} basemap earth features from the worker caches.`,
+        "eq",
+      );
+    });
+    await run("a11y.numbers", "a11y", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.getByRole("button", { name: "By the numbers", exact: true }).click();
+      const panel = page.getByRole("region", { name: "By the numbers", exact: true });
+      await panel.waitFor({ state: "visible" });
+      const opened = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+      await axe("numbers");
+      await page.keyboard.press("Escape");
+      await panel.waitFor({ state: "hidden" });
+      const returned = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+      record(
+        "a11y.numbers-focus",
+        "a11y",
+        opened === "Close numbers" && returned === "By the numbers" ? 0 : 1,
+        "errors",
+        0,
+        `Opening the numbers panel focuses its close control (${opened}); Escape returns focus to the count (${returned}).`,
+        "eq",
+      );
+    });
+    await run("interaction.tour-yields", "correctness", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.getByRole("button", { name: "Play a tour of the atlas" }).click();
+      await page.waitForTimeout(600);
+      const moving = await page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const map = (window as unknown as AtlasWindow).__atlas.map;
+            const before = map.getCenter().lng + map.getZoom();
+            setTimeout(() => resolve(map.getCenter().lng + map.getZoom() !== before), 200);
+          }),
+      );
+      const box = (await page.locator(".maplibregl-canvas").boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 4 });
+      await page.mouse.up();
+      await settle(page);
+      const still = await page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const map = (window as unknown as AtlasWindow).__atlas.map;
+            const before = map.getCenter().lng + map.getZoom();
+            setTimeout(() => resolve(map.getCenter().lng + map.getZoom() === before), 300);
+          }),
+      );
+      const label = await page.getByRole("button", { name: /tour/i }).first().getAttribute("aria-label");
+      record(
+        "interaction.tour-yields",
+        "correctness",
+        moving && still && label === "Play a tour of the atlas" ? 0 : 1,
+        "errors",
+        0,
+        `Tour moved the camera (${moving}), a drag stopped it (${still}) and the control reads Play again (${label}).`,
+        "eq",
+      );
+    });
+    await run("interaction.caption-step", "correctness", async () => {
+      await page.goto(`${url}#/place/${encodeURIComponent(first)}`, { waitUntil: "load" });
+      await ready(page);
+      const dialog = page.getByRole("dialog", { name: "Place", exact: true });
+      await dialog.waitFor({ state: "visible" });
+      const before = await dialog.innerText();
+      await page.getByRole("button", { name: /^Next (stop|visit)$/ }).click();
+      await settle(page);
+      const after = await dialog.innerText();
+      const second = places
+        .filter((place) => place.id !== first)
+        .sort((left, right) => firstDate(left).localeCompare(firstDate(right)))[0];
+      record(
+        "interaction.caption-step",
+        "correctness",
+        after !== before && second && after.includes(second.label) ? 0 : 1,
+        "errors",
+        0,
+        `Next from ${first} must open the following place in journey or chronology order; expected ${second?.label}, actual: ${after}`,
+        "eq",
+      );
+      await page.keyboard.press("Escape");
     });
     await run("interaction.deep-link", "correctness", async () => {
       const deepLink = `${url}#/place/${encodeURIComponent(first)}`;

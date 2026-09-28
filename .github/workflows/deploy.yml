@@ -9,7 +9,27 @@ concurrency:
   group: atlas-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  # verify:
+  quick:
+    # Hosted Linux runs the static, unit, fixture-build, style and budget gates.
+    # GPU-dependent runtime, performance and visual checks stay on the self-hosted job below.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify -- --quick
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-quick
+          path: verification/report.json
+      - name: Objective table in workflow summary
+        if: always()
+        run: node scripts/objective-summary.mjs
+  # verify (optional full GPU run):
   #   # Untrusted fork code must not execute on a persistent GPU runner.
   #   if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
   #   # A GPU-equipped runner is intentional: hosted Linux software rasterizers
@@ -34,26 +54,26 @@ jobs:
   #     - name: Objective table in workflow summary
   #       if: always()
   #       run: node scripts/objective-summary.mjs
-  # comment:
-  #   needs: verify
-  #   if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     actions: read
-  #     pull-requests: write
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: verification
-  #     - uses: actions/github-script@v7
-  #       with:
-  #         script: |
-  #           const fs = require('node:fs');
-  #           const report = JSON.parse(fs.readFileSync('report.json','utf8'));
-  #           const rows = Object.entries(report.summary.objective).map(([key,value]) => '| '+key+' | '+value+' |').join('\n');
-  #           await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:'Atlas verification: '+report.summary.fail+' failures\n\n| Objective | Measured |\n|---|---:|\n'+rows});
+  comment:
+    needs: quick
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verification-quick
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const report = JSON.parse(fs.readFileSync('report.json','utf8'));
+            const rows = Object.entries(report.summary.objective).map(([key,value]) => '| '+key+' | '+value+' |').join('\n');
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:'Atlas quick verification: '+report.summary.fail+' failures\n\n| Objective | Measured |\n|---|---:|\n'+rows});
   deploy:
-    # needs: verify
+    needs: quick
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -88,6 +108,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+          VITE_SITE_URL: ${{ steps.pages.outputs.base_url }}/
           VITE_BASEMAP: remote
           VITE_BASEMAP_URL: ${{ vars.VITE_BASEMAP_URL }}
           VITE_TILE_ORIGINS: ${{ vars.VITE_TILE_ORIGINS }}

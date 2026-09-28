@@ -1,15 +1,8 @@
-import type { Map as AtlasMap } from "maplibre-gl";
+import type { Atlas } from "../src/map/create-map.ts";
 import type { BrowserContext, CDPSession, Page } from "@playwright/test";
 
 export interface AtlasWindow extends Window {
-  __atlas: {
-    map: AtlasMap;
-    firstIdleMs: number;
-    select(id: string): void;
-    reset(): void;
-    filter(year: number): void;
-    destroy(): void;
-  };
+  __atlas: Atlas;
   __atlasMetrics: { cls: number; fcp: number | null };
 }
 export interface TraceEvent {

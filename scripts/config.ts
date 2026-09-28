@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { placeKey } from "../src/map/place-key.ts";
+import { slug as toSlug } from "../src/map/text.ts";
+import { dateBounds } from "../src/map/time.ts";
+export { dateBounds };
 
 // Assigned ISO 3166-1 codes plus Natural Earth's documented XK territory identifier.
 const countries: Record<string, true> = Object.fromEntries(
@@ -56,6 +59,8 @@ export const visitSchema = z
     date: isoDate.optional(),
     dateRange: z.tuple([rangeEndpoint, rangeEndpoint]).optional(),
     publishPrecision: precisionSchema.optional(),
+    // Optional public journey label; visits sharing it form one journey regardless of gaps.
+    trip: text.optional(),
   })
   .superRefine((visit, context) => {
     if (
@@ -118,13 +123,9 @@ export const configSchema = z
             ...dateBounds(visit),
           ]);
           const digest = createHash("sha256").update(identity).digest("hex");
-          const slug = (visit.city ?? visit.region ?? visit.country)
-            .normalize("NFKD")
-            .replace(/\p{Mark}/gu, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "");
-          const base = `${visit.country.toLowerCase()}-${slug || "place"}-${digest}`;
+          const slug = toSlug(visit.city ?? visit.region ?? visit.country);
+          // Eight hex characters keep links short; the occurrence loop below resolves collisions.
+          const base = `${visit.country.toLowerCase()}-${slug || "place"}-${digest.slice(0, 8)}`;
           let occurrence = occurrences.get(base) ?? 0;
           do {
             occurrence += 1;
@@ -201,16 +202,6 @@ export function queryKey(query: GeocodeQuery): string {
       }),
     )
     .digest("hex");
-}
-export function dateBounds(value: {
-  date?: string;
-  dateRange?: [string, string];
-}): [string, string] {
-  if (value.date) return [value.date, value.date];
-  return [
-    value.dateRange?.[0] || "0001-01-01",
-    value.dateRange?.[1] || "9999-12-31",
-  ];
 }
 export function validateConfig(input: unknown, cache?: Cache): ValidatedConfig {
   const config = configSchema.parse(input);

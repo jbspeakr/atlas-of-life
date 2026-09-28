@@ -170,6 +170,39 @@ check(
   "bytes",
 );
 check(
+  "budget.geometry-inline",
+  "budget",
+  ["countries", "regions"]
+    .map((name) => `src/generated/${name}.geojson`)
+    .filter(existsSync)
+    .reduce((n, p) => n + gzipSync(readFileSync(p)).length, 0) ||
+    Number.MAX_SAFE_INTEGER,
+  budgets.geometryInlineGzip,
+  "src/generated/{countries,regions}.geojson: coarse LODs embedded in style.json and fetched before the map exists; fine LODs load on zoom",
+  "bytes",
+);
+try {
+  const worker = readFileSync("dist/sw.js", "utf8");
+  const shell = emitted
+    .map((file) => file.replace(/^dist\//, ""))
+    .filter((file) => file.startsWith("assets/") || file.startsWith("fonts/") || file.startsWith("sprites/"))
+    .filter((file) => !file.endsWith(".txt"));
+  const precache = JSON.parse(
+    /const PRECACHE = (\[[^\n]*\]);/.exec(worker)?.[1] ?? "[]",
+  ) as string[];
+  const missing = shell.filter((file) => !precache.includes(file));
+  const archives = precache.filter((file) => file.endsWith(".pmtiles"));
+  check(
+    "data.offline-shell",
+    "data",
+    missing.length + archives.length,
+    0,
+    `dist/sw.js: every shell asset precached and no tile archive precached; missing ${missing.join(", ") || "none"}; archives ${archives.join(", ") || "none"}`,
+  );
+} catch (error) {
+  check("data.offline-shell", "data", 1, 0, `dist/sw.js: ${String(error)}`);
+}
+check(
   "budget.largest-generated",
   "budget",
   generated.length

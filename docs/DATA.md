@@ -18,7 +18,17 @@ const config: Config = {
 export default config;
 ```
 
-After adding cities, run:
+The quickest route is the add command, which validates, appends to `data/visits.ts` in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache for the new city and prints its resolved coordinates:
+
+```sh
+NOMINATIM_CONTACT=you@example.org npm run add -- DE "Wendisch Rietz" 2025-04-04..2025-04-06
+npm run add -- GR Kalamos 2025-04-27 --trip "Spring 2025" --dry-run
+npm run import -- trips.csv
+```
+
+`--region`, `--label` and `--trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. The import command reads a CSV with the header `country,city,start,end,label,trip[,region]`, skips rows already present and aborts on any invalid row before writing. GPX or timeline exports are deliberately not imported: they would need reverse geocoding of many points against Nominatim's usage policy.
+
+If you edit the file by hand instead, after adding cities run:
 
 ```sh
 NOMINATIM_CONTACT=you@example.org npm run geocode
@@ -29,7 +39,11 @@ Use your own email or project contact URL. The first command populates `data/geo
 
 `country` is an uppercase assigned ISO alpha-2 code, with the Natural Earth `XK` extension for Kosovo. Use `GB`, not `UK`. Dates are real `YYYY-MM-DD` calendar dates. Choose `date` or `dateRange`, never both. A range has two endpoints, with `''` for an open endpoint: `['2020-01-01', '']`. Reversed ranges and impossible dates fail. Undated places remain lit at every timeline position. The scrubber means **visited by this year**.
 
-Generated IDs combine a readable country/city prefix with a hash of normalized geographic/date identity. Reordering unrelated visits does not change them; Unicode names remain distinct even when their readable slugs coincide. Identical repeated entries receive occurrence suffixes. Changing a visit's identifying geography or dates changes its generated link. Optional explicit `id` and `label` overrides remain useful for permanent curated links and landmark labels, but are unnecessary for ordinary city entries. Deep links use `/#/place/<id>`.
+Generated IDs combine a readable country/city prefix with the first eight hex characters of a hash of normalized geographic/date identity, for example `de-berlin-4f1c09ab`; a collision within one configuration receives an occurrence suffix. Links minted before this shortening carried the full 64-character digest and still resolve, because the current ID is a prefix of the old one and the router canonicalises the URL in place. Reordering unrelated visits does not change them; Unicode names remain distinct even when their readable slugs coincide. Identical repeated entries receive occurrence suffixes. Changing a visit's identifying geography or dates changes its generated link. Optional explicit `id` and `label` overrides remain useful for permanent curated links and landmark labels, but are unnecessary for ordinary city entries. Deep links use `/#/place/<id>`. A moved camera is linkable as `/#/view/<zoom>/<lat>/<lng>`, and either form accepts `?through=YYYY-MM-DD` with an optional `&mode=only` to restore the timeline position; the app writes these as you browse, so the address bar always describes what is on screen.
+
+## Journeys
+
+Consecutive dated city visits form a journey automatically when each starts no later than the day after the previous one ends; a Scandinavian summer authored as eight adjacent date ranges becomes one journey with eight stops, drawn as a thin great-circle route and navigable from the caption. Open-ended ranges and undated visits never join. Two or more visits are required. To group visits across a gap, or to name a journey, give them the same optional `trip` label: `{ country: "NO", city: "Egersund", dateRange: [...], trip: "Midsummer 2025" }`. **That label is public**; generated labels list the countries in visiting order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys are published to `trips.json` (id, label, dates, stop place IDs) and `routes.json`; they never carry addresses, notes or names.
 
 Repeat cities collapse by country, resolved boundary and normalized city name. Keep one entry per trip: the first chronological visit supplies the canonical pin, and the caption retains the original trip dates rather than inventing continuous stays. Public per-visit rows carry `visitCount: 1` for city/address visits; boundary-only records omit it.
 

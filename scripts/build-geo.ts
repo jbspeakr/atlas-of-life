@@ -11,6 +11,9 @@ import {
   resolveVisits,
   validateConfig,
 } from "./config.ts";
+import { inferTrips, routeFeatures } from "./trips.ts";
+import { computeStats } from "./stats.ts";
+import { placeKey } from "../src/map/place-key.ts";
 import {
   BoundaryRepository,
   geometryMetadata,
@@ -149,24 +152,83 @@ async function main(): Promise<void> {
     return { ...visit, coordinates };
   });
   const places = collapseVisits(anchored);
+  const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
+  const trips = inferTrips(
+    anchored.flatMap((visit) => {
+      if (!visit.city && !visit.address) return [];
+      const place = placeByKey.get(placeKey(visit));
+      if (!place) return [];
+      return [
+        {
+          id: visit.id,
+          placeId: place.id,
+          country: visit.country,
+          coordinates: visit.coordinates,
+          ...(visit.trip ? { trip: visit.trip } : {}),
+          ...(visit.date !== undefined ? { date: visit.date } : {}),
+          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+        },
+      ];
+    }),
+  );
+  const routes = routeFeatures(
+    trips,
+    new Map(places.map((place) => [place.id, place.coordinates])),
+  );
+  // Label anchors: one interior point per published boundary, keyed like its polygon.
+  // Deliberately without a country field so the payload audit does not read them as places.
+  const anchors = {
+    type: "FeatureCollection",
+    features: [
+      ...countryFine.features.map((feature) => ({
+        type: "Feature",
+        id: String(feature.id),
+        properties: {
+          id: String(feature.id),
+          kind: "country",
+          label: feature.properties.label,
+        },
+        geometry: { type: "Point", coordinates: feature.properties.anchor },
+      })),
+      ...regionFine.features.map((feature) => ({
+        type: "Feature",
+        id: String(feature.id),
+        properties: {
+          id: String(feature.id),
+          kind: "region",
+          label: feature.properties.label,
+        },
+        geometry: { type: "Point", coordinates: feature.properties.anchor },
+      })),
+    ],
+  };
   const files: Record<string, string> = {
+    "anchors.json": JSON.stringify(anchors),
     "countries.geojson": JSON.stringify(countryCoarse),
     "countries-fine.geojson": JSON.stringify(countryFine),
     "regions.geojson": JSON.stringify(regionCoarse),
     "regions-fine.geojson": JSON.stringify(regionFine),
     "places.json": JSON.stringify(places),
+    "trips.json": JSON.stringify(trips),
+    "stats.json": JSON.stringify(
+      computeStats(anchored.map(publicVisit), places, trips.length),
+    ),
+    "routes.json": JSON.stringify(routes),
     "visits.json": JSON.stringify(anchored.map(publicVisit)),
   };
   let geometryBytes = 0;
+  let inlineBytes = 0;
   for (const [name, text] of Object.entries(files)) {
     const bytes = gzipSync(text, { level: 9 }).byteLength;
     if (name.endsWith(".geojson")) geometryBytes += bytes;
+    if (name === "countries.geojson" || name === "regions.geojson")
+      inlineBytes += bytes;
     console.log(
       `${name}: ${Buffer.byteLength(text).toLocaleString("en-US")} bytes; gzip ${bytes.toLocaleString("en-US")} bytes`,
     );
   }
   console.log(
-    `Geometry total gzip: ${geometryBytes.toLocaleString("en-US")} bytes (target 400,000; maximum 1,000,000)`,
+    `Geometry inline gzip: ${inlineBytes.toLocaleString("en-US")} bytes (coarse LODs in style.json; target 120,000); total gzip ${geometryBytes.toLocaleString("en-US")} bytes (target 400,000; maximum 1,000,000)`,
   );
   if (geometryBytes > 1_000_000)
     throw new Error(
@@ -183,7 +245,7 @@ async function main(): Promise<void> {
   );
   await repository.save();
   console.log(
-    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits`,
+    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits, ${trips.length} journeys`,
   );
 }
 
