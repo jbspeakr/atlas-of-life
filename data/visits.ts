@@ -90,7 +90,7 @@ const config: Config = {
     },
     {
       country: "DE",
-      city: "Ahlbeck",
+      city: "Seebad Ahlbeck",
       dateRange: ["2026-08-07", "2026-08-13"],
     },
     {
