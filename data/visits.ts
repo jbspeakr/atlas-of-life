@@ -50,6 +50,11 @@ const config: Config = {
     },
     {
       country: "SE",
+      city: "By",
+      dateRange: ["2025-06-12", "2025-06-18"],
+    },
+    {
+      country: "SE",
       city: "Ödsmål",
       dateRange: ["2025-06-18", "2025-06-24"],
     },
