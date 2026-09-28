@@ -51,6 +51,10 @@ const config: Config = {
     {
       country: "SE",
       city: "By",
+      // Sweden has many hamlets called By, several in Värmland alone. This is
+      // the public OSM settlement node for By in Hagfors kommun, not an address.
+      coordinates: [13.5945301, 59.923603],
+      publishPrecision: "exact",
       dateRange: ["2025-06-12", "2025-06-18"],
     },
     {

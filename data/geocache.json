@@ -21,17 +21,6 @@
     "city": "Fincken",
     "source": "https://nominatim.openstreetmap.org/search?q=Fincken&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
   },
-  "1ba7cab0d26c49d98e5d8ba6787cfcfb0219b19e69d89aae30cdd075d75a1b44": {
-    "coordinates": [
-      14.1862434,
-      53.6704395
-    ],
-    "kind": "city",
-    "country": "DE",
-    "region": "DE-MV",
-    "city": "Ahlbeck",
-    "source": "https://nominatim.openstreetmap.org/search?q=Ahlbeck&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
-  },
   "1f32c207f684757c459a8f9032d534b1e026a2c365978e037351ea39ea32ebe6": {
     "coordinates": [
       11.8613813,
@@ -64,6 +53,17 @@
     "region": "DE-BE",
     "city": "Berlin",
     "source": "https://nominatim.openstreetmap.org/search?q=Berlin&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "60484ebe7b68e5d33382823a0b8334744760dfcd988be2f2cb7f4d3fa27ab71b": {
+    "coordinates": [
+      14.1875511,
+      53.9389644
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-MV",
+    "city": "Ahlbeck",
+    "source": "https://nominatim.openstreetmap.org/search?q=Seebad+Ahlbeck&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "61280d203e48c8b53fb80fdbb9a59e6f56fc4c94735fdc16706baf4233df8670": {
     "coordinates": [

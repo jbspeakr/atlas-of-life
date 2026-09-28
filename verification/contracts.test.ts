@@ -172,6 +172,26 @@ describe("settlement geocoding", () => {
     const cache = await geocodeConfig(config, {});
     expect(resolveVisits(config, cache)[0].city).toBe("Lübbenau");
   });
+  it("accepts an alternative name from a boundary's linked place node", async () => {
+    respond([
+      {
+        ...village,
+        name: "Ahlbeck",
+        display_name: "Ahlbeck, Heringsdorf, Germany",
+        address: { country_code: "de", village: "Ahlbeck" },
+        namedetails: {
+          name: "Ahlbeck",
+          alt_name: "Seeheilbad Ahlbeck",
+          _place_alt_name: "Seebad Ahlbeck;Ostseeheilbad Ahlbeck",
+        },
+      },
+    ]);
+    const config = validateConfig({
+      visits: [{ country: "DE", city: "Seebad Ahlbeck" }],
+    });
+    const cache = await geocodeConfig(config, {});
+    expect(resolveVisits(config, cache)[0].city).toBe("Seebad Ahlbeck");
+  });
   it("rejects a containing municipality instead of silently moving the visit", async () => {
     respond([{ ...village, name: "Harsefeld", addresstype: "town" }]);
     const config = validateConfig({
