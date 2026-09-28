@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createMap,
+  isMissingTile,
   places,
   trips,
   visits,
@@ -170,12 +171,14 @@ function App() {
           void archiveSaved(value.archive.url).then((bytes) =>
             setOffline(bytes === null ? { state: "absent" } : { state: "saved", bytes }),
           );
-        value.map.on("error", (event) =>
+        value.map.on("error", (event) => {
+          // Outside the detail windows the map falls back to coarser tiles.
+          if (isMissingTile(event.error)) return;
           setError(
             "The map could not load its geographic data. " +
               event.error.message,
-          ),
-        );
+          );
+        });
       })
       .catch((error) => {
         if (!abort.signal.aborted) setError(String(error));

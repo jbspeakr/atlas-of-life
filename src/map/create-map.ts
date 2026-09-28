@@ -56,8 +56,14 @@ for (const visit of visits) {
     placeByVisit.set(visit.id, place);
   }
 }
-const protocol = new Protocol();
+// The archive holds z7–14 only in padded windows around places. An empty tile
+// (or a 404, which MapLibre treats the same) renders as a blank hole; an errored
+// tile makes MapLibre draw the nearest ancestor it has, at worst the global z6.
+const protocol = new Protocol({ errorOnMissingTile: true });
 maplibregl.addProtocol("pmtiles", protocol.tile);
+/** The expected error for a tile outside the archive's detail windows. */
+export const isMissingTile = (error: Error) =>
+  error.message === "Tile not found.";
 const ease = (t: number) => t * t * (3 - 2 * t);
 export type Atlas = {
   map: LibreMap;
@@ -125,6 +131,11 @@ export async function createMap(
   });
   map.touchZoomRotate.disableRotation();
   map.keyboard.disableRotation();
+  // MapLibre climbs one ancestor per source update, and an errored tile does
+  // not schedule one. Keep climbing until a tile with data covers the hole.
+  map.on("error", (event) => {
+    if (isMissingTile(event.error)) map._update();
+  });
   const canvas = map.getCanvas();
   canvas.setAttribute(
     "aria-label",
