@@ -55,7 +55,7 @@ verification/         The verification harness and its fixtures.
   baseline.json         Approved metric objective.
   fixtures/             Fictional visits, geocache and preview basemap used by all verification.
 docs/                 GUIDE (operating reference), DATA (authoring), DECISIONS, EVOLUTION,
-                      ROADMAP, ATTRIBUTION, and assets/ (README logo and screenshots).
+                      ROADMAP (what is next), ATTRIBUTION, and assets/ (README logo and screenshots).
 .github/workflows/deploy.yml   Quick verification on ubuntu-latest, PR comment, Pages deploy.
 ```
 
@@ -79,9 +79,9 @@ The browser never imports `data/` or `scripts/config.ts`; it reads only `src/gen
 | `npm run generate` | Regenerate `src/generated/` only. |
 | `npm test` | Vitest unit contracts. Fast; run after every change. |
 | `npm run lint` | ESLint (flat config, typescript-eslint). |
-| `npx tsc --noEmit` | Type check (no script alias; quick verification runs it). |
+| `npx tsc --noEmit` | Type check (no script alias; quick verification runs it). Needs `src/generated/` to exist, so run `npm run generate` once on a fresh clone. |
 | `npm run verify -- --quick` | The CI gate: lint, types, unit, fixture build, style, payload, budgets. Must finish in < 60 s. |
-| `npm run verify` | Full GPU run: runtime, a11y, performance, visual diffs. Needs Chromium and a real GPU. |
+| `npm run verify` | Full run: runtime, a11y, performance, visual diffs. Local only; needs Chromium and a real GPU. Never in CI. |
 | `npm run verify:approve` | Writes visual baselines. Only when a pixel change is intended **and** the human asked for it. |
 | `npm run add -- CC City YYYY-MM-DD[..YYYY-MM-DD]` | Append a visit and geocode it (needs `NOMINATIM_CONTACT`). |
 | `npm run record` | Render MP4 tours (needs FFmpeg with libx264 + ffprobe, Chromium, a z0–6 basemap). |
@@ -120,6 +120,6 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 ## Environment gotchas
 
 - The committed preview basemap (`verification/fixtures/basemap.pmtiles`, copied to `public/tiles/` on first generate) covers only global z0–3 and six small city windows. It is enough for the app and verification, not for `npm run record`, which needs global z0–6 (`npm run basemap:build`).
-- Full verification needs real GPU acceleration; software renderers fail performance gates on purpose. Hosted CI runs only `--quick`.
+- Full verification needs real GPU acceleration; software renderers fail performance gates on purpose. Hosted CI runs only `--quick`; the full run is always local, and there is no CI runner for it by decision. Pixel changes ship with baselines the maintainer approved locally.
 - `npm run record` and full verification both use fixed ports (4180 for the recorder); don't run them concurrently.
 - Nominatim requires a real contact in `NOMINATIM_CONTACT` and at most one request per 1.1 s. Don't bulk-refresh the geocache.

@@ -181,13 +181,13 @@ Built with [MapLibre GL JS](https://maplibre.org/), [PMTiles](https://docs.proto
 | [Data authoring](docs/DATA.md) | Writing `data/visits.ts`: home, journeys, regions, precision, IDs. |
 | [Decisions](docs/DECISIONS.md) | Why the atlas looks and behaves the way it does. |
 | [Evolution](docs/EVOLUTION.md) | Measured experiments and their results. |
-| [Roadmap](docs/ROADMAP.md) | The September 2026 release plan in detail. |
+| [Roadmap](docs/ROADMAP.md) | What is next, in order, and what has shipped. |
 | [Attribution](docs/ATTRIBUTION.md) | Data and font licences. |
 | [AGENTS.md](AGENTS.md) | A map of the codebase for coding agents and new contributors. |
 
 ## Roadmap
 
-The ten releases of the [September 2026 plan](docs/ROADMAP.md) have shipped:
+The ten releases of the September 2026 plan have shipped:
 
 - [x] A real CI gate: quick verification on every push and pull request
 - [x] Diacritic-insensitive search, on-screen zoom, locale-aware names, favicon and social card
@@ -205,11 +205,12 @@ Since then:
 - [x] Day and night themes, a sparse starfield and a globe halo
 - [x] A mobile bottom sheet, thumb-sized tap targets and a tour that starts from the current view
 
-Up next:
+Up next, in order (details in the [roadmap](docs/ROADMAP.md)):
 
-- [ ] **Green full GPU verification** on the self-hosted runner, with approved visual baselines for everything above
+- [ ] **Approved visual baselines** from a local full verification run, for everything above
 - [ ] **A complete published basemap**: global z0–6 plus city detail, hosted on a pinned Hugging Face dataset
 - [ ] **Lighter geometry**: bring all boundary levels of detail back under the 400 KB gzip target (about 615 KB today)
+- [ ] **During** on phones, and a shareable link for a focused journey
 
 Have an idea or found a bug? [Open an issue](https://github.com/jbspeakr/atlas-of-life/issues).
 

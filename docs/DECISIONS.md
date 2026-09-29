@@ -83,7 +83,7 @@ Date filtering combines with map feature-state visibility and retains the one-ac
 
 ## CI and measurement environment
 
-Full verification uses a real GPU and exact platform-specific PNGs, so the workflow targets a dedicated `macOS`, `ARM64`, `atlas-gpu` runner. It runs on every repository push and trusted same-repository pull request; untrusted fork code is not automatically executed on a persistent self-hosted machine. Review and mirror fork work onto a trusted branch, and provision an isolated runner without personal credentials. The commented Cloudflare job rebuilds with `/` instead of incorrectly reusing GitHub Pages' repository subpath. Both deployment providers still require the owner's account permissions.
+Hosted CI runs only the quick gate: static checks, unit contracts, the fixture build, style, payload and budget audits. Full verification needs a real GPU and exact platform-specific PNGs, so it is a local step on the maintainer's machine, run before merging any change that touches rendering, motion or pixels, with baselines approved and committed from there. A self-hosted GPU runner was considered and rejected for good: it would need a persistent machine that must never hold personal credentials, it would run untrusted fork code unless carefully fenced, and for a one-person site the upkeep outweighs the benefit. The performance and visual gates therefore rely on discipline rather than automation, and `docs/EVOLUTION.md` records which entries still await that local run. The commented Cloudflare job rebuilds with `/` instead of incorrectly reusing GitHub Pages' repository subpath. Both deployment providers still require the owner's account permissions.
 
 ## Correcting the instability reporting contract
 
