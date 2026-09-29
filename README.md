@@ -186,25 +186,7 @@ Built with [MapLibre GL JS](https://maplibre.org/), [PMTiles](https://docs.proto
 
 ## Roadmap
 
-The ten releases of the September 2026 plan have shipped:
-
-- [x] A real CI gate: quick verification on every push and pull request
-- [x] Diacritic-insensitive search, on-screen zoom, locale-aware names, favicon and social card
-- [x] Country and region names in the middle zoom band, with hover affordance
-- [x] Progressive geometry: coarse boundaries inline, fine ones on demand
-- [x] An ordinal timeline with **Through** and **During**, shareable URLs and short IDs
-- [x] Journeys with curved arcs, numbered stops, a home base and caption stepping
-- [x] The in-app tour
-- [x] **By the numbers**
-- [x] `npm run add` and `npm run import`
-- [x] Installable app shell and opt-in offline map
-
-Since then:
-
-- [x] Day and night themes, a sparse starfield and a globe halo
-- [x] A mobile bottom sheet, thumb-sized tap targets and a tour that starts from the current view
-
-Where it goes next (the [roadmap](docs/ROADMAP.md) has the detail):
+The [roadmap](docs/ROADMAP.md) has the detail.
 
 - [ ] **Hold it in your hands**: a print-quality poster, a rich link preview for every place, an embeddable atlas, a text edition for screen readers and search engines
 - [ ] **Time made visible**: replay the years on a still globe, a year in review with its own share card, a life line of homes and journeys, trips still to come

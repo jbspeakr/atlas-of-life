@@ -38,7 +38,7 @@ Unknown keys are rejected. Country-only and region-only records are also accepte
 
 ## Identity
 
-An ID is a readable prefix and eight hex characters of a hash of the visit's geographic and date identity, for example `de-berlin-4f1c09ab`. Reordering unrelated visits does not change it; changing a visit's country, city or dates does. A collision within one configuration gets an occurrence suffix. Older links carrying the full digest still resolve and are canonicalised in place. Deep links are `/#/place/<id>`; a moved camera is `/#/view/<zoom>/<lat>/<lng>`; either accepts `?through=YYYY-MM-DD` and `&mode=only`.
+An ID is a readable prefix and eight hex characters of a hash of the visit's geographic and date identity, for example `de-berlin-4f1c09ab`. Reordering unrelated visits does not change it; changing a visit's country, city or dates does. A collision within one configuration gets an occurrence suffix. Deep links are `/#/place/<id>`; a moved camera is `/#/view/<zoom>/<lat>/<lng>`; either accepts `?through=YYYY-MM-DD` and `&mode=only`.
 
 Repeat visits to one city collapse into one place: the first chronological visit supplies the pin, and each visit keeps its own dates.
 

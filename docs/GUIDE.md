@@ -102,7 +102,7 @@ npm run verify -- --set-baseline
 
 Quick mode runs in under a minute on hosted Linux and gates deployment. Full mode serves the fixture under `/atlas/`, uses pinned Chromium, DPR and viewport, traces real camera choreographies, audits network origins, tests keyboard paths and reduced motion, runs axe and compares six exact PNGs. It needs real GPU acceleration; software renderers fail the performance gates on purpose. It never runs in CI: run it locally before merging a change that touches rendering, motion or pixels, and commit the approved baselines. `verification/report.json` holds every measured gate, threshold and delta; diff images go to `verification/artifacts/`. Missing output or baselines fail. Only `verify:approve` writes baselines.
 
-Fixture verification (`ATLAS_FIXTURE=1`) uses fictional visits and committed boundaries and forbids every download. The owner build currently emits about 615 KB gzip of boundary geometry across all levels of detail, above the 400 KB target and below the 1 MB limit; only the coarse level (about 98 KB) travels with the style.
+Fixture verification (`ATLAS_FIXTURE=1`) uses fictional visits and committed boundaries and forbids every download.
 
 ## Deployment
 

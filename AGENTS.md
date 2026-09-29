@@ -112,7 +112,7 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 
 - `README.md` is the pitch and the quick start. Operating detail goes into `docs/GUIDE.md`, authoring detail into `docs/DATA.md`.
 - `docs/DECISIONS.md` gets a paragraph whenever you decide something a future maintainer might question.
-- Measured results (before/after numbers from `verification/report.json`) go into the pull request description, never estimates. There is no changelog file; the git history and the README's shipped list are the record.
+- Measured results (before/after numbers from `verification/report.json`) go into the pull request description, never estimates. There is no changelog file; the git history is the record.
 - Docs describe the current state only. Do not add history, superseded approaches or measurement anecdotes; if a past choice matters, one sentence in `docs/DECISIONS.md` saying what was rejected and why is enough.
 - British spelling in prose (colour, licence, optimise). Plain, direct sentences.
 - README images live in `docs/assets/`. The wordmark SVGs are Fraunces 500 outlines (no font dependency) in a light and a dark variant, switched with `<picture>` and `prefers-color-scheme`; `atlas-wordmark.svg` adapts on its own for other contexts. Screenshots are WebP captured from `npm run preview` with `?deterministic=1` and an explicit `&theme=dark` or `&theme=light` (headless browsers otherwise report a light system theme). The README hero slot is meant for a tour recording from `npm run record -- --format landscape` with a complete z0–6 basemap, supplied by the maintainer.

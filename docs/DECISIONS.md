@@ -4,7 +4,7 @@ Why the atlas looks and behaves the way it does. Each paragraph is a settled cho
 
 ## Stack and scope
 
-Vite, React, TypeScript, MapLibre GL JS 5, PMTiles 4, Zod, Vitest and Playwright, pinned to exact versions in the lockfile. MapLibre's own circle and symbol layers provide marks, glow and collision handling; a second rendering engine such as deck.gl would not earn its dependency cost. There is no backend and no database: the output is static files. Authored visits contain only country, city and dates; IDs and labels are generated. No photographs, personal names, notes, tags or stories are supported, and tag filtering was removed deliberately.
+Vite, React, TypeScript, MapLibre GL JS 5, PMTiles 4, Zod, Vitest and Playwright, pinned to exact versions in the lockfile. MapLibre's own circle and symbol layers provide marks, glow and collision handling; a second rendering engine such as deck.gl would not earn its dependency cost. There is no backend and no database: the output is static files. Authored visits contain only country, city and dates; IDs and labels are generated. No photographs, personal names, notes, tags or stories are supported.
 
 ## Art direction
 
@@ -48,7 +48,7 @@ The Pages workflow reads its base path from `actions/configure-pages` before Vit
 
 ## Verification
 
-The harness precedes application code. Missing outputs, assets, runtime interfaces or baselines are failures, not skips. Baselines are approved only by the explicit approval command. Full verification serves the build under `/atlas/` at a pinned viewport and DPR, records objective metrics, gates frame time on the median p95 and flags instability rather than hiding it with retries. Hosted CI runs only the quick gate. Full verification needs a real GPU and exact platform PNGs, so it is a local step on the maintainer's machine before merging any change that touches rendering, motion or pixels. A self-hosted GPU runner was rejected for good: it would need a persistent machine holding no personal credentials, fenced from fork code, for a one-person site. The Cloudflare deployment job stays commented and rebuilds with `/` rather than reusing the Pages subpath.
+The harness precedes application code. Missing outputs, assets, runtime interfaces or baselines are failures, not skips. Baselines are approved only by the explicit approval command. Full verification serves the build under `/atlas/` at a pinned viewport and DPR, records objective metrics, gates frame time on the median p95 and flags instability rather than hiding it with retries. Hosted CI runs only the quick gate. Full verification needs a real GPU and exact platform PNGs, so it is a local step on the maintainer's machine before merging any change that touches rendering, motion or pixels. There is no self-hosted GPU runner and none is planned: it would need a persistent machine holding no personal credentials, fenced from fork code, for a one-person site. The Cloudflare deployment job stays commented and rebuilds with `/` rather than reusing the Pages subpath.
 
 ## Accessibility
 
