@@ -71,6 +71,8 @@ export function attachSky(map: LibreMap, initial: Theme, still: () => boolean) {
   let pattern: CanvasPattern | null = null;
   let ratio = 0;
   let last: LngLat | null = null;
+  /** Nothing is painted, so a covered view needs no clearing. */
+  let blank = true;
   const drift = [0, 0];
   const tile = () => {
     const image = document.createElement("canvas");
@@ -94,15 +96,15 @@ export function attachSky(map: LibreMap, initial: Theme, still: () => boolean) {
     const height = container.clientHeight;
     const dpr = devicePixelRatio || 1;
     if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      // Resizing clears the canvas.
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
+      blank = true;
     }
     if (ratio !== dpr) {
       ratio = dpr;
       pattern = null;
     }
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.clearRect(0, 0, canvas.width, canvas.height);
     const zoom = map.getZoom();
     const center = map.getCenter();
     const origin = map.project(center);
@@ -122,7 +124,12 @@ export function attachSky(map: LibreMap, initial: Theme, still: () => boolean) {
       Math.max(origin.x, width - origin.x),
       Math.max(origin.y, height - origin.y),
     );
-    if (r >= corner) return;
+    // Zoomed in, every move would otherwise clear an already empty canvas.
+    if (r >= corner && blank) return;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    blank = r >= corner;
+    if (blank) return;
     context.scale(dpr, dpr);
     const stars = theme === "dark" ? starOpacity(zoom) : 0;
     if (stars > 0) {
