@@ -1,283 +1,168 @@
-# Roadmap: implementing the September 2026 review
+# Roadmap
 
-This plan turns the review findings into ten sequenced releases. Each release is one pull request, ends green under `npm run verify -- --quick`, and gets a full GPU verification plus, where it changes pixels, an explicit `npm run verify:approve` on the Mac runner. Every release adds an entry to `docs/EVOLUTION.md` with measured numbers and, where it decides something, a paragraph in `docs/DECISIONS.md`.
+Where Atlas of a Life goes next. The bar is set by the best of the category, not by what is easy: Polarsteps and Been for the share-worthy summary, AdventureLog for statistics and import, Mapiful for the poster on the wall, Fog of World for the feeling of a life slowly covering the map. The atlas keeps what makes it different while it gets there: an owner authors only country, city and dates; nothing about a person leaks; the camera never moves on its own; one accent, two typefaces, two themes; plain static files.
 
-## Status
+Every item below respects those rules. Anything that adds a public field goes through the payload allowlist and a sentence in [DATA.md](DATA.md). Anything that changes pixels ships with baselines approved in a local full verification run.
 
-All ten releases are implemented on this branch, one commit each, in the order below. Every release passed TypeScript, lint, the unit contracts (73 at the end) and quick verification, plus a software-rendered browser smoke run on the owner build recorded in `docs/EVOLUTION.md`. Two things remain that this environment cannot do: the full GPU verification (`npm run verify`) and the visual baseline approval (`npm run verify:approve`) on the self-hosted Mac runner, because releases 1, 2, 4, 5 and 7 change every approved screenshot. Run both before merging, and set a new metric baseline with `npm run verify -- --set-baseline` once green.
+## Themes
 
-## Ground rules carried from the decisions log
-
-- **Publication allowlist stays closed.** Anything new that ships to the browser is either derived from the existing public fields (id, label, country, region, city, coordinates, dates, visitCount) or is an explicitly documented new public field. `verification/payload.ts` is extended for every new generated file, never bypassed.
-- **One accent.** Lamplight `#efc784` remains the only warm colour. New layers (labels, routes, ticks) use it or the greys.
-- **No photos, names, notes, tags.** Trips and statistics are computed from dates and geography only.
-- **Stationary camera after ignition.** Nothing moves the camera without a user action, except the opt-in tour.
-- **Baselines are approved, not regenerated.** Releases that change pixels say so up front.
-
-## Sequencing and dependencies
-
-| # | Release | Depends on | Changes pixels | Size |
-|---|---------|-----------|----------------|------|
-| 0 | Housekeeping and a real CI gate | – | no | S |
-| 1 | Small UX release | 0 | yes (chrome) | M |
-| 2 | Readable middle band: labels and hover | 0 | yes | M |
-| 3 | Progressive geometry | 0 | no (same geometry, later arrival) | M |
-| 4 | Time and URL state | 1 | yes (timeline) | L |
-| 5 | Journeys | 4 | yes | L |
-| 6 | In-app tour | 5 (nice), 3 | no (opt-in) | M |
-| 7 | By the numbers | 4 | yes (header) | M |
-| 8 | Authoring tools | – | no | M |
-| 9 | Installable and offline | 3 | no | L |
-
-Releases 2, 3 and 8 are independent of each other and can run in parallel branches. 4 must precede 5 because trip visibility reuses the time predicate. 6 wants 3 so the tour's regional shots have fine geometry loaded early.
+| Theme | What the viewer gets |
+|---|---|
+| [Hold it in your hands](#1-hold-it-in-your-hands) | A poster, a rich link preview for every place, an atlas that embeds in your own site and reads aloud. |
+| [Time made visible](#2-time-made-visible) | Replay the years, a year in review, a life line, trips still to come. |
+| [Under the actual sky](#3-under-the-actual-sky) | The real stars over a place on the night you were there, and the weather that day. |
+| [Numbers that mean something](#4-numbers-that-mean-something) | Milestones, coverage, distances, years compared. |
+| [Authoring without a laptop](#5-authoring-without-a-laptop) | Add a visit from your phone; import from what you already have. |
+| [In your language](#6-in-your-language) | The whole interface in German and other languages. |
+| [Foundations](#7-foundations) | Baselines, the published basemap, lighter geometry, MapLibre 6. |
 
 ---
 
-## Release 0: housekeeping and a real CI gate
+## 1. Hold it in your hands
 
-**Goal.** Make the repository say true things and make every later PR gated by the checks that can run on hosted Linux.
+### 1a. Poster export
 
-**Steps.**
+A print-quality poster of the atlas: the globe or a chosen region, lit countries, pins, home ring, the focused journey if one is set, and a title line with the totals, typeset in Fraunces and Noto Sans on midnight or paper. Sizes A3, A2 and 50×70 cm at 300 dpi, portrait and landscape. Mapiful sells this by the thousand; here it is generated from your own data with no upload.
 
-1. `git rm --cached data/visits_backup.ts`. The file is ignored by `.gitignore` but tracked, and its `tags` field is rejected by the strict schema.
-2. In `.github/workflows/deploy.yml`, add a `quick` job on `ubuntu-latest`: checkout, setup-node 22 with npm cache, `npm ci`, `npm run verify -- --quick`, upload `verification/report.json` as an artifact, run `node scripts/objective-summary.mjs` into the step summary. Trigger on push and pull_request. Set `deploy: needs: quick`.
-3. Keep the GPU `verify` job commented but rename its comment header to make clear it is the optional full run for the self-hosted runner, and reactivate the PR `comment` job against the `quick` artifact so PRs get the objective table again.
-4. README: rewrite the CI paragraph ("builds and deploys after full verification" becomes "after quick verification on hosted Linux; full GPU verification runs on the self-hosted runner when available"). Replace the fixed geometry/JS numbers with a pointer to `verification/report.json` and the current owner build figure (615 KB gzip geometry, above the 400 KB target, to be addressed in Release 3).
-5. Confirm `verify --quick` uses `ATLAS_FIXTURE=1` end to end (it runs the fixture build; check `verification/run.ts` line 24 onward) so the hosted job never needs Nominatim or boundary downloads.
+- **How.** `npm run poster -- --size A2 --theme day [--journey <id>] [--view <zoom>/<lat>/<lng>]` drives the existing Playwright helpers from `scripts/build-social.ts` at a device pixel ratio that yields 300 dpi, with a `?poster=1` mode that hides the chrome and lays out the title block from `stats.json`. A print stylesheet (`@media print`) gives the browser's own print dialog the same layout for a quick A4.
+- **Rules.** Same style, same fonts, same tokens; nothing new is drawn. The basemap must cover the chosen view, so this wants the complete published archive (7b).
+- **Done when** a 300 dpi A2 PNG and a PDF render for both themes, and a sample poster sits in the README gallery.
 
-**Acceptance.** A PR to main shows a required `quick` check and an objective table comment. `git ls-files data/visits_backup.ts` prints nothing.
+### 1b. A rich preview for every place, journey and year
 
----
+Paste a place link into a chat and see a card with the place name, its dates, and the globe lit around it. Today one static social card serves every link because the app is a single page.
 
-## Release 1: small UX release
+- **How.** The build renders `social/<id>.png` for each place and journey with the social-card script, and emits a tiny static stub per link (`p/<id>/index.html`) carrying the Open Graph and Twitter tags and a meta refresh plus a script-free link to `#/place/<id>`. The app's copy-link control (1c) hands out the stub URL. Service worker and payload audit gain the stubs; the audit verifies that a stub carries only the public label and dates.
+- **Rules.** Cards show city-precision globe views only, never a street. Rendering is a build step, not a runtime call.
+- **Done when** a place link previews with its own image in Signal, Slack and Mastodon, and `data.payload-purity` covers the stubs.
 
-Seven independent fixes, one PR, one baseline approval.
+### 1c. Copy link, and a chrome-less embed
 
-### 1a. Caption geography without duplication
+A "Copy link" control in the caption and the journey view, and an `?embed=1` mode that hides the title, directory, timeline and buttons so the atlas sits inside a blog post as an iframe. A documented snippet with `loading="lazy"` and `allow="fullscreen"`; the CSP already permits framing on the same origin, so `frame-ancestors` gains the owner's site from `VITE_EMBED_ORIGINS`.
 
-- Extract `captionGeography(place, regionLabels, countryName)` into `src/map/caption.ts`. It returns the region only when `regionLabel.localeCompare(place.label, undefined, { sensitivity: "base" }) !== 0`.
-- Use it in `src/main.tsx` where `place-geography` is rendered.
-- Unit test in `verification/contracts.test.ts`: Berlin/DE-BE yields "Germany" only; Kalamos/Attica yields "Attica / Greece".
-- Check `interaction.pin-caption` in `verification/runtime.ts`: it asserts the label is present, not the region, so it keeps passing.
+- **Done when** an embedded atlas on another origin selects a place, follows its own hash, and the a11y scenario passes in embed mode.
 
-### 1b. Diacritic-insensitive search
+### 1d. Reader mode
 
-- Create `src/map/text.ts` with `fold(value)`: NFKD, strip `\p{Mark}`, lowercase, collapse whitespace. Move the slug normalisation in `scripts/config.ts` to call it so authoring and search share one rule.
-- Apply `fold` to `searchText` construction and to the query in `results` in `src/main.tsx`.
-- Tests: "odsmal" finds Ödsmål, "hoor" finds Höör, "lubbenau" finds Lübbenau, "swinemunde" finds Swinemünde, and "ödsmål" still matches. Add a fast-check property: `fold(fold(x)) === fold(x)`.
+A text edition of the atlas, generated at build: a chronological narrative ("April 2024 · Berlin becomes home. May 2025 · five nights in Kalamos, Attica…") with the totals, served as `/atlas.txt` and as a "Read as text" view inside the page. It is the atlas for screen readers, for `curl`, for a machine without WebGL, and for search engines, which today see an empty page.
 
-### 1c. Page identity: title, favicon, social card
+- **How.** `scripts/build-reader.ts` from the public places, visits, trips and stats; the in-page view reuses the caption typography. The runtime a11y scenario reads it with axe.
+- **Done when** every public fact of the atlas is reachable without the map.
 
-- `document.title` effect in `App`: `"<label> · Atlas of a Life"` when a place is selected, otherwise the bare title. Restore on dismiss.
-- `public/favicon.svg`: a lamplight dot on midnight. Replace `href="data:,"` in `index.html`. `img-src 'self'` already permits it.
-- Open Graph and Twitter meta in `index.html`: title, description, `og:image` at `%BASE_URL%social/card.png`, `og:url`. Absolute URLs are required, so add `VITE_SITE_URL` to the build; in the workflow derive it from `steps.pages.outputs.base_url`. Vite's `%VITE_SITE_URL%` HTML env replacement handles the substitution; fall back to a relative URL locally.
-- Card image: add `scripts/build-social.ts` that reuses the verification browser helpers to capture a deterministic 1200×630 view of the globe and writes `public/social/card.png`. Commit the image; the script is run by hand like the recorder, not in the build, so hosted CI needs no Chromium.
+## 2. Time made visible
 
-### 1d. Focus restoration on map-click dismiss
+### 2a. Replay
 
-- In `src/main.tsx`, the `onSelect` callback passed to `createMap` currently only clears state when `id` is null. Make it call `restoreFocus()` when a place was previously selected. `route()` also calls `onSelect(null)` on hashchange; focusing the canvas in that case is acceptable.
-- Runtime check: extend the keyboard scenario near `runtime.ts` line 543 to click empty ocean and assert `document.activeElement` is the browse button or the canvas.
+Press play on the timeline and watch the years pass: the scrubber advances one visit at a time at a readable pace, countries light in order, and each journey reveals its arcs as it happens, on a stationary camera. Twenty seconds for a decade. It is the ignition sequence, made scrubbable and paired with the routes.
 
-### 1e. Narrow-screen directory
+- **How.** A play/pause control beside the scrubber drives `filter()` through the existing `positions` with the reveal stagger already used for journey focus. Reduced motion steps without easing. `?replay=1` starts it from a link. The recorder gains a `--replay` shot so the MP4 can tell the same story.
+- **Rules.** The camera stays where the viewer left it; only feature state changes.
+- **Done when** replay on the fixture matches its frames in the visual gate and the p95 frame budget holds during playback.
 
-- Default scope: `useState<"view" | "all">(matchMedia("(max-width: 700px)").matches ? "all" : "view")`.
-- In `app.css` under the 700 px query, cap `.place-explorer` at `max-height: 52svh` so the globe stays visible above it, and move the hint into the heading row to reclaim a line.
-- Mobile axe check in `runtime.ts` already opens the directory; it keeps passing. Visual baselines do not include the open mobile directory, so no approval is needed for this item alone.
+### 2b. Year in review
 
-### 1f. On-screen zoom controls
+A page per year: countries first visited, new places, nights away, the longest journey, the furthest point from home, drawn as a small globe with only that year lit, and a share card (1b) to match. `#/year/2025` lights the year and opens the panel; the By the numbers panel links to it.
 
-- Add `+` and `−` buttons inside `.navigation` next to World, wired to `map.zoomIn()` / `map.zoomOut()` with the shared easing and `animate: !media.matches`. Expose `zoomBy(delta)` on the `Atlas` type in `src/map/create-map.ts`.
-- `aria-label="Zoom in"` / `"Zoom out"`, `aria-keyshortcuts="+"` / `"-"`. Hide the `kbd` hints under 700 px as the World button does.
-- This changes every screenshot; approve baselines once for the whole release.
+- **How.** `stats.ts` already computes per-year rows; extend with per-year firsts and extremes. The card is rendered by the social build. The panel reuses the numbers layout.
+- **Done when** every year with a visit has a linkable review and a card, and Wrapped-style sharing works from a phone.
 
-### 1g. Locale-aware names and dates
+### 2c. The life line
 
-- Build `locale` once: `deterministic ? "en-GB" : navigator.language`. Pass to `Intl.DisplayNames`, `Intl.DateTimeFormat` and the search text. The `?deterministic=1` guard keeps verification stable.
-- Region labels come from the boundary provider and stay as shipped.
+A second view of the same data: a horizontal line of years with homes as long bars and journeys as short ones, in Fraunces, keyboard navigable. Hover or focus a bar and the map lights it; select one and the caption opens. It answers "where was I in 2023" without scrubbing.
 
-**Acceptance for Release 1.** Contracts tests cover 1a, 1b, 1g. Quick verification green. Full verification green after one baseline approval. Sharing a place URL in a chat client shows title, description and card.
+- **How.** A collapsible strip above the timeline, rendered from `home.json`, `trips.json` and `visits.json`. On phones it becomes a scrollable row in the sheet.
+- **Done when** every bar has an accessible name, arrow keys move between them, and the mobile a11y run passes.
 
----
+### 2d. Trips still to come
 
-## Release 2: readable middle band
+Visits dated in the future render as hollow pins with a dashed ring, their journey arcs dotted more sparsely, and the caption reads "in 23 days". Journeys export as an `.ics` file so the plan lands in a calendar; the count line gains "next: Lisbon, in 23 days".
 
-**Goal.** Country and region names appear at the zoom band where their fills are the subject, and fills feel clickable.
+- **Rules.** Future dates are already valid input; nothing new is published beyond what the owner authored.
+- **Done when** a future visit is distinguishable in both themes and the `.ics` validates.
 
-**Steps.**
+## 3. Under the actual sky
 
-1. **Anchor source.** In `scripts/build-geo.ts`, emit `anchors.geojson`: one Point per published country and region at `properties.anchor` (already computed by `geometryMetadata` in `scripts/boundaries.ts`) with `{ id, kind: "country" | "region", label }`. Add it to the geometry byte report but exclude it from the LOD total since it is tiny.
-2. **Style layers.** In `scripts/build-style.ts`, add source `anchors` with `promoteId: "id"` and two symbol layers:
-   - `country-labels`: filter `kind == country`, Noto Sans Regular, size 11 to 13, `text-opacity` = `withVisibility(bands.country)` scaled so labels fade in at zoom 2.25 and out by 4.5.
-   - `region-labels`: filter `kind == region`, opacity from `withVisibility(bands.region)`, visible 4.25 to 7, fading as pins and place labels arrive.
-   - `text-color` mist `#a7b2bf`, halo midnight width 2, `text-allow-overlap: false`, `symbol-sort-key` favouring countries.
-3. **Glyphs.** The build vendors glyph ranges only for place labels (`build-style.ts` around line 278). Extend the `ranges` set with anchor labels. Run a non-fixture build once to download any new `.pbf` ranges and commit them; fixture builds forbid downloads.
-4. **Feature state.** In `src/map/create-map.ts`, extend the `features` array with `anchors` entries so `filter()` and `motionChanged()` drive label visibility with the same year filter as fills. Key visits by country for country anchors and by region for region anchors.
-5. **Hover and cursor.** Extract `activeLayer(zoom)` returning `"pins" | "regions" | "countries"` from the click handler and unit test the thresholds (3.5, 6.5). Add `mousemove`/`mouseleave` handlers on `countries` and `regions` that set `cursor: pointer` and a `hover` feature state only when that layer is the active one. Bump `country-outline` and `region-outline` opacity on hover through a `case` on `feature-state hover`, mirroring `pin-halos`.
-6. **Region labels JSON.** `src/generated/region-labels.json` can now be derived from `anchors.geojson`; keep the file for the caption but generate it from the same source of truth.
+### 3a. The real night sky
 
-**Verification.** Contracts test that `anchors.geojson` has exactly one feature per published country and region and that each anchor lies inside its polygon's bbox. `verification/style.ts` layer-count and continuity checks need the new layer IDs. Frame p95 budget (24 ms) must hold with two extra symbol layers; if it does not, drop `country-labels` first since country names are on the basemap already. Baseline approval required.
+Behind the globe, at night, the starfield stops being decoration: when a place is selected, the canvas draws the actual sky over that city at midnight on the first night of the visit. The Bright Star Catalogue (about 9,000 stars, under 100 KB gzipped as a compact typed array) gives the positions; a sidereal-time calculation places them. Stars stay still; the brightest twenty carry their names in mist. Nothing else on the web does this for a travel map, and it is exactly what "atlas of a life" under a night sky promises.
 
----
+- **How.** `src/map/sky.ts` gains a `skyAt(lat, lng, date)` projection using the existing globe geometry; the catalogue ships as a hashed asset loaded on first selection. Deterministic mode pins the date. Day theme unchanged.
+- **Rules.** City precision and the visit date are already public; nothing new leaks. No twinkle, no motion, one accent.
+- **Done when** Polaris sits at the right altitude for Berlin and Kalamos in a contracts test, and the night baselines are approved.
 
-## Release 3: progressive geometry
+### 3b. The weather that day
 
-**Goal.** Get the owner build back under the 400 KB gzip geometry target on first view and let the globe paint before fine boundaries arrive, without changing what is eventually drawn.
+The caption gains one line: "18° and clear · sun set 21:34". Daily high, low and sunshine from the Open-Meteo archive (free for non-commercial use, no key, CC BY 4.0, data back to 1940), fetched once by an explicit command like geocoding and cached in `data/weathercache.json`; sunset from the sun's geometry with no network at all. A single evocative detail turns a date into a memory.
 
-**Current state.** `build-geo.ts` writes four LODs; `build-style.ts` embeds coarse countries and **fine** regions inline in `style.json` (960 KB raw, 320 KB gzip), which `createMap` fetches in full before constructing the map. `countries-fine.geojson` and coarse `regions.geojson` are written and never read.
+- **How.** `npm run weather` resolves every dated visit at city coordinates, one request per visit, throttled, and never runs inside a build. `weather.json` joins the payload audit with an allowlist of `id`, `high`, `low`, `sunshine`. Attribution joins the credits control and [ATTRIBUTION.md](ATTRIBUTION.md).
+- **Rules.** Build and verification stay offline; the fixture ships a warm weather cache.
+- **Done when** the owner build carries weather for every dated visit and the fixture caption shows it in a runtime scenario.
 
-**Steps.**
+### 3c. Day and night on the globe
 
-1. **Inline coarse only.** In `build-style.ts`, embed `countries.geojson` (coarse) and `regions.geojson` (coarse) as source data. Keep `promoteId` so feature IDs are stable across LODs.
-2. **Emit fine LODs as assets.** Import `../generated/countries-fine.geojson?url` and `../generated/regions-fine.geojson?url` in `create-map.ts` so Vite hashes and serves them separately with immutable caching from `_headers`.
-3. **Swap on demand.** After `load`, when zoom first exceeds 3.0, fetch `regions-fine` and call `map.getSource("regions").setData(...)`; when zoom first exceeds 4.5, do the same for countries. Fetch each once, keep an `AbortController` tied to `destroy()`. Feature state is keyed by promoted ID, so `states` re-application after `setData` is a safety net: re-apply `visibility` from the `states` map on `sourcedata` for that source.
-4. **Fixture guard.** The verification server serves `dist/` so the hashed assets exist; deterministic mode should trigger the swap eagerly on load so screenshots keep comparing fine geometry.
-5. **Budgets.** Split `geometryGzip` into `geometryInlineGzip` (target 120 KB) and `geometryTotalGzip` (unchanged 400 KB target, 1 MB hard cap) in `verification/budgets.json`, `verification/payload.ts` and `build-geo.ts` reporting. Re-measure `firstViewBytes` and `firstViewRequests` (two more requests when the user zooms, zero at first view).
-6. **Docs.** Update README figures and add a DECISIONS paragraph on the two-stage LOD.
+For a selected visit, a soft terminator shows where it was night on the globe at the moment the caption describes; at the world view, the globe is lit as it is right now. It uses the halo canvas and the sun's position; the day theme shows it as a faint shadow.
 
-**Acceptance.** Cold first-view transferred bytes drop by roughly 250 KB gzip on the owner build; visual diff against the approved baselines stays at 0 pixels because the deterministic path loads fine geometry before capture.
+- **Rules.** Subtle by design and switchable off in the credits control; reduced motion and deterministic mode pin the time.
 
----
+## 4. Numbers that mean something
 
-## Release 4: time and URL state
+### 4a. Milestones and coverage
 
-The largest release. It replaces the year slider, adds nights, makes views linkable and shortens IDs. Ship in the order below inside one PR, or split 4a/4b from 4c/4d if review size matters.
+Beyond totals: share of the world's countries and of each continent, the most northern, southern, eastern and western places, the furthest point from home, the first visit above the Arctic Circle, the country with the most nights, and the longest gap between trips. Each milestone is a sentence with a link that lights it on the map.
 
-### 4a. Time predicate
+- **How.** `stats.ts` computes them from public coordinates and dates; continent membership from Natural Earth's `CONTINENT` field at build. The numbers panel gains a "Milestones" list.
+- **Done when** the fixture recomputation test covers every milestone.
 
-- Create `src/map/time.ts` with `visibleAt(visit, through: string, mode: "cumulative" | "only"): number` returning 0 to 1. Cumulative: 1 when `dateBounds(visit)[0] <= through`. Only: 1 when the visit's range intersects the month of `through`. Undated always 1. Keep the half-step fade currently in `filter()` for cumulative so the animation is unchanged.
-- Move `dateBounds` from `scripts/config.ts` into `src/map/time.ts` and re-export it from config so both sides share it.
-- Tests: fast-check properties (monotonic in `through` for cumulative; undated invariant; open ranges).
+### 4b. Years compared
 
-### 4b. Ordinal scrubber
+Two years side by side in the numbers panel, and a "then and now" mode on the map: one year in lamplight, the other in mist outline. It makes the growth of a decade visible in one view.
 
-- Build `chronology` positions at module level in `src/main.tsx`: sorted distinct first-visit dates. The slider is `min=0 max=N-1`, label shows `Intl.DateTimeFormat(locale, { month: "short", year: "numeric" })` of the selected date, last position reads "All visits".
-- Tick marks: absolutely positioned 2 px spans over the track, one per position, mist colour, active ticks lamplight. Keep the 44 px hit target.
-- Mode toggle: a two-segment control "Through" / "During" next to the label, hidden under 700 px behind a long-press or omitted on mobile in the first cut. Persist choice in the URL (4c), not localStorage.
-- Replace `Atlas.filter(year)` with `filter(through: string, mode)` in `create-map.ts`, computing `target` with `visibleAt`. The explorer's `eligiblePlaces` uses the same predicate.
-- `aria-label` becomes "Visited through" and `aria-valuetext` the formatted month. Update `interaction.timeline` in `runtime.ts`: select the slider by its new name, move to the position just before London's fixture date, and keep the red-channel pixel assertion.
-- Caption: add nights. `nights(visit)` in `time.ts` = whole days between range endpoints, omitted for single days and open ranges. Render "6 nights" beside the dates.
+## 5. Authoring without a laptop
 
-### 4c. Shareable view state
+### 5a. Add a visit from your phone, with no backend
 
-- Create `src/map/router.ts` with pure `parseHash(hash): Route` and `formatHash(route)`. Routes: `#/place/<id>`, `#/view/<zoom>/<lat>/<lng>`, and a `?through=YYYY-MM&mode=only` query on either. Round-trip property tests.
-- In `create-map.ts`, write `#/view/...` with `history.replaceState` on `moveend` only when `stopped` is true (a user moved the camera) and no place is selected; throttle to one write per 250 ms. Never write during ignition or the tour.
-- On load, a `#/view` hash suppresses ignition exactly like `#/place` does today and `jumpTo`s the camera. `?through` initialises the scrubber before `filter()` runs.
-- Deterministic and verification runs pass no hash, so approved screenshots are unaffected.
+A GitHub issue form ("New visit": country, city, dates, optional trip) feeds a workflow that runs `npm run add` with the repository's `NOMINATIM_CONTACT` secret, commits the visit and the warmed geocache, and opens a pull request. Merge from the phone; Pages deploys. The installed app gains a "Add a visit" link to the form. Zero servers, zero accounts beyond GitHub.
 
-### 4d. Short public IDs
+- **How.** `.github/ISSUE_TEMPLATE/visit.yml` plus `.github/workflows/add-visit.yml`, restricted to the repository owner's issues.
+- **Done when** an issue on a phone becomes a mergeable PR with a green quick gate.
 
-- In `scripts/config.ts` change the generated ID to `${country}-${slug}-${digest.slice(0, 8)}`; the existing `used`/`occurrences` loop already resolves collisions.
-- Backward compatibility: in `route()`, when a hash ID is not found, accept any place whose ID is a prefix of the requested ID (the new ID is a prefix of the old one). Replace the URL with the canonical short form, as the alias path already does.
-- Update `verification/fixtures/manifest.json` and any expected IDs in contracts tests; document in `docs/DATA.md` that existing links keep working.
+### 5b. Import from where the data already is
 
-**Acceptance for Release 4.** The Scandinavian summer can be isolated with the scrubber; "During Jun 2025" shows only Denmark, Norway and Sweden stops. A `#/view` link reproduces a region view and filter on another machine. Old place links resolve. Baseline approval for the new timeline chrome.
+Beyond CSV: a one-off `npm run import -- --from polarsteps export.zip` and `--from google-timeline Records.json` that reduce a track to days-in-a-city (stop clustering by day, then one reverse geocode per cluster under the Nominatim policy, throttled and capped, with `--dry-run` first). Migration from the apps people leave is how a personal atlas earns its first fifty places.
 
----
+- **Rules.** Reverse geocoding only through the explicit command, never in a build; the result is still country, city and dates.
 
-## Release 5: journeys
+### 5c. Companions
 
-**Goal.** Show the routes the data already contains, with previous/next navigation.
+Two atlases on one globe. A companion's published atlas (their public `places.json` and `trips.json`, nothing else) is pinned in the config by URL and checksum and merged at build, drawn with a second mark and the same accent. "Where we've both been" becomes a filter and a milestone.
 
-### 5a. Trip inference at build
+- **Rules.** Fetched only at build, like boundaries; no runtime origins are added. Both owners publish only what they already publish.
 
-- `scripts/trips.ts`: `inferTrips(visits)` sorts dated city visits by start, then chains a visit onto the current trip when its start is within one day of the previous end (contiguous or overlapping). A trip needs two or more stops. Boundary-only visits and undated visits never join.
-- Optional authored field `trip?: string` in `visitSchema` (strict object, so the schema must grow): visits sharing a `trip` string are grouped regardless of gaps, and the string becomes the public label. Document in `docs/DATA.md` that this label is public.
-- Generated label when not authored: countries in stop order joined with an Oxford-free list plus the year, for example "Denmark, Norway and Sweden, 2025". Uses `Intl.DisplayNames("en")` at build.
-- Emit `src/generated/trips.json`: `[{ id, label, start, end, stops: [placeId] }]`. Trip IDs follow the same slug-plus-digest scheme.
-- Emit `routes.geojson`: one LineString per trip through stop coordinates, densified every 100 km along the great circle so globe rendering follows the sphere. `properties: { trip }`, `id: trip`.
-- Extend `verification/payload.ts` with allowlists for trips (`id,label,start,end,stops`) and audit `trips.json` and the route geometry coordinates against the same precision-safe expectations as pins.
-- Tests: contiguity, overlap, one-day gap joins, two-day gap splits, authored label wins, single visits excluded, densify monotonic distance, dateline crossing.
+## 6. In your language
 
-### 5b. Route layer
+The interface in German first, then any language a contributor adds. Country names and dates already follow the browser; the sixty or so interface strings, the caption grammar ("6 nights", "stop 3 of 8") and the generated journey labels move to message catalogues with plural rules. `?lang=` pins a language for links and verification.
 
-- `build-style.ts`: source `routes` (`promoteId: "trip"`), layer `routes` type line, lamplight, width 0.8 to 1.2 by zoom, opacity band starting at 3.5 and multiplied by feature-state visibility. Draw beneath pins, above region fills.
-- `create-map.ts`: add trips to `features` so the time filter drives them; a trip's visibility is the max visibility of its stops so it appears as its first stop lights.
+- **How.** `src/i18n/` with ICU-style plurals via `Intl.PluralRules`; the build emits journey labels per language.
+- **Done when** the German atlas passes the same a11y run and no string is left untranslated in the contracts test.
 
-### 5c. Caption navigation
+## 7. Foundations
 
-- Build `tripByPlace` and a global `chronology` index at module scope in `src/main.tsx`.
-- Caption gains a line "Part of <trip label> · stop 3 of 8" when applicable, and two buttons "Previous" / "Next" that call `atlas.select` on the neighbouring stop. Outside a trip, the buttons step through global chronology and the line reads "Visit 5 of 18".
-- Keyboard: ArrowLeft/ArrowRight while the caption has focus, exposed with `aria-keyshortcuts`. Do not bind globally; arrows pan the map.
-- Explorer: a third scope "Journeys" listing trips with date span and stop count; selecting one flies to the bounds of all stops with `maxZoom` 6 and opens nothing.
+Work that makes everything above cheaper and safer.
 
-**Verification.** Contracts for 5a; a runtime scenario that selects a fixture stop and presses Next, asserting the dialog label changes; axe on the caption with buttons. Baseline approval for the route line and caption.
+- **7a. Approved baselines.** Run `npm run verify` locally on a machine with a GPU, fix anything non-visual that fails, approve with `npm run verify:approve`, set the metric baseline, commit.
+- **7b. The complete published basemap.** Global z0–6 with city detail on a pinned Hugging Face SHA, as described in the [guide](GUIDE.md#basemap-deployment). Unblocks the poster, the recorder and the README hero.
+- **7c. Lighter geometry.** Bring the owner build's boundary geometry under the 400 KB gzip budget. Measure per country; keep, in the fine LOD, only a country's largest polygon and those near a visited place; tune simplification; split fine LODs per country if still needed.
+- **7d. MapLibre GL 6.** ESM, WebGL2 only, and the newer globe, sky and colour-relief work. Read the changelog against `create-map.ts`, `scripts/themes.ts` and `build-style.ts`; expect pixel changes, so it follows 7a.
+- **7e. Linkable journeys and During on phones.** `#/journey/<id>` in the router; the Through/During control on narrow screens.
 
----
+## Suggested order
 
-## Release 6: in-app tour
-
-**Goal.** A "Tour" button that plays the recorder's globe-and-regions choreography in the browser.
-
-**Steps.**
-
-1. Move the pure functions `selectTourStops`, `createGlobeTour`, `cameraAtFrame` and their types from `scripts/recording.ts` into `src/map/tour.ts`. Re-export them from `scripts/recording.ts` so the 20 recording tests and the recorder keep working unchanged.
-2. Add `play()` and `stop()` to `Atlas`. `play()` builds the tour from `places` with the first published place as anchor and the canvas size as viewport, then runs a `requestAnimationFrame` loop mapping elapsed time to `frame = elapsed * 30` and calling `map.jumpTo(cameraAtFrame(frame, tour))`. It ends after 720 frames on the overview camera and sets `stopped = true`.
-3. Any user `movestart` with `originalEvent`, Escape, the World button, a place selection, or a scrubber change stops the tour. The Tour button toggles to "Stop".
-4. Reduced motion: replace the continuous flight with a stepwise version that `jumpTo`s each keyframe with a 1.5 s hold, or disable the button with a title explaining why. Prefer stepwise.
-5. Release 3's fine LOD swap should trigger at tour start so regional shots are sharp.
-6. Verification: a correctness scenario starts the tour, waits 500 ms, drags the map, and asserts the camera stops moving within one frame. Measure p95 frame time during a 5 s tour slice and record it in the report as informational before deciding whether to gate on it.
-
----
-
-## Release 7: by the numbers
-
-**Goal.** A small statistics panel that opens from the header count line.
-
-**Steps.**
-
-1. `scripts/stats.ts` computes at build from public visits and trips: countries, regions, places, visits, nights total and per year, longest stay (place label, nights), first-visit year per country, places per country, trips count. Emit `src/generated/stats.json`, audit it in `payload.ts` (no coordinates allowed).
-2. Turn `.atlas-count` into a button with `aria-expanded` that opens a panel styled like the explorer, positioned under the header. Escape closes it and returns focus. Only one of explorer, caption and stats is open at a time.
-3. Content: a definition-list of totals, a per-year row of nights rendered as text plus a proportional lamplight bar (single accent, mist track, `aria-hidden` bar with the number in text). Load the `dataviz` skill before designing the bar row.
-4. Runtime: axe on the open panel, keyboard open/close, and a contracts test that stats match a recomputation from the fixture.
-
----
-
-## Release 8: authoring tools
-
-**Goal.** Adding a visit becomes one command.
-
-### 8a. `npm run add`
-
-- `scripts/add.ts` with usage `npm run add -- DE Berlin 2024-04-25` or `DE "Wendisch Rietz" 2025-04-04..2025-04-06`, optional `--region`, `--label`, `--trip`, `--dry-run`.
-- Validate the candidate with `visitSchema` before touching files. Detect an existing identical country/city/date and refuse.
-- Insert into `data/visits.ts` using the `typescript` compiler API already in devDependencies: parse, find the `visits` array literal, insert a formatted object before the closing bracket, print with the existing formatting (two-space indent, trailing commas). Never rewrite unrelated lines.
-- Run `geocodeConfig` from `scripts/geocode.ts` for the config so the new city is cached (requires `NOMINATIM_CONTACT`, reuses the 1.1 s throttle), then print the resolved coordinates and remind to run `npm run build` and commit `data/geocache.json` and `data/sources.json`.
-- Tests: argument parsing, date range parsing, AST insertion round-trips a fixture file byte-for-byte except the new entry, duplicate refusal.
-
-### 8b. `npm run import`
-
-- CSV with header `country,city,start,end,label,trip`; each row goes through the same path as 8a; a summary lists inserted, skipped duplicates and validation failures with row numbers. Geocode once at the end for all new cities.
-- GPX or Google Timeline import needs reverse geocoding of many points against Nominatim's usage policy. Mark as stretch: implement only with an explicit `--reverse` flag, a hard cap of one request per 1.1 s and a per-run limit, and document the policy link.
-
----
-
-## Release 9: installable and offline
-
-**Goal.** Home-screen install and an offline-capable shell, with an opt-in full-archive download in bundled mode.
-
-### 9a. Shell
-
-- `public/manifest.webmanifest`: name, short name, `start_url` relative, `display: standalone`, `theme_color`/`background_color` `#080f18`, icons 192 and 512 PNG generated from `favicon.svg` by a small script and committed.
-- Service worker generated by a Vite plugin `atlas-sw` in `vite.config.ts` at `closeBundle`: precache the hashed JS/CSS/style JSON/generated GeoJSON, fonts, sprites and the glyph ranges present in `dist`; cache-first for those, network-only for PMTiles. Register from `main.tsx` only in production builds and only when `navigator.serviceWorker` exists.
-- `_headers`: `sw.js` gets `Cache-Control: no-cache`. GitHub Pages ignores headers, so the worker is served with a short TTL by naming it with a build hash in the registration URL query.
-- CSP already allows `worker-src 'self'`. The origins audit in verification must see no new origins.
-
-### 9b. Opt-in archive for bundled mode
-
-- A "Save for offline" control in the attribution details, shown only when `VITE_BASEMAP=bundled`. It downloads the archive with progress into the Cache API as a single response.
-- The worker answers Range requests for the archive URL by slicing the cached body and returning 206 with `Content-Range`, which is what the PMTiles protocol expects. Guard with a size check and a "Remove offline data" control.
-- Verification: a runtime scenario in bundled fixture mode saves, goes offline via CDP, reloads and asserts the map reaches `idle` and a pin renders.
-
----
-
-## Cross-cutting checklist for every release
-
-1. `npm run lint`, `npm test`, `npm run verify -- --quick` locally.
-2. Full `npm run verify` on the GPU runner; `npm run verify:approve` only when the release intentionally changes pixels, and say which screenshots changed in the PR.
-3. `verification/payload.ts` extended for any new generated file; no new field on places or visits without a DATA.md sentence.
-4. A DECISIONS paragraph for each design choice and an EVOLUTION entry with before/after numbers from the report.
-5. README "Explore the atlas" updated for new controls and shortcuts.
-
-## Suggested order of work
-
-Start with 0 and 1 in the first week; they are small and unblock gated PRs. Then 2 and 3 in parallel. Then 4, which is the foundation for 5, 6 and 7. Finish with 8 and 9, which touch tooling rather than the map.
+| Order | Item | Why now |
+|---|---|---|
+| 1 | 7a, 7b | Everything with pixels or a wide view depends on them. |
+| 2 | 1c, 1d, 7e | Small, no pixels, immediately useful. |
+| 3 | 3b, 4a | Build-time data, high delight per line of code. |
+| 4 | 2a, 2b, 1b | The share story: replay, year in review, rich links. |
+| 5 | 3a, 1a | The signature pieces: the real sky and the poster. |
+| 6 | 5a, 5b | Authoring reach. |
+| 7 | 2c, 2d, 6, 7c, 7d, 3c, 4b, 5c | As appetite allows. |

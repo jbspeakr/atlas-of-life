@@ -11,7 +11,8 @@ concurrency:
 jobs:
   quick:
     # Hosted Linux runs the static, unit, fixture-build, style and budget gates.
-    # GPU-dependent runtime, performance and visual checks stay on the self-hosted job below.
+    # Runtime, performance and visual checks need a real GPU and exact platform
+    # PNGs, so `npm run verify` is a local step before merging; it never runs here.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,31 +30,6 @@ jobs:
       - name: Objective table in workflow summary
         if: always()
         run: node scripts/objective-summary.mjs
-  # verify (optional full GPU run):
-  #   # Untrusted fork code must not execute on a persistent GPU runner.
-  #   if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-  #   # A GPU-equipped runner is intentional: hosted Linux software rasterizers
-  #   # cannot certify the measured 60fps hardware contract or exact Mac baselines.
-  #   runs-on: [self-hosted, macOS, ARM64, atlas-gpu]
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '22'
-  #         cache: npm
-  #     - run: npm ci
-  #     - run: npx playwright install chromium
-  #     - run: npm run verify
-  #     - uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: verification
-  #         path: |
-  #           verification/report.json
-  #           verification/artifacts/
-  #     - name: Objective table in workflow summary
-  #       if: always()
-  #       run: node scripts/objective-summary.mjs
   comment:
     needs: quick
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -120,7 +96,7 @@ jobs:
   # Optional second deployment. Uncomment this whole job for Cloudflare Pages.
   # It rebuilds with a root base rather than reusing GitHub Pages' /repository/ build.
   # cloudflare:
-  #   needs: verify
+  #   needs: quick
   #   if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
   #   runs-on: ubuntu-latest
   #   environment: cloudflare-pages
