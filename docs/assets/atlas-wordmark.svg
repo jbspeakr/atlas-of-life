@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -1960 4560 2030" width="456" height="203" role="img" aria-labelledby="t">
 <title id="t">atlas</title>
 <style>
-.ink{fill:#080f18}.route{stroke:#6b7a8a}.ring{stroke:#4a5968}.gold{fill:#d19a3f}.halo{opacity:.26}
+.ink{fill:#1e2731}.route{stroke:#7d8994}.ring{stroke:#56626e}.gold{fill:#c98a22}.halo{opacity:.24}
 @media (prefers-color-scheme:dark){.ink{fill:#f1eee7}.route{stroke:#a7b2bf}.ring{stroke:#a7b2bf}.gold{fill:#efc784}.halo{opacity:.22}}
 </style>
 <path class="route" d="M760 -1415Q2410 -2280 4060 -1405" fill="none" stroke-width="40" stroke-linecap="round" stroke-dasharray="0 100"/>

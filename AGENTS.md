@@ -20,7 +20,8 @@ data/                 Authored input. visits.ts is the only routinely hand-edite
 scripts/              Build-time Node code, run with tsx. Owns every sensitive field.
   config.ts             Zod schema, validation, identity/ID generation, publication policy.
   build-geo.ts          Main generator: boundaries → LODs, places, visits, trips, stats → src/generated/.
-  build-style.ts        Emits src/generated/style.json (Protomaps dark flavour + atlas layers).
+  build-style.ts        Emits src/generated/style.json: Protomaps layers and atlas layers in both themes.
+  themes.ts             mergeThemes(): folds the night and day palettes into one style via `state.theme`.
   boundaries.ts         Boundary repository, point-in-polygon region discovery, label anchors.
   trips.ts / stats.ts   Journey inference and arcs; "By the numbers" figures.
   geocode.ts            The only Nominatim client (explicit command, never in a build).
@@ -30,7 +31,8 @@ scripts/              Build-time Node code, run with tsx. Owns every sensitive f
   service-worker.ts     Source of the generated dist/sw.js (see vite.config.ts).
   build-basemap.sh / publish-tiles.ts Basemap extraction and Hugging Face publishing.
 src/                  Browser application.
-  main.tsx              The whole React UI: title, directory, caption, timeline, numbers, tour button.
+  main.tsx              The whole React UI: title, directory, caption, timeline, numbers, tour and theme buttons.
+  theme.ts              Day/night theme: pre-paint boot script (hashed into the CSP), storage, system follow.
   map/create-map.ts     MapLibre setup, feature state, selection, journeys focus, LOD swaps, `Atlas` API.
   map/expressions.ts    Zoom bands and paint-expression helpers shared with build-style.ts.
   map/router.ts         Hash routes: #/place/<id>, #/view/<z>/<lat>/<lng>, ?through=&mode=.
@@ -38,7 +40,8 @@ src/                  Browser application.
   map/tour.ts           In-app tour; shares shots with the recorder.
   map/text.ts           Diacritic folding and slugs (shared with authoring).
   map/offline.ts        Opt-in offline archive storage.
-  styles/               tokens.css (palette, type scale), app.css, map.css.
+  map/sky.ts            Night starfield and globe halo, drawn on a 2D canvas beneath the map.
+  styles/               tokens.css (semantic colour tokens per theme, type scale), app.css, map.css.
   generated/            Build output. Git-ignored. Never edit by hand.
 public/               Static assets copied verbatim: fonts, glyphs, sprites, icons, social card, _headers.
 verification/         The verification harness and its fixtures.
@@ -91,7 +94,7 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 2. **City precision by default.** Coordinates are published at city precision unless a visit sets `publishPrecision: "exact"`. Do not weaken this.
 3. **No network in builds or verification.** Geocoding happens only in `npm run geocode`/`add`. Fixture mode (`ATLAS_FIXTURE=1`) must never download. Don't add runtime calls to third-party services; the CSP is generated from explicit tile origins.
 4. **Baselines are approved, not regenerated.** Never run `verify:approve` or `--set-baseline` to make a failing check pass. Never raise a budget in `verification/budgets.json` to hide a regression. Don't retry flaky checks into green.
-5. **One accent colour, two typefaces.** Lamplight `#efc784` is the only warm colour; everything else uses the greys in `src/styles/tokens.css`. Fraunces for titles and place names, Noto Sans for everything else. No new fonts, gradients or photos.
+5. **One accent colour, two typefaces, two themes.** Lamplight is the only warm colour (`#efc784` at night, deepened to ochre `#c98a22`/`#875a10` by day); everything else uses the semantic tokens in `src/styles/tokens.css`, and every token and map colour is defined for both themes. Fraunces for titles and place names, Noto Sans for everything else. No new fonts, photos or gradients (the globe halo is the one documented exception).
 6. **Stationary camera.** Nothing moves the camera without user input, except the opt-in tour. Respect `prefers-reduced-motion` and `?deterministic=1`.
 7. **Accessibility is a gate.** Every control has an accessible name, keyboard path and visible focus; axe runs in full verification.
 8. **Don't edit generated files.** `src/generated/`, `dist/`, `verification/report.json` and `verification/artifacts/` are outputs.
@@ -99,6 +102,7 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 ## Recipes
 
 - **Add a map layer or change styling:** `scripts/build-style.ts` (layers), `src/map/expressions.ts` (zoom bands and shared expressions), then check `verification/style.ts` for layer-ID expectations. Pixel changes need a baseline approval by a human.
+- **Change a colour:** use a semantic token (`--bg`, `--text`, `--accent`, …) in CSS and the `color(role)` helper in `build-style.ts`; give it a night and a day value. The `theme.palettes` style gate checks the built style.
 - **Add a UI control:** `src/main.tsx` plus `src/styles/app.css`. Mirror the existing pattern: `aria-label`, `aria-keyshortcuts` where there's a key, hide `kbd` hints under 700 px.
 - **Add a published field or generated file:** produce it in `scripts/build-geo.ts`, extend `verification/payload.ts` and add a contract in `verification/contracts.test.ts`.
 - **Change authoring rules:** `scripts/config.ts` (schema and identity). IDs must stay stable for unrelated edits; see the ID section of `docs/DATA.md`.
@@ -110,7 +114,7 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 - `docs/DECISIONS.md` gets a paragraph whenever you decide something a future maintainer might question.
 - `docs/EVOLUTION.md` holds **measured** results only: before/after numbers from `verification/report.json`, never estimates.
 - British spelling in prose (colour, licence, optimise). Plain, direct sentences.
-- README images live in `docs/assets/`. The wordmark SVGs are Fraunces 500 outlines (no font dependency) in a light and a dark variant, switched with `<picture>` and `prefers-color-scheme`; `atlas-wordmark.svg` adapts on its own for other contexts. Screenshots are WebP captured from `npm run preview` with `?deterministic=1`. The README hero slot is meant for a tour recording from `npm run record -- --format landscape` with a complete z0–6 basemap, supplied by the maintainer.
+- README images live in `docs/assets/`. The wordmark SVGs are Fraunces 500 outlines (no font dependency) in a light and a dark variant, switched with `<picture>` and `prefers-color-scheme`; `atlas-wordmark.svg` adapts on its own for other contexts. Screenshots are WebP captured from `npm run preview` with `?deterministic=1` and an explicit `&theme=dark` or `&theme=light` (headless browsers otherwise report a light system theme). The README hero slot is meant for a tour recording from `npm run record -- --format landscape` with a complete z0–6 basemap, supplied by the maintainer.
 - Commits use Conventional Commit prefixes as in the history: `feat:`, `fix:`, `perf:`, `docs:`, `ci:`, `refactor:`. One logical change per commit.
 
 ## Environment gotchas

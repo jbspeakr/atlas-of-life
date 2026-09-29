@@ -28,7 +28,7 @@
 
 <p align="center">
   <!-- Tour recording: replace this image with the recorded tour (see AGENTS.md, "Documentation conventions"). -->
-  <img src="docs/assets/screenshots/hero.webp" alt="The atlas globe over Europe with nine visited countries lit in lamplight" width="960" />
+  <img src="docs/assets/screenshots/hero.webp" alt="The atlas globe at night over Europe, with nine visited countries lit in lamplight and a soft halo around the globe" width="960" />
 </p>
 
 ---
@@ -51,6 +51,9 @@ The build finds the city, discovers which region it belongs to, generates stable
 - **Journeys, inferred**<br>
   Adjacent dates become journeys automatically. Focus one and dotted arcs and numbered stops reveal in travel order, leaving from and returning to your home base. The arcs are curved on purpose: they say "from here to there", never "the road taken".
 
+- **Night and day**<br>
+  Opens in your system's appearance. Night is lamplight on a midnight globe under a sparse, still starfield; day is the same atlas printed on paper in ink and ochre. One button switches, and the choice sticks.
+
 - **A caption, not a card**<br>
   Select a place for its region, dates and nights stayed, plus an itinerary strip whose segments are as wide as each stay. Step to the previous or next stop with **←**/**→**.
 
@@ -64,10 +67,13 @@ The build finds the city, discovers which region it belongs to, generates stable
   Countries, regions, places, journeys, nights away, the longest stay, nights by year and places by country, all computed at build time.
 
 - **A tour, in the app and on film**<br>
-  **Tour** flies a 24-second cinematic sequence in the browser. `npm run record` renders the same shots to H.264 MP4 in portrait, square and landscape, ready for social media.
+  **Tour** flies from wherever you are into a 24-second cinematic sequence. `npm run record` renders the same shots to H.264 MP4 in portrait, square and landscape, ready for social media.
 
 - **Privacy first**<br>
   City precision by default. Addresses, precision flags and cache provenance never enter the build output, enforced by a publication allowlist that verification audits on every run.
+
+- **Made for phones**<br>
+  The places directory becomes a bottom sheet that rides above the keyboard, and a tap picks the nearest place within a thumb's reach.
 
 - **Installable and offline**<br>
   A web app manifest and a build-generated service worker. With a bundled basemap you can save the whole map for offline use.
@@ -79,7 +85,7 @@ The build finds the city, discovers which region it belongs to, generates stable
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/screenshots/hero.webp" alt="The globe over Europe with nine visited countries lit in lamplight" /></td>
+    <td width="50%"><img src="docs/assets/screenshots/hero.webp" alt="The night globe over Europe with nine visited countries lit in lamplight" /></td>
     <td width="50%"><img src="docs/assets/screenshots/journey.webp" alt="A focused Scandinavian journey with numbered stops and the caption for Ödsmål" /></td>
   </tr>
   <tr>
@@ -102,12 +108,20 @@ The build finds the city, discovers which region it belongs to, generates stable
     <td><sub><b>By the numbers.</b> Everything derived from your dates and geography, nothing else.</sub></td>
     <td><sub><b>Places.</b> Browse what is in view, everything, or journeys. Search ignores accents.</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/assets/screenshots/day-globe.webp" alt="The day theme: a paper-coloured globe with visited countries in ochre" /></td>
+    <td><img src="docs/assets/screenshots/day-journey.webp" alt="The Scandinavian journey and Ödsmål caption in the day theme" /></td>
+  </tr>
+  <tr>
+    <td><sub><b>Day.</b> The same atlas printed on paper, for bright rooms and light-mode people.</sub></td>
+    <td><sub><b>Day journeys.</b> Ink and ochre, with the same contrast as night.</sub></td>
+  </tr>
 </table>
 
 <p align="center">
   <img src="docs/assets/screenshots/mobile.webp" alt="The atlas on a phone, showing a focused journey" width="300" />
   <br />
-  <sub>Designed for phones too.</sub>
+  <sub>On a phone, one surface at a time.</sub>
 </p>
 
 ## Quick start
@@ -185,6 +199,11 @@ The ten releases of the [September 2026 plan](docs/ROADMAP.md) have shipped:
 - [x] **By the numbers**
 - [x] `npm run add` and `npm run import`
 - [x] Installable app shell and opt-in offline map
+
+Since then:
+
+- [x] Day and night themes, a sparse starfield and a globe halo
+- [x] A mobile bottom sheet, thumb-sized tap targets and a tour that starts from the current view
 
 Up next:
 
