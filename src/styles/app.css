@@ -457,11 +457,68 @@ kbd {
   color: var(--parchment);
   font-size: var(--text-base);
 }
+/* Dots, like the journey arcs on the map: a sequence of stops, not a road. */
 .place-mark-route {
-  width: 12px;
-  height: 1px;
-  flex-basis: 12px;
+  width: 14px;
+  height: 4px;
+  flex-basis: 14px;
   border-radius: 0;
+  background: radial-gradient(circle, var(--lamplight) 1.5px, transparent 2px) 0 50% / 5px 4px repeat-x;
+}
+.itinerary {
+  margin: 12px 0 0;
+}
+.place-caption .itinerary-summary {
+  margin: 0 0 8px;
+  color: var(--parchment);
+}
+/* A schematic of the journey: each stop is a segment as wide as its nights. */
+.itinerary-strip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.itinerary-strip li {
+  flex: 1 1 0;
+  min-width: 6px;
+}
+.itinerary-strip button {
+  display: block;
+  width: 100%;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: linear-gradient(var(--lamplight), var(--lamplight)) 0 50% / 100% 4px no-repeat;
+  opacity: 0.35;
+  cursor: pointer;
+}
+.itinerary-strip button:hover {
+  opacity: 0.7;
+}
+.itinerary-strip button[aria-current="step"] {
+  opacity: 1;
+  background-size: 100% 6px;
+}
+/* Home bookends: the same hollow ring as on the map. */
+.itinerary-strip .itinerary-home {
+  flex: 0 0 9px;
+  min-width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--parchment);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.home-caption {
+  border-left-color: var(--parchment);
+}
+.place-caption .caption-kicker {
+  margin: 0 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .timeline {
   position: absolute;

@@ -607,6 +607,173 @@ describe("journeys", () => {
     ).toHaveLength(1);
   });
 });
+describe("home base", () => {
+  const berlinCity = { country: "DE", city: "Berlin" };
+  const cache: Cache = {
+    [queryKey(buildQuery(berlinCity, "city"))]: {
+      kind: "city",
+      country: "DE",
+      city: "Berlin",
+      coordinates: [13.405, 52.52],
+    },
+  };
+  it("accepts one home or several, orders them and ends each where the next begins", () => {
+    const single = validateConfig({ home: { ...berlinCity, since: "2024-04-25" }, visits: [] });
+    expect(single.homes).toHaveLength(1);
+    expect(single.homes[0]).toMatchObject({ label: "Berlin", since: "2024-04-25" });
+    expect(single.homes[0].id).toMatch(/^home-berlin-[a-f0-9]{8}$/);
+    expect(single.homes[0].until).toBeUndefined();
+    const moved = validateConfig({
+      home: [
+        { country: "DE", city: "Hamburg", since: "2027-03-01" },
+        { ...berlinCity, since: "2024-04-25" },
+      ],
+      visits: [],
+    });
+    expect(moved.homes.map((home) => [home.city, home.until])).toEqual([
+      ["Berlin", "2027-02-28"],
+      ["Hamburg", undefined],
+    ]);
+    expect(validateConfig({ visits: [] }).homes).toEqual([]);
+    expect(() =>
+      validateConfig({ home: [{ ...berlinCity }, { country: "DE", city: "Hamburg" }], visits: [] }),
+    ).toThrow(/distinct since/);
+    expect(() =>
+      validateConfig({ home: { ...berlinCity, address: "Somewhere 1" }, visits: [] }),
+    ).toThrow();
+  });
+  it("resolves a home at city precision through the warm cache only", async () => {
+    const { resolveHomes } = await import("../scripts/config.ts");
+    const config = validateConfig({ home: { ...berlinCity, since: "2024-04-25" }, visits: [] });
+    expect(resolveHomes(config, cache)).toEqual([
+      {
+        id: config.homes[0].id,
+        label: "Berlin",
+        country: "DE",
+        city: "Berlin",
+        coordinates: [13.405, 52.52],
+        since: "2024-04-25",
+      },
+    ]);
+    expect(() => resolveHomes(config, {})).toThrow(/geocache miss/);
+  });
+  it("publishes only the home fields", async () => {
+    const { payloadViolations } = await import("../verification/payload.ts");
+    const home = { id: "home-x", label: "Berlin", country: "DE", city: "Berlin", coordinates: [13.4, 52.5], since: "2024-04-25" };
+    expect(payloadViolations("home.json", JSON.stringify([home]))).toEqual([]);
+    expect(payloadViolations("home.json", JSON.stringify([{ ...home, address: "Street 1" }]))).toHaveLength(1);
+    expect(payloadViolations("home.json", JSON.stringify([home]), { "home-x": [13.5, 52.5] })).toHaveLength(1);
+    expect(
+      payloadViolations("trips.json", JSON.stringify([
+        { id: "trip-x", label: "X", start: "2025-01-01", end: "2025-01-02", stops: ["a", "b"], from: "home-x", to: "home-x" },
+      ])),
+    ).toEqual([]);
+  });
+});
+describe("journey arcs and home legs", () => {
+  const berlin: [number, number] = [13.4, 52.5];
+  const home = { id: "home-berlin", coordinates: berlin, since: "2024-04-25" };
+  const stop = (
+    id: string,
+    placeId: string,
+    coordinates: [number, number],
+    start: string,
+    end: string,
+  ): import("../scripts/trips.ts").TripVisit => ({
+    id,
+    placeId,
+    country: "DE",
+    coordinates,
+    ...(start === end ? { date: start } : { dateRange: [start, end] as [string, string] }),
+  });
+  it("bows symmetrically to the requested side and keeps both ends exact", async () => {
+    const { arc } = await import("../scripts/trips.ts");
+    const right = arc([0, 0], [10, 0], 1);
+    const left = arc([0, 0], [10, 0], -1);
+    expect(right[0]).toEqual([0, 0]);
+    expect(right[right.length - 1]).toEqual([10, 0]);
+    const middle = Math.floor(right.length / 2);
+    // Travelling east, right is south; the bow peaks near 14 % of ~1,112 km.
+    expect(right[middle][1]).toBeLessThan(-1.2);
+    expect(left[middle][1]).toBeGreaterThan(1.2);
+    expect(right[middle][1]).toBeCloseTo(-left[middle][1], 5);
+    expect(Math.abs(right[1][1])).toBeCloseTo(Math.abs(right[right.length - 2][1]), 2);
+    // Even a five-kilometre hop is drawn as a curve, not a two-point segment.
+    expect(arc([14.1, 53.94], [14.25, 53.91], 1).length).toBeGreaterThan(20);
+    const crossing = arc([179, 10], [-179, 12], 1);
+    for (let i = 1; i < crossing.length; i++)
+      expect(Math.abs(crossing[i][0] - crossing[i - 1][0])).toBeLessThan(1);
+  });
+  it("bows loops outward whichever way they are travelled", async () => {
+    const { outwardSide } = await import("../scripts/trips.ts");
+    const counterClockwise: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    expect(outwardSide(counterClockwise)).toBe(1);
+    expect(outwardSide([...counterClockwise].reverse())).toBe(-1);
+    expect(outwardSide([[0, 0], [5, 5]])).toBe(1);
+  });
+  it("adds legs from home and back to journeys and to single trips, never to home itself", async () => {
+    const { groupTrips, routeFeatures } = await import("../scripts/trips.ts");
+    const coordinates = new Map<string, [number, number]>([
+      ["hollenbeck", [9.46, 53.43]],
+      ["storvorde", [10.25, 57.0]],
+      ["kalamos", [20.9, 38.6]],
+      ["berlin", berlin],
+    ]);
+    const journey = [
+      stop("a", "hollenbeck", [9.46, 53.43], "2025-05-24", "2025-05-25"),
+      stop("b", "storvorde", [10.25, 57.0], "2025-05-25", "2025-06-01"),
+    ];
+    const kalamos = stop("k", "kalamos", [20.9, 38.6], "2025-04-27", "2025-05-02");
+    const kalamosAgain = stop("k2", "kalamos", [20.9, 38.6], "2025-09-01", "2025-09-03");
+    const early = stop("e", "storvorde", [10.25, 57.0], "2023-01-01", "2023-01-02");
+    const atHome = stop("h", "berlin", berlin, "2025-10-01", "2025-10-01");
+    const grouped = groupTrips(journey);
+    const { trips, routes } = routeFeatures(
+      grouped,
+      [kalamos, kalamosAgain, early, atHome],
+      coordinates,
+      [home],
+    );
+    expect(trips[0]).toMatchObject({ stops: ["hollenbeck", "storvorde"], from: "home-berlin", to: "home-berlin" });
+    const summary = routes.features.map((feature) => [
+      feature.properties.group,
+      feature.properties.kind,
+      feature.properties.order,
+    ]);
+    expect(summary).toEqual([
+      [trips[0].id, "leg", 0],
+      [trips[0].id, "hop", 1],
+      [trips[0].id, "leg", 2],
+      // Repeat single trips share one lens; trips before the home began and
+      // trips to the home city itself have no legs.
+      ["place:kalamos", "leg", 0],
+      ["place:kalamos", "leg", 1],
+    ]);
+    for (const feature of routes.features)
+      expect(feature.id).toBe(feature.properties.id);
+    const out = routes.features[0].geometry.coordinates;
+    expect(out[0]).toEqual(berlin);
+    expect(out[out.length - 1]).toEqual([9.46, 53.43]);
+    const { trips: homeless } = routeFeatures(grouped, [], coordinates, []);
+    expect(homeless[0].from).toBeUndefined();
+  });
+});
+describe("focus expressions", () => {
+  it("draw a journey only while revealed and dim other places without hiding them", async () => {
+    const { scaleBand, revealed, undimmed, withVisibility } = await import("../src/map/expressions.ts");
+    const focus = expression.createExpression(scaleBand(bands.focus, revealed));
+    const pin = expression.createExpression(scaleBand(withVisibility(bands.pin), undimmed));
+    if (focus.result !== "success" || pin.result !== "success") throw new Error("invalid expression");
+    const at = (parsed: typeof focus, zoom: number, state: Record<string, number>) =>
+      Number(parsed.value.evaluate({ zoom }, undefined, state));
+    expect(at(focus, 5, {})).toBe(0);
+    expect(at(focus, 5, { reveal: 1 })).toBe(1);
+    expect(at(focus, 0.5, { reveal: 1 })).toBe(0);
+    expect(at(pin, 10, { visibility: 1 })).toBe(1);
+    expect(at(pin, 10, { visibility: 1, dim: 1 })).toBeCloseTo(0.3, 5);
+    expect(at(pin, 10, { visibility: 0, dim: 0 })).toBe(0);
+  });
+});
 describe("statistics", () => {
   it("derives totals from published visits only and matches an independent recomputation", async () => {
     const { computeStats } = await import("../scripts/stats.ts");

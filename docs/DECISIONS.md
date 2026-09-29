@@ -63,7 +63,13 @@ Natural Earth's full country bbox includes overseas territories; the interior an
 
 ## Journeys
 
-Journeys are inferred from adjacency of dates, not authored itineraries, because the owner's workflow is country, city and dates only; the optional `trip` label exists for the rare gap or a deliberate public name. Routes are great circles between published city coordinates, never streets or tracks, so they disclose nothing beyond the pins. Stepping is exposed in the caption, where the viewer already is, rather than as another panel.
+Journeys are inferred from adjacency of dates, not authored itineraries, because the owner's workflow is country, city and dates only; the optional `trip` label exists for the rare gap or a deliberate public name. Stepping is exposed in the caption, where the viewer already is, rather than as another panel.
+
+Straight great-circle lines were withdrawn: they read as the road taken, which the atlas does not know and must not imply. Connections are now symmetric arcs bowed by 14 % of their length. The build decides which way they bow so that a loop bows outward. They are drawn as round-capped dots and never as a solid line. This follows Jenny et al., *Design principles for origin-destination flow maps* (2018): in their study of 215 participants, curved flows were read more accurately than straight ones and were preferred. Direction comes from numbered stops rather than arrowheads, which would crowd a quiet map. No connection is drawn in the normal map view. A journey appears only in focus: when a stop is selected, when it is chosen or hovered in the directory, or when a single place is selected. The focused group reveals in travel order, other pins recede to 30 % rather than vanishing, and stop names name the constellation until the pins' own labels take over. Exact order and duration live in the caption's itinerary strip, a schematic whose segments are as wide as the nights stayed, so it cannot be mistaken for geography. MapLibre cannot combine a dash pattern with a line gradient, so the reveal fades whole dotted arcs in sequence instead of drawing them on. The single-accent palette holds: hierarchy comes from opacity and dot spacing, never from a new colour.
+
+### Home
+
+Home is configuration, not a visit. It is the origin that gives journeys a start and an end, and it is not a destination. It is therefore a different mark (a hollow parchment ring with a centre point, not a lamplight pin), and it lights no region and counts in no total. Legs to and from home are dotted more sparsely and at half strength, because they are context, not content. Home publishes at city precision only, and its label sits beneath the boundary names so it never displaces them.
 
 ## Maintainer and accessibility choices
 

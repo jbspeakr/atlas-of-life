@@ -6,8 +6,8 @@
 import type { Config } from "../scripts/config.ts";
 
 const config: Config = {
+  home: { country: "DE", city: "Berlin", since: "2024-04-25" },
   visits: [
-    { country: "DE", city: "Berlin", date: "2024-04-25" },
     {
       country: "GR",
       city: "Kalamos",
@@ -41,9 +41,15 @@ Use your own email or project contact URL. The first command populates `data/geo
 
 Generated IDs combine a readable country/city prefix with the first eight hex characters of a hash of normalized geographic/date identity, for example `de-berlin-4f1c09ab`; a collision within one configuration receives an occurrence suffix. Links minted before this shortening carried the full 64-character digest and still resolve, because the current ID is a prefix of the old one and the router canonicalises the URL in place. Reordering unrelated visits does not change them; Unicode names remain distinct even when their readable slugs coincide. Identical repeated entries receive occurrence suffixes. Changing a visit's identifying geography or dates changes its generated link. Optional explicit `id` and `label` overrides remain useful for permanent curated links and landmark labels, but are unnecessary for ordinary city entries. Deep links use `/#/place/<id>`. A moved camera is linkable as `/#/view/<zoom>/<lat>/<lng>`, and either form accepts `?through=YYYY-MM-DD` with an optional `&mode=only` to restore the timeline position; the app writes these as you browse, so the address bar always describes what is on screen.
 
+## Home
+
+`home` is where journeys start and end: `{ country, city, since?, label?, region? }`. It is **not a visit**. It never becomes a pin, never lights its region or country, and never counts towards places, visits or nights. On the map it is a hollow parchment ring with a point at its centre, labelled in italics. Its caption says since when it has been home and how many journeys began there. The timeline gains one position at `since`, so the atlas opens at home. Do not also add everyday visits to the home city: the atlas records the places visited, not daily whereabouts.
+
+If you move, list the homes in any order, each with its own `since`: `home: [{ country: "DE", city: "Berlin", since: "2024-04-25" }, { country: "DE", city: "Hamburg", since: "2027-03-01" }]`. Each home ends the day before the next begins, and a journey leaves from the home in effect on its first day and returns to the one in effect on its last day. Only the first home may omit `since`. `npm run geocode` resolves homes like cities. Homes publish at city precision only; there is no `address`, `coordinates` or `publishPrecision` for a home. `home.json` carries only `id`, `label`, `country`, `city`, city-precision `coordinates`, `since` and `until`. **The home city is public**; set `label` to show a different name, knowing that the ring's position still reveals the city.
+
 ## Journeys
 
-Consecutive dated city visits form a journey automatically when each starts no later than the day after the previous one ends; a Scandinavian summer authored as eight adjacent date ranges becomes one journey with eight stops, drawn as a thin great-circle route and navigable from the caption. Open-ended ranges and undated visits never join. Two or more visits are required. To group visits across a gap, or to name a journey, give them the same optional `trip` label: `{ country: "NO", city: "Egersund", dateRange: [...], trip: "Midsummer 2025" }`. **That label is public**; generated labels list the countries in visiting order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys are published to `trips.json` (id, label, dates, stop place IDs) and `routes.json`; they never carry addresses, notes or names.
+Consecutive dated city visits form a journey automatically when each starts no later than the day after the previous one ends; a Scandinavian summer authored as eight adjacent date ranges becomes one journey with eight stops, navigable from the caption. With a home set, the journey gains a leg out from home to its first stop and a leg back from its last stop, unless that stop is the home city itself. A dated trip to a single place gets the same pair of legs. Journeys are not drawn on the map until one is in focus; see the README for how focus works. Open-ended ranges and undated visits never join. Two or more visits are required. To group visits across a gap, or to name a journey, give them the same optional `trip` label: `{ country: "NO", city: "Egersund", dateRange: [...], trip: "Midsummer 2025" }`. **That label is public**; generated labels list the countries in visiting order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys are published to `trips.json` (id, label, dates, stop place IDs and the `from`/`to` home IDs) and `routes.json` (one arc per hop or home leg: `id`, `group`, `kind`, `order`); they never carry addresses, notes or names.
 
 Repeat cities collapse by country, resolved boundary and normalized city name. Keep one entry per trip: the first chronological visit supplies the canonical pin, and the caption retains the original trip dates rather than inventing continuous stays. Public per-visit rows carry `visitCount: 1` for city/address visits; boundary-only records omit it.
 

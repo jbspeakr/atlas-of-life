@@ -8,10 +8,11 @@ import {
   cacheSchema,
   collapseVisits,
   publicVisit,
+  resolveHomes,
   resolveVisits,
   validateConfig,
 } from "./config.ts";
-import { inferTrips, routeFeatures } from "./trips.ts";
+import { groupTrips, routeFeatures, type TripVisit } from "./trips.ts";
 import { computeStats } from "./stats.ts";
 import { placeKey } from "../src/map/place-key.ts";
 import {
@@ -153,27 +154,30 @@ async function main(): Promise<void> {
   });
   const places = collapseVisits(anchored);
   const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
-  const trips = inferTrips(
-    anchored.flatMap((visit) => {
-      if (!visit.city && !visit.address) return [];
-      const place = placeByKey.get(placeKey(visit));
-      if (!place) return [];
-      return [
-        {
-          id: visit.id,
-          placeId: place.id,
-          country: visit.country,
-          coordinates: visit.coordinates,
-          ...(visit.trip ? { trip: visit.trip } : {}),
-          ...(visit.date !== undefined ? { date: visit.date } : {}),
-          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
-        },
-      ];
-    }),
-  );
-  const routes = routeFeatures(
-    trips,
+  const tripVisits: TripVisit[] = anchored.flatMap((visit) => {
+    if (!visit.city && !visit.address) return [];
+    const place = placeByKey.get(placeKey(visit));
+    if (!place) return [];
+    return [
+      {
+        id: visit.id,
+        placeId: place.id,
+        country: visit.country,
+        coordinates: visit.coordinates,
+        ...(visit.trip ? { trip: visit.trip } : {}),
+        ...(visit.date !== undefined ? { date: visit.date } : {}),
+        ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+      },
+    ];
+  });
+  const grouped = groupTrips(tripVisits);
+  const inJourney = new Set(grouped.flatMap((entry) => entry.visits.map((visit) => visit.id)));
+  const homes = resolveHomes(authored, cache);
+  const { trips, routes } = routeFeatures(
+    grouped,
+    tripVisits.filter((visit) => !inJourney.has(visit.id)),
     new Map(places.map((place) => [place.id, place.coordinates])),
+    homes,
   );
   // Label anchors: one interior point per published boundary, keyed like its polygon.
   // Deliberately without a country field so the payload audit does not read them as places.
@@ -209,6 +213,7 @@ async function main(): Promise<void> {
     "regions.geojson": JSON.stringify(regionCoarse),
     "regions-fine.geojson": JSON.stringify(regionFine),
     "places.json": JSON.stringify(places),
+    "home.json": JSON.stringify(homes),
     "trips.json": JSON.stringify(trips),
     "stats.json": JSON.stringify(
       computeStats(anchored.map(publicVisit), places, trips.length),
@@ -245,7 +250,7 @@ async function main(): Promise<void> {
   );
   await repository.save();
   console.log(
-    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits, ${trips.length} journeys`,
+    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits, ${trips.length} journeys, ${homes.length} ${homes.length === 1 ? "home" : "homes"}`,
   );
 }
 

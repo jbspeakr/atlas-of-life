@@ -13,9 +13,10 @@ import regionsFineUrl from "../generated/regions-fine.geojson?url";
 import placesData from "../generated/places.json";
 import visitsData from "../generated/visits.json";
 import tripsData from "../generated/trips.json";
+import homeData from "../generated/home.json";
 import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
-import { visibleAt, type TimeMode } from "./time";
+import { visibleAt, type Dated, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
 import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
 export type Place = {
@@ -36,8 +37,22 @@ export type Trip = {
   start: string;
   end: string;
   stops: string[];
+  /** Home IDs the journey left from and returned to. */
+  from?: string;
+  to?: string;
+};
+/** The base journeys start from; never a visit, published at city precision. */
+export type Home = {
+  id: string;
+  label: string;
+  country: string;
+  city: string;
+  coordinates: [number, number];
+  since?: string;
+  until?: string;
 };
 export const places = placesData as Place[];
+export const homes = homeData as Home[];
 export const visits = visitsData as PublicVisit[];
 export const trips = tripsData as Trip[];
 export const visitsByPlace = new Map<string, PublicVisit[]>();
@@ -73,6 +88,8 @@ export type Atlas = {
   select: (id: string) => void;
   deselect: () => void;
   focusTrip: (id: string) => void;
+  /** Temporarily light a journey (directory hover); null restores the focus beneath. */
+  preview: (id: string | null) => void;
   play: () => void;
   stop: () => void;
   reset: () => void;
@@ -235,11 +252,11 @@ export async function createMap(
       id: p.id,
       visits: visitsByPlace.get(p.id) ?? [],
     })),
-    // A journey lights with its first stop and follows the same filter.
-    ...trips.map((trip) => ({
-      source: "routes",
-      id: trip.id,
-      visits: trip.stops.flatMap((stop) => visitsByPlace.get(stop) ?? []),
+    // Home is lit for the period it was home.
+    ...homes.map((home) => ({
+      source: "home",
+      id: home.id,
+      visits: [{ dateRange: [home.since ?? "", home.until ?? ""] }] as Dated[],
     })),
     // Label anchors follow their boundary's visibility.
     ...countries.features.map((f) => ({
@@ -262,13 +279,13 @@ export async function createMap(
       map.setFeatureState({ source: "countries", id: feature.id! }, { visibility: 1 });
     }
   };
-  const fly = (bounds: LngLatBoundsLike, maxZoom: number) => {
+  const fly = (bounds: LngLatBoundsLike, maxZoom: number, clearance = 0) => {
     finishIgnition();
     stopped = true;
     const camera = map.cameraForBounds(bounds, {
       padding: {
         top: innerWidth > 700 ? 110 : 125,
-        bottom: innerWidth > 700 ? 100 : 190,
+        bottom: innerWidth > 700 ? 100 + clearance : 190,
         left: 40,
         right: 40,
       },
@@ -284,6 +301,122 @@ export async function createMap(
         easing: ease,
         animate: !media.matches,
       });
+  };
+  // Journeys stay off the map until one is in focus: a selected stop, a
+  // journey chosen in the directory, or a hovered directory entry. The focused
+  // group's arcs and numbered stars reveal in travel order; other pins recede.
+  const routeData = (style.sources.routes as GeoJSONSourceSpecification)
+    .data as FeatureCollection;
+  const stopData = (style.sources.stops as GeoJSONSourceSpecification)
+    .data as FeatureCollection;
+  const segmentsByGroup = new Map<string, string[]>();
+  for (const feature of [...routeData.features].sort(
+    (a, b) => Number(a.properties?.order) - Number(b.properties?.order),
+  )) {
+    const group = String(feature.properties?.group);
+    segmentsByGroup.set(group, [...(segmentsByGroup.get(group) ?? []), String(feature.id)]);
+  }
+  const stopsByGroup = new Map<string, { id: string; place: string; first: number }[]>();
+  for (const feature of stopData.features) {
+    const group = String(feature.properties?.group);
+    stopsByGroup.set(group, [
+      ...(stopsByGroup.get(group) ?? []),
+      {
+        id: String(feature.id),
+        place: String(feature.properties?.place),
+        first: Number(String(feature.properties?.n).split("·")[0]),
+      },
+    ]);
+  }
+  const groupForPlace = (id: string): string | null =>
+    trips.find((trip) => trip.stops.includes(id))?.id ??
+    (segmentsByGroup.has(`place:${id}`) ? `place:${id}` : null);
+  const membersOf = (group: string): string[] =>
+    group.startsWith("place:")
+      ? [group.slice("place:".length)]
+      : (trips.find((trip) => trip.id === group)?.stops ?? []);
+  let baseFocus: string | null = null;
+  let shownFocus: string | null = null;
+  let currentStop: string | null = null;
+  let revealFrame = 0;
+  const revealDuration = 420;
+  const revealEntries = (group: string) => {
+    const segments = segmentsByGroup.get(group) ?? [];
+    const leadIn = trips.find((trip) => trip.id === group)?.from ? 1 : 0;
+    const stagger = Math.min(220, 1500 / Math.max(1, segments.length));
+    return [
+      ...segments.map((id, index) => ({ source: "routes", id, at: index * stagger })),
+      // A star lights as the arc arriving at it finishes drawing.
+      ...(stopsByGroup.get(group) ?? []).map((stop) => {
+        const arriving = stop.first - 2 + leadIn;
+        return {
+          source: "stops",
+          id: stop.id,
+          at: arriving < 0 ? 0 : arriving * stagger + revealDuration * 0.5,
+        };
+      }),
+    ];
+  };
+  const markCurrent = (place: string | null) => {
+    if (currentStop)
+      map.setFeatureState({ source: "stops", id: currentStop }, { current: false });
+    currentStop = place && shownFocus ? `${shownFocus}#${place}` : null;
+    if (currentStop)
+      map.setFeatureState({ source: "stops", id: currentStop }, { current: true });
+  };
+  const settleFocus = () => {
+    cancelAnimationFrame(revealFrame);
+    if (!shownFocus || !map.getSource("routes")) return;
+    for (const entry of revealEntries(shownFocus))
+      map.setFeatureState({ source: entry.source, id: entry.id }, { reveal: 1 });
+  };
+  function showFocus(group: string | null, place: string | null = null) {
+    if (!map.getSource("routes")) {
+      map.once("style.load", () => showFocus(group, place));
+      return;
+    }
+    if (group === shownFocus) {
+      markCurrent(place);
+      return;
+    }
+    cancelAnimationFrame(revealFrame);
+    if (shownFocus)
+      for (const entry of revealEntries(shownFocus))
+        map.setFeatureState({ source: entry.source, id: entry.id }, { reveal: 0 });
+    shownFocus = group;
+    const match: maplibregl.FilterSpecification = ["==", ["get", "group"], group ?? ""];
+    map.setFilter("journey-legs", ["all", ["==", ["get", "kind"], "leg"], match]);
+    map.setFilter("journey-hops", ["all", ["==", ["get", "kind"], "hop"], match]);
+    for (const layer of ["journey-stops", "journey-stop-numbers", "journey-stop-labels"])
+      map.setFilter(layer, match);
+    const members = new Set(group ? membersOf(group) : []);
+    for (const candidate of places)
+      map.setFeatureState(
+        { source: "pins", id: candidate.id },
+        { dim: group && !members.has(candidate.id) ? 1 : 0 },
+      );
+    markCurrent(place);
+    if (!group) return;
+    const entries = revealEntries(group);
+    if (media.matches || deterministic) {
+      settleFocus();
+      return;
+    }
+    const start = performance.now();
+    const frame = (now: number) => {
+      let done = true;
+      for (const entry of entries) {
+        const t = Math.min(1, Math.max(0, (now - start - entry.at) / revealDuration));
+        if (t < 1) done = false;
+        map.setFeatureState({ source: entry.source, id: entry.id }, { reveal: ease(t) });
+      }
+      if (!done) revealFrame = requestAnimationFrame(frame);
+    };
+    revealFrame = requestAnimationFrame(frame);
+  }
+  const focus = (group: string | null, place: string | null = null) => {
+    baseFocus = group;
+    showFocus(group, place);
   };
   const atlas: Atlas = {
     map,
@@ -343,12 +476,15 @@ export async function createMap(
     },
     select(id) {
       atlas.stop();
-      const place = resolvePlace(id);
-      if (!place) return;
-      selected = place.id;
-      onSelect(place.id);
+      const home = homes.find((candidate) => candidate.id === id);
+      const place = home ? undefined : resolvePlace(id);
+      const target = home ?? place;
+      if (!target) return;
+      selected = target.id;
+      focus(place ? groupForPlace(place.id) : null, place?.id ?? null);
+      onSelect(target.id);
       writeUrl("push");
-      const [x, y] = place.coordinates;
+      const [x, y] = target.coordinates;
       fly(
         [
           [x - 0.035, y - 0.022],
@@ -360,20 +496,31 @@ export async function createMap(
     focusTrip(id) {
       const trip = trips.find((candidate) => candidate.id === id);
       if (!trip) return;
-      const points = trip.stops
-        .map((stop) => places.find((place) => place.id === stop)?.coordinates)
-        .filter((point): point is [number, number] => Boolean(point));
+      // The frame includes home, so the whole round trip is in view.
+      const points = [
+        ...trip.stops.map((stop) => places.find((place) => place.id === stop)?.coordinates),
+        ...[trip.from, trip.to].map(
+          (home) => homes.find((candidate) => candidate.id === home)?.coordinates,
+        ),
+      ].filter((point): point is [number, number] => Boolean(point));
       if (!points.length) return;
       atlas.deselect();
+      focus(trip.id);
       fly(
         [
           [Math.min(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1]))],
           [Math.max(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))],
         ],
         6,
+        // Clear of the timeline, so a journey's home is never framed beneath it.
+        40,
       );
     },
+    preview(id) {
+      showFocus(id ?? baseFocus);
+    },
     deselect() {
+      focus(null);
       if (!selected) return;
       selected = null;
       onSelect(null);
@@ -391,6 +538,7 @@ export async function createMap(
     reset() {
       atlas.stop();
       finishIgnition();
+      focus(null);
       selected = null;
       onSelect(null);
       stopped = false;
@@ -439,6 +587,7 @@ export async function createMap(
     },
     destroy() {
       touring = false;
+      cancelAnimationFrame(revealFrame);
       cancelAnimationFrame(tourFrame);
       clearTimeout(tourTimer);
       cancelAnimationFrame(animation);
@@ -452,6 +601,7 @@ export async function createMap(
   function motionChanged() {
     if (media.matches) {
       finishIgnition();
+      settleFocus();
       cancelAnimationFrame(animation);
       cancelAnimationFrame(filtering);
       map.stop();
@@ -471,18 +621,21 @@ export async function createMap(
       atlas.filter(through, mode);
     }
     if (parsed.place) {
-      const place = resolvePlace(parsed.place);
-      if (!place) {
+      const target =
+        homes.find((home) => home.id === parsed.place) ?? resolvePlace(parsed.place);
+      if (!target) {
         selected = null;
+        focus(null);
         onSelect(null);
         return;
       }
       // A legacy or alias link becomes its canonical form in place, never a second entry.
-      selected = place.id;
+      selected = target.id;
       writeUrl();
-      atlas.select(place.id);
+      atlas.select(target.id);
     } else if (parsed.view) {
       selected = null;
+      focus(null);
       onSelect(null);
       finishIgnition();
       stopped = true;
@@ -494,6 +647,7 @@ export async function createMap(
       });
     } else {
       selected = null;
+      focus(null);
       onSelect(null);
     }
   }
@@ -620,7 +774,29 @@ export async function createMap(
   map.on("zoomend", () => {
     if (hovered && activeLayer(map.getZoom()) !== hovered.source) unhover();
   });
+  // Home answers at any zoom where its ring is drawn, ahead of the band's target.
+  const homeAt = (point: maplibregl.Point) => {
+    if (map.getZoom() < 3) return undefined;
+    return map
+      .queryRenderedFeatures(
+        [
+          [point.x - 6, point.y - 6],
+          [point.x + 6, point.y + 6],
+        ],
+        { layers: ["home-ring"] },
+      )
+      .find((feature) => (states.get("home" + String(feature.id)) ?? 1) > 0.5);
+  };
+  map.on("mousemove", (event) => {
+    if (homeAt(event.point)) canvas.style.cursor = "pointer";
+    else if (!hovered) canvas.style.cursor = "";
+  });
   map.on("click", (event) => {
+    const home = homeAt(event.point);
+    if (home) {
+      atlas.select(String(home.id));
+      return;
+    }
     const layer = activeLayer(map.getZoom());
     const feature = map.queryRenderedFeatures(event.point, {
       layers: [layer],
@@ -644,10 +820,13 @@ export async function createMap(
             layer === "countries" ? 5.5 : 8,
           );
       }
-    } else if (selected) {
-      selected = null;
-      onSelect(null);
-      writeUrl();
+    } else {
+      focus(null);
+      if (selected) {
+        selected = null;
+        onSelect(null);
+        writeUrl();
+      }
     }
   });
   window.__atlas = atlas;

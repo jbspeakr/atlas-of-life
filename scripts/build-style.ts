@@ -13,7 +13,13 @@ import type {
   LayerSpecification,
   ExpressionSpecification,
 } from "maplibre-gl";
-import { bands, withVisibility } from "../src/map/expressions.ts";
+import {
+  bands,
+  revealed,
+  scaleBand,
+  undimmed,
+  withVisibility,
+} from "../src/map/expressions.ts";
 import mapAssets from "../data/map-assets.json";
 if (
   !existsSync("public/tiles/basemap.pmtiles") &&
@@ -74,12 +80,44 @@ const anchorLabels = anchors.features.map((feature) =>
 const routes = JSON.parse(
   readFileSync("src/generated/routes.json", "utf8"),
 ) as FeatureCollection;
+const trips = JSON.parse(readFileSync("src/generated/trips.json", "utf8")) as {
+  id: string;
+  stops: string[];
+}[];
+const homes = JSON.parse(readFileSync("src/generated/home.json", "utf8")) as {
+  id: string;
+  label: string;
+  coordinates: [number, number];
+}[];
+// One numbered star per journey stop; a place revisited later in the same
+// journey carries both numbers rather than stacking two badges.
+const placeById = new Map(places.map((place) => [place.id, place]));
+const stops: FeatureCollection = {
+  type: "FeatureCollection",
+  features: trips.flatMap((trip) => {
+    const numbers = new Map<string, number[]>();
+    trip.stops.forEach((stop, index) =>
+      numbers.set(stop, [...(numbers.get(stop) ?? []), index + 1]),
+    );
+    return [...numbers].map(([stop, order]) => {
+      const place = placeById.get(stop)!;
+      const id = `${trip.id}#${stop}`;
+      return {
+        type: "Feature" as const,
+        id,
+        properties: { id, group: trip.id, place: stop, n: order.join("·"), label: place.label },
+        geometry: { type: "Point" as const, coordinates: place.coordinates },
+      };
+    });
+  }),
+};
+const nothing: ExpressionSpecification = ["==", ["get", "group"], ""];
 const visible: ExpressionSpecification = [
   "coalesce",
   ["feature-state", "visibility"],
   1,
 ];
-const pinOpacity = withVisibility(bands.pin);
+const pinOpacity = scaleBand(withVisibility(bands.pin), undimmed);
 const hoverWidth = (rest: number, hover: number): ExpressionSpecification => [
   "case",
   ["boolean", ["feature-state", "hover"], false],
@@ -112,10 +150,29 @@ const style: StyleSpecification = {
       promoteId: "id",
       data: anchors,
     },
+    // Journey arcs and stars exist in the style but draw only for the focused group.
     routes: {
       type: "geojson",
-      promoteId: "trip",
+      promoteId: "id",
       data: routes,
+    },
+    stops: {
+      type: "geojson",
+      promoteId: "id",
+      data: stops,
+    },
+    home: {
+      type: "geojson",
+      promoteId: "id",
+      data: {
+        type: "FeatureCollection",
+        features: homes.map((home) => ({
+          type: "Feature",
+          id: home.id,
+          properties: { id: home.id, label: home.label },
+          geometry: { type: "Point", coordinates: home.coordinates },
+        })),
+      },
     },
     pins: {
       type: "geojson",
@@ -173,14 +230,30 @@ const style: StyleSpecification = {
       },
     },
     {
-      id: "routes",
+      id: "journey-legs",
       type: "line",
       source: "routes",
+      filter: ["all", ["==", ["get", "kind"], "leg"], nothing],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": "#efc784",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.4, 16, 2],
-        "line-opacity": withVisibility(bands.route),
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.3, 10, 1.8],
+        // Round-capped zero-length dashes draw dots: sparser for the way out and home.
+        "line-dasharray": [0, 3.2],
+        "line-opacity": scaleBand(bands.focus, ["*", 0.5, revealed]),
+      },
+    },
+    {
+      id: "journey-hops",
+      type: "line",
+      source: "routes",
+      filter: ["all", ["==", ["get", "kind"], "hop"], nothing],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#efc784",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.9, 10, 2.6],
+        "line-dasharray": [0, 2.1],
+        "line-opacity": scaleBand(bands.focus, ["*", 0.95, revealed]),
       },
     },
     {
@@ -215,12 +288,14 @@ const style: StyleSpecification = {
           [
             "*",
             visible,
+            undimmed,
             ["case", ["boolean", ["feature-state", "hover"], false], 0.8, 0.25],
           ],
           16,
           [
             "*",
             visible,
+            undimmed,
             ["case", ["boolean", ["feature-state", "hover"], false], 0.8, 0.25],
           ],
         ],
@@ -257,6 +332,59 @@ const style: StyleSpecification = {
         ],
         "circle-stroke-color": "#f1eee7",
         "circle-stroke-opacity": pinOpacity,
+      },
+    },
+    // Home: a hollow ring with a point at its centre, parchment rather than
+    // lamplight, so it reads as the origin and never as another place visited.
+    {
+      id: "home-ring",
+      type: "circle",
+      source: "home",
+      paint: {
+        "circle-color": "#080f18",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 3.5, 8, 5.5, 16, 8],
+        "circle-opacity": withVisibility(bands.home, 0.55),
+        "circle-stroke-width": 1.5,
+        "circle-stroke-color": "#f1eee7",
+        "circle-stroke-opacity": withVisibility(bands.home),
+      },
+    },
+    {
+      id: "home-core",
+      type: "circle",
+      source: "home",
+      paint: {
+        "circle-color": "#f1eee7",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1, 8, 1.4, 16, 2],
+        "circle-opacity": withVisibility(bands.home),
+      },
+    },
+    // Beneath the boundary names so home never displaces the atlas's own labels.
+    {
+      id: "home-label",
+      type: "symbol",
+      source: "home",
+      layout: {
+        "text-field": [
+          "format",
+          ["get", "label"],
+          {},
+          "\n",
+          {},
+          "home",
+          { "font-scale": 0.8 },
+        ],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 14, 14],
+        "text-anchor": "top",
+        "text-offset": [0, 0.9],
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#a7b2bf",
+        "text-halo-color": "#080f18",
+        "text-halo-width": 2,
+        "text-opacity": withVisibility(bands.homeLabel),
       },
     },
     {
@@ -329,6 +457,67 @@ const style: StyleSpecification = {
         "text-opacity": pinOpacity,
       },
     },
+    {
+      id: "journey-stops",
+      type: "circle",
+      source: "stops",
+      filter: nothing,
+      paint: {
+        "circle-color": "#efc784",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 6, 8, 8, 16, 9],
+        "circle-opacity": scaleBand(bands.focus, revealed),
+        "circle-stroke-color": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          "#f1eee7",
+          "#080f18",
+        ],
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          2,
+          1,
+        ],
+        "circle-stroke-opacity": scaleBand(bands.focus, revealed),
+      },
+    },
+    {
+      id: "journey-stop-numbers",
+      type: "symbol",
+      source: "stops",
+      filter: nothing,
+      layout: {
+        "text-field": ["get", "n"],
+        "text-font": ["Noto Sans Medium"],
+        "text-size": 10,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: {
+        "text-color": "#080f18",
+        "text-opacity": scaleBand(bands.focus, revealed),
+      },
+    },
+    {
+      id: "journey-stop-labels",
+      type: "symbol",
+      source: "stops",
+      filter: nothing,
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 12,
+        "text-anchor": "left",
+        "text-offset": [1.1, 0],
+        "text-optional": true,
+      },
+      paint: {
+        "text-color": "#f1eee7",
+        "text-halo-color": "#080f18",
+        "text-halo-width": 2,
+        "text-opacity": scaleBand(bands.focusLabel, revealed),
+      },
+    },
   ],
 };
 // A low-zoom earth underlay avoids rectangular voids outside extracted city windows.
@@ -352,23 +541,33 @@ const labels = Object.fromEntries(
     .map((feature) => [String(feature.id), String(feature.properties?.label)]),
 );
 writeFileSync("src/generated/region-labels.json", JSON.stringify(labels));
-const ranges = new Set(
-  [...places.map((place) => place.label), ...anchorLabels].flatMap((label) =>
+const rangesOf = (labels: string[]) =>
+  labels.flatMap((label) =>
     [...label].map(
-      (character) => Math.floor(character.codePointAt(0)! / 256) * 256,
+      (character) =>
+        Math.floor(character.codePointAt(0)! / 256) * 256,
     ),
+  );
+const ranges = new Set([
+  ...rangesOf([...places.map((place) => place.label), ...anchorLabels]).map(
+    (start) => ["Noto Sans Regular", start] as const,
   ),
-);
-for (const start of ranges) {
+  ...rangesOf([...homes.map((home) => home.label), "home"]).map(
+    (start) => ["Noto Sans Italic", start] as const,
+  ),
+].map((entry) => entry.join("|")));
+for (const entry of ranges) {
+  const [font, first] = entry.split("|");
+  const start = Number(first);
   const range = `${start}-${start + 255}.pbf`;
-  const directory = "public/glyphs/Noto Sans Regular";
+  const directory = `public/glyphs/${font}`;
   const filename = `${directory}/${range}`;
   if (existsSync(filename)) continue;
   if (process.env.ATLAS_FIXTURE === "1")
     throw new Error(
       `Missing committed fixture glyph ${filename}; verification forbids network`,
     );
-  const url = `https://raw.githubusercontent.com/protomaps/basemaps-assets/${mapAssets.commit}/fonts/Noto%20Sans%20Regular/${range}`;
+  const url = `https://raw.githubusercontent.com/protomaps/basemaps-assets/${mapAssets.commit}/fonts/${encodeURIComponent(font)}/${range}`;
   const response = await fetch(url);
   if (!response.ok)
     throw new Error(`Glyph download ${url}: HTTP ${response.status}`);

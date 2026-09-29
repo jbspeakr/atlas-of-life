@@ -30,6 +30,8 @@ const coordinatesSchema = z.tuple([
 const text = z.string().trim().min(1);
 const precisionSchema = z.enum(["city", "exact"]);
 
+const dayBefore = (date: string): string =>
+  new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 function realDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000"))
     return false;
@@ -86,12 +88,30 @@ export const visitSchema = z
         message: "dateRange start must not be after end",
       });
   });
+// Home is the base journeys leave from and return to, never a visit. It is
+// published at city precision only; `since` starts it, and the next home ends it.
+export const homeSchema = z.strictObject({
+  label: text.optional(),
+  country: countrySchema,
+  region: text.optional(),
+  city: text,
+  since: isoDate.optional(),
+});
 export const configSchema = z
   .strictObject({
     publishPrecision: precisionSchema.optional(),
+    home: z.union([homeSchema, z.array(homeSchema).min(1)]).optional(),
     visits: z.array(visitSchema),
   })
   .superRefine((config, context) => {
+    const homes = config.home === undefined ? [] : [config.home].flat();
+    const starts = homes.map((home) => home.since ?? "");
+    if (new Set(starts).size !== starts.length)
+      context.addIssue({
+        code: "custom",
+        path: ["home"],
+        message: "each home needs a distinct since date; only the first may omit it",
+      });
     const ids = new Set<string>();
     config.visits.forEach((visit, index) => {
       if (visit.id && ids.has(visit.id))
@@ -108,8 +128,24 @@ export const configSchema = z
       config.visits.flatMap((visit) => (visit.id ? [visit.id] : [])),
     );
     const occurrences = new Map<string, number>();
+    const homes = (config.home === undefined ? [] : [config.home].flat())
+      .slice()
+      .sort((a, b) => (a.since ?? "").localeCompare(b.since ?? ""));
     return {
       ...config,
+      homes: homes.map((home, index) => {
+        const next = homes[index + 1]?.since;
+        const digest = createHash("sha256")
+          .update(JSON.stringify([home.country, normalize(home.city), home.since ?? null]))
+          .digest("hex");
+        return {
+          ...home,
+          id: `home-${toSlug(home.city) || "home"}-${digest.slice(0, 8)}`,
+          label: home.label ?? home.city,
+          // A home ends the day before the next one begins.
+          ...(next ? { until: dayBefore(next) } : {}),
+        };
+      }),
       visits: config.visits.map((visit) => {
         let id = visit.id;
         if (!id) {
@@ -145,6 +181,17 @@ export const configSchema = z
 export type Config = z.input<typeof configSchema>;
 export type ValidatedConfig = z.output<typeof configSchema>;
 export type Visit = ValidatedConfig["visits"][number];
+export type Home = ValidatedConfig["homes"][number];
+/** The public home record: city-precision coordinates and the period it covers. */
+export type PublicHome = {
+  id: string;
+  label: string;
+  country: string;
+  city: string;
+  coordinates: [number, number];
+  since?: string;
+  until?: string;
+};
 export type ResolvedVisit = Visit;
 
 export const cacheSchema = z.record(
@@ -205,7 +252,11 @@ export function queryKey(query: GeocodeQuery): string {
 }
 export function validateConfig(input: unknown, cache?: Cache): ValidatedConfig {
   const config = configSchema.parse(input);
-  if (cache !== undefined) resolveVisits(config, cacheSchema.parse(cache));
+  if (cache !== undefined) {
+    const parsed = cacheSchema.parse(cache);
+    resolveVisits(config, parsed);
+    resolveHomes(config, parsed);
+  }
   return config;
 }
 function cached(
@@ -236,7 +287,7 @@ function missing(visit: Visit): never {
   );
 }
 export function resolveVisits(
-  config: ValidatedConfig,
+  config: Pick<ValidatedConfig, "visits" | "publishPrecision">,
   cache: Cache,
 ): ResolvedVisit[] {
   return config.visits.map((visit) => {
@@ -270,6 +321,25 @@ export function resolveVisits(
       ...visit,
       ...(city ? { city } : {}),
       coordinates: [...coordinates] as [number, number],
+    };
+  });
+}
+/** Homes resolve through the warm city cache only; they never publish finer than a city. */
+export function resolveHomes(config: ValidatedConfig, cache: Cache): PublicHome[] {
+  return config.homes.map((home) => {
+    const entry = cached(home as unknown as Visit, cache, "city");
+    if (!entry)
+      throw new Error(
+        `geocache miss for ${home.id} (home ${home.city}); run npm run geocode`,
+      );
+    return {
+      id: home.id,
+      label: home.label,
+      country: home.country,
+      city: home.city,
+      coordinates: [...entry.coordinates] as [number, number],
+      ...(home.since ? { since: home.since } : {}),
+      ...(home.until ? { until: home.until } : {}),
     };
   });
 }

@@ -223,7 +223,13 @@ export async function geocodeConfig(
         "address result has no city for city-precision publication",
       );
   }
-  validateConfig(config, cache);
+  // Homes publish at city precision only, so they need nothing but the city.
+  for (const home of config.homes)
+    await lookup(home as unknown as Visit, "city");
+  // Revalidate the authored shape; `homes` is derived from `home`.
+  const authored: Record<string, unknown> = { ...config };
+  delete authored.homes;
+  validateConfig(authored, cache);
   return cache;
 }
 async function main(): Promise<void> {

@@ -15,7 +15,7 @@ import fixtureManifest from "./fixtures/manifest.json";
 import type { Check } from "./types.ts";
 import budgets from "./budgets.json";
 import config from "./fixtures/visits.ts";
-import { validateConfig, resolveVisits } from "../scripts/config.ts";
+import { validateConfig, resolveHomes, resolveVisits } from "../scripts/config.ts";
 import { runtimeChecks } from "./runtime.ts";
 import { payloadViolations } from "./payload.ts";
 import { styleChecks } from "./style.ts";
@@ -217,12 +217,14 @@ try {
   const cache = JSON.parse(
     readFileSync("verification/fixtures/geocache.json", "utf8"),
   );
-  const resolved = resolveVisits(validateConfig(config, cache), cache);
-  const safeCoordinates = Object.fromEntries(
-    resolved
+  const validated = validateConfig(config, cache);
+  const resolved = resolveVisits(validated, cache);
+  const safeCoordinates = Object.fromEntries([
+    ...resolved
       .filter((visit) => visit.coordinates)
       .map((visit) => [visit.id, visit.coordinates!]),
-  );
+    ...resolveHomes(validated, cache).map((home) => [home.id, home.coordinates]),
+  ]);
   for (const file of [...emitted, ...generated]) {
     if (!/\.(js|json|html|css|map|geojson)$/.test(file)) continue;
     const text = readFileSync(file, "utf8");
