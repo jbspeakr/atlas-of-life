@@ -716,7 +716,19 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
     await run("interaction.tour-yields", "correctness", async () => {
       await page.goto(url, { waitUntil: "load" });
       await ready(page);
+      // The tour leaves from wherever the viewer is, never by jumping away.
+      const camera = () =>
+        page.evaluate(() => {
+          const map = (window as unknown as AtlasWindow).__atlas.map;
+          return { lng: map.getCenter().lng, lat: map.getCenter().lat, zoom: map.getZoom() };
+        });
+      const before = await camera();
       await page.getByRole("button", { name: "Play a tour of the atlas" }).click();
+      const departure = await camera();
+      const continuous =
+        Math.abs(departure.lng - before.lng) < 3 &&
+        Math.abs(departure.lat - before.lat) < 3 &&
+        Math.abs(departure.zoom - before.zoom) < 0.3;
       await page.waitForTimeout(600);
       const moving = await page.evaluate(
         () =>
@@ -744,10 +756,10 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       record(
         "interaction.tour-yields",
         "correctness",
-        moving && still && label === "Play a tour of the atlas" ? 0 : 1,
+        continuous && moving && still && label === "Play a tour of the atlas" ? 0 : 1,
         "errors",
         0,
-        `Tour moved the camera (${moving}), a drag stopped it (${still}) and the control reads Play again (${label}).`,
+        `Tour left from the current camera (${continuous}: ${JSON.stringify(before)} → ${JSON.stringify(departure)}), moved the camera (${moving}), a drag stopped it (${still}) and the control reads Play again (${label}).`,
         "eq",
       );
     });

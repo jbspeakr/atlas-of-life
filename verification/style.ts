@@ -111,5 +111,37 @@ export function styleChecks(): Check[] {
     "lte",
     "filtered feature-state must actually extinguish the emitted layers",
   );
+  // A focused journey leaves only its own countries and regions lit: every
+  // boundary, outline and name outside it recedes like an unrelated pin.
+  const boundaryPaint: [string, string][] = [
+    ["countries", "fill-opacity"],
+    ["country-outline", "line-opacity"],
+    ["regions", "fill-opacity"],
+    ["region-outline", "line-opacity"],
+    ["country-labels", "text-opacity"],
+    ["region-labels", "text-opacity"],
+  ];
+  let unreceded = 0;
+  for (const [id, property] of boundaryPaint) {
+    const parsed = expression.createExpression(
+      style.layers.find((layer) => layer.id === id)?.paint?.[property],
+    );
+    if (parsed.result === "error") {
+      unreceded++;
+      continue;
+    }
+    for (let i = 0; i <= 64; i++) {
+      const at = (dim: number) =>
+        Number(parsed.value.evaluate({ zoom: i / 4 }, undefined, { visibility: 1, dim }));
+      if (at(0) > 0.01 && at(1) > at(0) * 0.3 + 1e-9) unreceded++;
+    }
+  }
+  gate(
+    "focus.recede",
+    unreceded,
+    0,
+    "lte",
+    "boundaries outside a focused journey must recede to 30 % or less",
+  );
   return checks;
 }

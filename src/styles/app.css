@@ -731,10 +731,28 @@ kbd {
 }
 .navigation .zoom-button { display: none; }
   .explorer-hint { display: none; }
-  .place-browser { left: 16px; bottom: 94px; }
+  /* Above the credits, so the open sheet covers everything beneath it. */
+  .place-browser { left: 16px; bottom: 94px; z-index: 4; }
+  /* A bottom sheet that rides above the on-screen keyboard: its heading, scope
+     and search field stay in view while typing, and the results scroll. */
   .place-explorer {
-    width: min(320px, calc(100vw - 32px));
-    max-height: min(52svh, calc(100svh - 260px));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--keyboard-inset, 0px);
+    width: auto;
+    max-height: min(72svh, calc(var(--visible-height, 100svh) - 12px));
+    padding: 6px 16px calc(12px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    background: var(--sheet);
+    box-shadow: 0 -8px 30px var(--sheet-shadow);
+  }
+  .place-explorer input {
+    position: sticky;
+    top: -6px;
+    z-index: 1;
+    box-shadow: 0 -6px 0 var(--sheet), 0 6px 0 var(--sheet);
   }
   .place-caption {
     left: 16px;
@@ -752,6 +770,10 @@ kbd {
   .atlas-close header .atlas-count { display: none; }
   .atlas-stats { left: 16px; top: 120px; max-height: calc(100svh - 300px); }
   .stats-bar { width: 48px; }
+}
+/* Below 16px, mobile Safari zooms the page into a focused field and leaves it zoomed. */
+@media (pointer: coarse) {
+  .place-explorer input { font-size: var(--text-base); min-height: 44px; }
 }
 @media (max-height: 550px) and (min-width: 701px) {
   .place-explorer { max-height: calc(100svh - 130px); }

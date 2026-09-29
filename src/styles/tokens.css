@@ -36,6 +36,8 @@
   --control: #0c151eef;
   --scrim: #080f18dc;
   --shadow: #0003;
+  --sheet: #0c151e;
+  --sheet-shadow: #0006;
 }
 /* Day: the same atlas printed on paper; lamplight deepens to ochre for contrast. */
 :root[data-theme="light"] {
@@ -51,4 +53,6 @@
   --control: #fbfaf7ee;
   --scrim: #e9e6dfdc;
   --shadow: #1e27311a;
+  --sheet: #fbfaf7;
+  --sheet-shadow: #1e273126;
 }
