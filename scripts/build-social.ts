@@ -27,7 +27,8 @@ try {
   await page.addInitScript(
     'globalThis.__name = (target, value) => Object.defineProperty(target, "name", {value, configurable:true});',
   );
-  await page.goto(`${server.origin}/atlas/?deterministic=1`, { waitUntil: "load" });
+  // The card is the night atlas whatever the machine's appearance.
+  await page.goto(`${server.origin}/atlas/?deterministic=1&theme=dark`, { waitUntil: "load" });
   await ready(page);
   await camera(page, [12, 40], 1.55);
   await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => done())));

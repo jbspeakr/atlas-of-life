@@ -12,6 +12,9 @@ import {
 import type { Visit, Cache } from "../scripts/config.ts";
 import { expression } from "@maplibre/maplibre-gl-style-spec";
 import { bands } from "../src/map/expressions.ts";
+import { mergeThemes } from "../scripts/themes.ts";
+import { globeRadius, starOpacity, starTile, starfield } from "../src/map/sky.ts";
+import type { ExpressionSpecification } from "maplibre-gl";
 import { BoundaryRepository } from "../scripts/boundaries.ts";
 import { geocodeConfig } from "../scripts/geocode.ts";
 const good: Visit = {
@@ -867,3 +870,47 @@ function evalConfig(text: string): unknown {
   const js = ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   return new Function(`${js.replace(/export default config;\s*$/, "")}\nreturn config;`)();
 }
+
+describe("day and night themes", () => {
+  const isLight: ExpressionSpecification = ["==", ["to-string", ["global-state", "theme"]], "light"];
+  it("switches differing colours at the leaf, inside zoom interpolation", () => {
+    const dark = { "fill-color": ["interpolate", ["linear"], ["zoom"], 0, "#080f18", 6, "#121c27"], "fill-opacity": 0.5 };
+    const light = { "fill-color": ["interpolate", ["linear"], ["zoom"], 0, "#d3dce4", 6, "#121c27"], "fill-opacity": 0.5 };
+    const merged = mergeThemes(dark, light, isLight) as Record<string, unknown[]>;
+    expect(merged["fill-color"].slice(0, 3)).toEqual(["interpolate", ["linear"], ["zoom"]]);
+    expect(merged["fill-color"][4]).toEqual(["case", isLight, "#d3dce4", "#080f18"]);
+    expect(merged["fill-color"][6]).toBe("#121c27");
+    expect(merged["fill-opacity"]).toBe(0.5);
+  });
+  it("refuses palettes that differ in anything but colour", () => {
+    expect(() => mergeThemes({ "line-width": 1 }, { "line-width": 2 }, isLight)).toThrow(/line-width/);
+  });
+  it("evaluates each palette from the theme global state", () => {
+    // The generated style itself is gated in verification/style.ts, after the build.
+    const merged = mergeThemes("#080f18", "#d3dce4", isLight);
+    const colour = (theme?: string) => {
+      const parsed = expression.createExpression(merged, null, theme ? { theme } : {});
+      if (parsed.result === "error") throw new Error(JSON.stringify(parsed.value));
+      return String(parsed.value.evaluate({ zoom: 2 }));
+    };
+    expect(colour("dark")).toBe(colour());
+    expect(colour("light")).not.toBe(colour("dark"));
+  });
+  it("seeds a sparse, repeatable starfield", () => {
+    const stars = starfield();
+    expect(starfield()).toEqual(stars);
+    expect(stars.length).toBe(105);
+    expect(stars.filter((star) => star.a < 0.4).length / stars.length).toBeGreaterThan(0.6);
+    expect(stars.every((star) => star.x >= 0 && star.x < starTile && star.r <= 1.25)).toBe(true);
+  });
+  it("fades stars as the globe fills the view", () => {
+    expect(starOpacity(1.8)).toBe(1);
+    expect(starOpacity(2.75)).toBeCloseTo(0.5);
+    expect(starOpacity(4)).toBe(0);
+  });
+  it("sizes the halo to the globe's visible limb", () => {
+    // Measured on the 1440×900 overview: the limb spans x ≈ 439–1001.
+    expect(globeRadius(1.8, 35, 900, 36.87)).toBeCloseTo(281, -1);
+    expect(globeRadius(3, 0, 900, 36.87)).toBeGreaterThan(globeRadius(2, 0, 900, 36.87));
+  });
+});

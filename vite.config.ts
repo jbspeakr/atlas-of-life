@@ -4,6 +4,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, wri
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 import { serviceWorkerSource } from "./scripts/service-worker.ts";
+import { themeBootSource } from "./src/theme.ts";
 const walk = (dir: string): string[] =>
   existsSync(dir)
     ? readdirSync(dir).flatMap((name) => {
@@ -46,10 +47,17 @@ export default defineConfig(({ mode }) => {
       throw new Error("VITE_TILE_ORIGINS must contain exact origins");
     origins.add(origin);
   }
-  const csp = `default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ${[...origins].join(" ")}; worker-src 'self' blob:; child-src blob:; base-uri 'self'; form-action 'none'; object-src 'none'`;
+  const csp = `default-src 'none'; script-src 'self' 'sha256-${createHash("sha256").update(themeBootSource).digest("base64")}'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ${[...origins].join(" ")}; worker-src 'self' blob:; child-src blob:; base-uri 'self'; form-action 'none'; object-src 'none'`;
   return {
     base: env.VITE_BASE || "./",
     plugins: [
+      {
+        // Sets the theme before first paint; the CSP above allows exactly this source.
+        name: "atlas-theme-boot",
+        transformIndexHtml: () => [
+          { tag: "script", children: themeBootSource, injectTo: "head" },
+        ],
+      },
       {
         name: "atlas-html",
         apply: "build",

@@ -11,19 +11,48 @@
   font-weight: 400;
 }
 :root {
-  --midnight: #080f18;
-  --basalt: #121c27;
-  --contour: #2b3947;
-  --lamplight: #efc784;
-  --parchment: #f1eee7;
-  --mist: #a7b2bf;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-lg: 1.25rem;
   --text-display: clamp(2.2rem, 4.6vw, 4.5rem);
   font-family: "Noto Sans", sans-serif;
-  color: var(--parchment);
-  background: var(--midnight);
+  color: var(--text);
+  background: var(--bg);
   font-synthesis: none;
+}
+/* Night: midnight, basalt, contour, lamplight, parchment and mist. */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #080f18;
+  --surface: #121c27;
+  --line: #2b3947;
+  --accent: #efc784;
+  --accent-ink: #efc784;
+  --text: #f1eee7;
+  --muted: #a7b2bf;
+  --panel: #0c151efa;
+  --control: #0c151eef;
+  --scrim: #080f18dc;
+  --shadow: #0003;
+  --sheet: #0c151e;
+  --sheet-shadow: #0006;
+}
+/* Day: the same atlas printed on paper; lamplight deepens to ochre for contrast. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e9e6df;
+  --surface: #ece9e2;
+  --line: #d2cec5;
+  --accent: #c98a22;
+  --accent-ink: #875a10;
+  --text: #1e2731;
+  --muted: #56626e;
+  --panel: #fbfaf7f7;
+  --control: #fbfaf7ee;
+  --scrim: #e9e6dfdc;
+  --shadow: #1e27311a;
+  --sheet: #fbfaf7;
+  --sheet-shadow: #1e273126;
 }
