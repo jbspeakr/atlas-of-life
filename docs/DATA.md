@@ -1,6 +1,6 @@
 # Data authoring
 
-`data/visits.ts` is the only routinely hand-edited file. For a city visit, supply **country, city, and a date or date range**. IDs and display labels are generated; geocoding finds coordinates, and the build discovers region membership from the published point. Tags are not supported.
+`data/visits.ts` is the only routinely hand-edited file. A visit is **country, city and a date or date range**. IDs and labels are generated, geocoding finds coordinates, and the build discovers the region from the published point.
 
 ```ts
 import type { Config } from "../scripts/config.ts";
@@ -8,73 +8,56 @@ import type { Config } from "../scripts/config.ts";
 const config: Config = {
   home: { country: "DE", city: "Berlin", since: "2024-04-25" },
   visits: [
-    {
-      country: "GR",
-      city: "Kalamos",
-      dateRange: ["2025-04-27", "2025-05-02"],
-    },
+    { country: "GR", city: "Kalamos", dateRange: ["2025-04-27", "2025-05-02"] },
   ],
 };
 export default config;
 ```
 
-The quickest route is the add command, which validates, appends to `data/visits.ts` in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache for the new city and prints its resolved coordinates:
+## Commands
 
 ```sh
 NOMINATIM_CONTACT=you@example.org npm run add -- DE "Wendisch Rietz" 2025-04-04..2025-04-06
 npm run add -- GR Kalamos 2025-04-27 --trip "Spring 2025" --dry-run
 npm run import -- trips.csv
+NOMINATIM_CONTACT=you@example.org npm run geocode   # after editing by hand
 ```
 
-`--region`, `--label` and `--trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. The import command reads a CSV with the header `country,city,start,end,label,trip[,region]`, skips rows already present and aborts on any invalid row before writing. GPX or timeline exports are deliberately not imported: they would need reverse geocoding of many points against Nominatim's usage policy.
+`add` validates, appends in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache and prints the resolved point. `--region`, `--label` and `--trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. `import` reads a CSV with the header `country,city,start,end,label,trip[,region]`, skips rows already present and aborts before writing on any invalid row. GPX or timeline exports are not imported: they would need reverse geocoding of many points against Nominatim's usage policy. After any change, run `npm run build` and commit the config, `data/geocache.json` and `data/sources.json`.
 
-If you edit the file by hand instead, after adding cities run:
+## Fields
 
-```sh
-NOMINATIM_CONTACT=you@example.org npm run geocode
-npm run build
-```
+- `country`: an uppercase ISO alpha-2 code (`GB`, not `UK`), plus `XK` for Kosovo.
+- `city`: the settlement's own name. If country plus city is ambiguous, geocoding fails rather than guessing; add a `region` (a boundary code or exact upstream name) to disambiguate.
+- `date` or `dateRange`, never both. Dates are real `YYYY-MM-DD` dates; a range has two endpoints, with `''` for an open one (`['2020-01-01', '']`). Undated visits stay lit at every timeline position.
+- `trip`: an optional public label that groups visits into one journey across a gap.
+- `label` and `id`: optional overrides for a curated link or a landmark name; unnecessary for ordinary cities.
+- `publishPrecision: 'exact'` with `coordinates`: a deliberate public landmark placement. Everything else publishes at city precision, including an authored street coordinate.
 
-Use your own email or project contact URL. The first command populates `data/geocache.json`; the second validates and generates the map. Commit the config, geocache and updated `data/sources.json`, then deploy `dist/`. Neither coordinates nor region codes need to be copied back into your visits.
+Unknown keys are rejected. Country-only and region-only records are also accepted.
 
-`country` is an uppercase assigned ISO alpha-2 code, with the Natural Earth `XK` extension for Kosovo. Use `GB`, not `UK`. Dates are real `YYYY-MM-DD` calendar dates. Choose `date` or `dateRange`, never both. A range has two endpoints, with `''` for an open endpoint: `['2020-01-01', '']`. Reversed ranges and impossible dates fail. Undated places remain lit at every timeline position. The scrubber means **visited by this year**.
+## Identity
 
-Generated IDs combine a readable country/city prefix with the first eight hex characters of a hash of normalized geographic/date identity, for example `de-berlin-4f1c09ab`; a collision within one configuration receives an occurrence suffix. Links minted before this shortening carried the full 64-character digest and still resolve, because the current ID is a prefix of the old one and the router canonicalises the URL in place. Reordering unrelated visits does not change them; Unicode names remain distinct even when their readable slugs coincide. Identical repeated entries receive occurrence suffixes. Changing a visit's identifying geography or dates changes its generated link. Optional explicit `id` and `label` overrides remain useful for permanent curated links and landmark labels, but are unnecessary for ordinary city entries. Deep links use `/#/place/<id>`. A moved camera is linkable as `/#/view/<zoom>/<lat>/<lng>`, and either form accepts `?through=YYYY-MM-DD` with an optional `&mode=only` to restore the timeline position; the app writes these as you browse, so the address bar always describes what is on screen.
+An ID is a readable prefix and eight hex characters of a hash of the visit's geographic and date identity, for example `de-berlin-4f1c09ab`. Reordering unrelated visits does not change it; changing a visit's country, city or dates does. A collision within one configuration gets an occurrence suffix. Older links carrying the full digest still resolve and are canonicalised in place. Deep links are `/#/place/<id>`; a moved camera is `/#/view/<zoom>/<lat>/<lng>`; either accepts `?through=YYYY-MM-DD` and `&mode=only`.
+
+Repeat visits to one city collapse into one place: the first chronological visit supplies the pin, and each visit keeps its own dates.
 
 ## Home
 
-`home` is where journeys start and end: `{ country, city, since?, label?, region? }`. It is **not a visit**. It never becomes a pin, never lights its region or country, and never counts towards places, visits or nights. On the map it is a hollow parchment ring with a point at its centre, labelled in italics. Its caption says since when it has been home and how many journeys began there. The timeline gains one position at `since`, so the atlas opens at home. Do not also add everyday visits to the home city: the atlas records the places visited, not daily whereabouts.
+`home` is where journeys start and end: `{ country, city, since?, label?, region? }`. It is **not a visit**: it never becomes a pin, lights no region and counts in no total. The timeline gains a position at `since`, so the atlas opens at home. Do not also add everyday visits to the home city.
 
-If you move, list the homes in any order, each with its own `since`: `home: [{ country: "DE", city: "Berlin", since: "2024-04-25" }, { country: "DE", city: "Hamburg", since: "2027-03-01" }]`. Each home ends the day before the next begins, and a journey leaves from the home in effect on its first day and returns to the one in effect on its last day. Only the first home may omit `since`. `npm run geocode` resolves homes like cities. Homes publish at city precision only; there is no `address`, `coordinates` or `publishPrecision` for a home. `home.json` carries only `id`, `label`, `country`, `city`, city-precision `coordinates`, `since` and `until`. **The home city is public**; set `label` to show a different name, knowing that the ring's position still reveals the city.
+If you move, list the homes with their own `since`; each ends the day before the next begins, and a journey leaves from the home in effect on its first day and returns to the one in effect on its last. Only the first home may omit `since`. Homes publish at city precision only. **The home city is public**; a `label` shows a different name, but the ring still marks the city.
 
 ## Journeys
 
-Consecutive dated city visits form a journey automatically when each starts no later than the day after the previous one ends; a Scandinavian summer authored as eight adjacent date ranges becomes one journey with eight stops, navigable from the caption. With a home set, the journey gains a leg out from home to its first stop and a leg back from its last stop, unless that stop is the home city itself. A dated trip to a single place gets the same pair of legs. Journeys are not drawn on the map until one is in focus; see the [guide](GUIDE.md#explore-the-atlas) for how focus works. Open-ended ranges and undated visits never join. Two or more visits are required. To group visits across a gap, or to name a journey, give them the same optional `trip` label: `{ country: "NO", city: "Egersund", dateRange: [...], trip: "Midsummer 2025" }`. **That label is public**; generated labels list the countries in visiting order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys are published to `trips.json` (id, label, dates, stop place IDs and the `from`/`to` home IDs) and `routes.json` (one arc per hop or home leg: `id`, `group`, `kind`, `order`); they never carry addresses, notes or names.
+Dated city visits form a journey when each starts no later than the day after the previous one ends; two or more visits are required, and open-ended or undated visits never join. With a home set, the journey gains a leg out and a leg back. A dated trip to a single place gets the same pair. To group across a gap or to name a journey, give the visits the same `trip` label; **that label is public**. Generated labels list the countries in order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys publish to `trips.json` (id, label, dates, stop IDs, home IDs) and `routes.json` (one arc per hop or leg); they never carry addresses, notes or names.
 
-Repeat cities collapse by country, resolved boundary and normalized city name. Keep one entry per trip: the first chronological visit supplies the canonical pin, and the caption retains the original trip dates rather than inventing continuous stays. Public per-visit rows carry `visitCount: 1` for city/address visits; boundary-only records omit it.
+## Regions
 
-## Automatic region discovery
+Geocoder administrative codes are provenance, not boundary identifiers. The build locates each city's point inside the country's geoBoundaries gbOpen ADM1 polygons, falling back to Natural Earth, and publishes that polygon's own identity: Kalamos resolves to Attica, and Reggio Calabria to Italy's *Sud* macro-area, because that is what the pinned source contains. A city outside every polygon keeps its pin and country with a build warning; no nearest-polygon guess is made. An authored `region` is a constraint: the point must lie inside it.
 
-Geocoder administrative codes are provenance, **not boundary identifiers**. Nominatim and polygon providers differ in administrative levels, codes and dates. The build locates each city point within the preferred country's geoBoundaries gbOpen ADM1 polygons, then uses Natural Earth when needed. Geometry without an ISO code retains a stable, country/provider-scoped identifier instead of being discarded.
+## Caches and precision
 
-For example, Kalamos's cached `GR-A2` resolves spatially to Attica (`GR-AT` in gbOpen). Lampeland resolves to Viken in the pinned 2022 Norwegian dataset despite its newer cached `NO-33`. Italy's gbOpen ADM1 contains five macro-areas, so Reggio Calabria resolves to **Sud**, not a fabricated Calabria polygon. These are the provider's subdivisions, not a promise of current ISO administrative geography. Source year, subdivision type, immutable URL and checksum are retained in the manifest when discovering datasets.
+Geocode keys hash the normalised query, country and query kind. `npm run geocode` adds missing entries and makes no request for warm ones; to refresh a result, delete its entry and rerun. Live requests carry `NOMINATIM_CONTACT`, wait at least 1.1 s, match settlement names and fail on ambiguity. Builds never call Nominatim. Missing boundaries download from the pinned sources in `data/sources.json`; a checksum mismatch is an error, never a silent refetch. Full boundary downloads live in the ignored `data/.geocache/`.
 
-If neither valid source contains a city, its pin and country remain visible, with a build warning and no invented region. No nearest-polygon guess is made. A country with no subdivisions does not need a fabricated ADM1 polygon. Network failures, malformed data and checksum mismatches remain errors rather than being mistaken for missing coverage.
-
-Advanced country-only and region-only records still work. An explicitly authored `region` is a constraint, not a hint to ignore: use a supported boundary code or exact upstream name, and any supplied point must lie inside it. Names are resolved within the country to the chosen boundary ID. Region discovery uses the unsimplified source geometry; published polygons have coarse/fine LODs, full bounds and interior label anchors.
-
-## Ambiguous place names
-
-Country plus city cannot uniquely identify every place on Earth. Fresh geocoding matches a settlement's own name or upstream alternative names, not the name of its containing municipality. Multiple matching settlements fail rather than using popularity as proof of your intent. Add an optional geographic qualifier when genuinely necessary; do not invent dates or accept the wrong town just to pass a build. Deliberate exact coordinates remain available for public places. Existing warm results are retained until explicitly refreshed.
-
-The cache key includes the authored query context, including optional region constraints. Changing a qualifier requires another geocode lookup. When an address supplies the otherwise missing region, its city lookup retains that context to avoid selecting a different same-named city.
-
-## Precision and caches
-
-City publication is the default, including for authored explicit street coordinates. A warm city result is required; if missing, run `npm run geocode`. For deliberate public landmark placement, a per-visit `publishPrecision: 'exact'` overrides the default. In exact mode, authored coordinates win without any geocoding. Global exact mode is also supported, but is a deliberate disclosure decision. Do not commit private source addresses into a public repository merely because the built output is safe.
-
-Geocode keys are SHA-256 hashes of a normalized query, country filter and query kind. The committed cache includes coordinates, country, optional settlement/administrative provenance and source URL. `npm run geocode` adds missing entries; to refresh a specific result, remove its cache entry deliberately and rerun. Warm-cache runs make no network requests. Live requests use `NOMINATIM_CONTACT`, a minimum 1.1-second interval, settlement-name/alternative-name matching and ambiguity checks. Unknown configuration keys are rejected. Names of people, notes, photographs, stories, source addresses, precision flags and geocoder provenance are never public visit fields.
-
-Normal builds never call Nominatim. Boundary-only cache misses can download pinned Natural Earth sources or discover a per-country geoBoundaries commit; URLs and SHA-256 values are recorded in `data/sources.json`. Commit that manifest and the warmed geocache after adding places. Full boundary downloads are ignored in `data/.geocache/`; committed selected boundary fixtures make the example and verification build fully offline. A checksum mismatch is a hard error, not a reason to silently refetch different data. New label glyph ranges are likewise vendored from the pinned basemap-assets revision.
-
-`ATLAS_FIXTURE=1` selects the committed verification config, warm cache, selected boundaries and tile bytes regardless of changes to the owner's data or production archive. Fixture builds forbid geocode and boundary/glyph downloads. The verifier audits public JSON, embedded JavaScript place literals and actual GeoJSON pin geometry against precision-safe expected coordinates.
+Names of people, notes, photographs, source addresses, precision flags and geocoder provenance are never public fields. The verifier audits every public JSON, the embedded place literals and the GeoJSON pin geometry against city-precision expectations on every run. `ATLAS_FIXTURE=1` selects the committed fictional configuration and forbids every download.

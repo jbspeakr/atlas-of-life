@@ -180,8 +180,7 @@ Built with [MapLibre GL JS](https://maplibre.org/), [PMTiles](https://docs.proto
 | [Guide](docs/GUIDE.md) | Running, exploring, recording, basemaps, verification, hosting and security. |
 | [Data authoring](docs/DATA.md) | Writing `data/visits.ts`: home, journeys, regions, precision, IDs. |
 | [Decisions](docs/DECISIONS.md) | Why the atlas looks and behaves the way it does. |
-| [Evolution](docs/EVOLUTION.md) | Measured experiments and their results. |
-| [Roadmap](docs/ROADMAP.md) | What is next, in order, and what has shipped. |
+| [Roadmap](docs/ROADMAP.md) | Where the atlas goes next. |
 | [Attribution](docs/ATTRIBUTION.md) | Data and font licences. |
 | [AGENTS.md](AGENTS.md) | A map of the codebase for coding agents and new contributors. |
 
@@ -205,12 +204,15 @@ Since then:
 - [x] Day and night themes, a sparse starfield and a globe halo
 - [x] A mobile bottom sheet, thumb-sized tap targets and a tour that starts from the current view
 
-Up next, in order (details in the [roadmap](docs/ROADMAP.md)):
+Where it goes next (the [roadmap](docs/ROADMAP.md) has the detail):
 
-- [ ] **Approved visual baselines** from a local full verification run, for everything above
-- [ ] **A complete published basemap**: global z0–6 plus city detail, hosted on a pinned Hugging Face dataset
-- [ ] **Lighter geometry**: bring all boundary levels of detail back under the 400 KB gzip target (about 615 KB today)
-- [ ] **During** on phones, and a shareable link for a focused journey
+- [ ] **Hold it in your hands**: a print-quality poster, a rich link preview for every place, an embeddable atlas, a text edition for screen readers and search engines
+- [ ] **Time made visible**: replay the years on a still globe, a year in review with its own share card, a life line of homes and journeys, trips still to come
+- [ ] **Under the actual sky**: the real stars over a place on the night you were there, and the weather that day
+- [ ] **Numbers that mean something**: milestones, coverage, furthest from home, years compared
+- [ ] **Authoring without a laptop**: add a visit from your phone through an issue form, import from Polarsteps or Google Timeline, two atlases on one globe
+- [ ] **In your language**: the whole interface in German and more
+- [ ] **Foundations**: approved baselines, the complete published basemap, lighter geometry, MapLibre GL 6
 
 Have an idea or found a bug? [Open an issue](https://github.com/jbspeakr/atlas-of-life/issues).
 

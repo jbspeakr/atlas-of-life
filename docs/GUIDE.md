@@ -1,42 +1,31 @@
 # Guide
 
-The complete operating reference for Atlas of a Life: running it, exploring it, authoring places, recording tours, choosing a basemap, verifying and deploying. The [README](../README.md) is the overview; [data authoring](DATA.md) covers `data/visits.ts` in depth.
+Running, exploring, recording, choosing a basemap, verifying and deploying Atlas of a Life. The [README](../README.md) is the overview; [data authoring](DATA.md) covers `data/visits.ts`.
 
 ## Run locally
 
-Requires Node 22.12+ and npm. Run `npm ci`, then `npm run dev` for cached visits. After adding cities, run the explicit geocode step below first. The first generation installs the committed 22.3 MB preview tile archive if no local archive exists. It has global z0–3 and six small city windows through z14; it is a deterministic demonstration, **not** the complete bundled basemap. Verification uses separate fictional visits and public landmark fixtures; the owner configuration is independent.
-
-`npm run build` produces `dist/`; `npm run preview` serves it. Use `VITE_BASE=/some/subpath/ npm run build` for a subpath, or retain the default relative `./` base. `npm run geocode` is the explicit cache-warming step. `npm test` runs the same unit contracts used by verification. `npm run analyze` generates `dist/bundle-analysis.html`.
-
-GitHub Pages deployment discovers its actual site base with `actions/configure-pages` **before** building. Custom domains such as `https://atlas.brnnnsthl.eu/` use `/`; project sites use their configured `/repository/` path. Do not derive the base from the repository name alone. For a manual root-domain build, run `VITE_BASE=/ npm run build`. Changing the deployment base requires rebuilding and redeploying; it does not repair an already-published HTML file.
-
-## Record a cinematic globe and region tour
-
-Install FFmpeg with `ffprobe` and `libx264` (macOS: `brew install ffmpeg`) and Chromium with `npx playwright install chromium`, then run:
+Requires Node 22.12+ and npm.
 
 ```sh
-npm run record
-npm run record -- --format portrait --place Berlin --out recordings/berlin-tour
-npm run record -- --help
+npm ci
+npm run dev        # generate, then serve with hot reload
+npm run build      # generate and build dist/
+npm run preview    # serve dist/
 ```
 
-The default command independently renders portrait **1080×1920**, square **1080×1080** and landscape **1920×1080** movies into a unique UTC-stamped directory under `recordings/`. Each silent H.264/yuv420p MP4 is **24 seconds / 720 frames / 30 fps**, with BT.709 tags and fast-start playback, accompanied by a full-resolution regional `<format>-poster.png`. Lossless browser PNGs feed the encoder directly; every moving frame is rendered, so offline capture takes longer than playback. The real responsive controls, all-years timeline, typography and attribution remain intact. Music, editorial captions and publishing are separate.
-
-The camera establishes the globe, settles over the anchor's region, zooms in and holds, pulls back for a broad transfer, reveals a second region, then ends with a calm pullback. **Regional zoom reaches 4.75–5**, making the app's real regional fills and boundaries visible without street-level dives or place dialogs. Quintic minimum-jerk easing settles both velocity and acceleration at shot boundaries. Panning and zooming happen separately: regional zooms keep their centers locked, and travel happens at zoom 2.25. There is no oscillating waypoint path or forced reverse sweep to make a loop. Existing gold city pins remain visible, and representative names use fixed text anchors rather than hopping sides as the map moves. All capture-layer adjustments stay inside the recording browser; production application styles are unchanged.
-
-`--format` accepts `all` (default), `portrait`, `square` or `landscape`. `--place` accepts an exact public ID, otherwise a unique case-insensitive exact display label, and sets the first **regional focus**, not a city close-up. Without it, the first freshly generated public place anchors the tour. Up to four geographically varied entries provide readable labels; the most distant representative supplies the second regional focus. `--out` must name a directory that does **not** exist, even if empty. Help and invalid flags do not build or launch the browser. Failures and Ctrl-C remove unfinished `.partial.mp4` files and preserve completed outputs.
-
-Recording runs the ordinary build once with `VITE_BASE=/atlas/`, using the current public data, privacy rules and configured basemap. It serves `dist/` on dedicated port **4180**; do not run another build/verification concurrently. It does not substitute fixture data, change precision or switch basemaps. Regional reveals require complete global overview/regional tiles through z6, as supplied by the normal basemap workflow; they do not need city/street extract coverage. The committed z0–3 preview archive alone is not sufficient for this deeper tour.
+The first generation installs the committed 22 MB preview tile archive if no local archive exists. It has global z0–3 and six small city windows through z14: enough for the app and verification, not the complete bundled basemap. Use `VITE_BASE=/some/subpath/ npm run build` for a subpath; the default base is relative. `npm run analyze` writes `dist/bundle-analysis.html`.
 
 ## Explore the atlas
 
-The atlas opens in your system's light or dark appearance; the sun/moon button beside the zoom controls switches between the **day** and **night** themes and remembers the choice (`?theme=light` or `?theme=dark` pins one for a link). Night shows a sparse, static field of stars behind the globe; both themes give the globe a soft halo. The globe stays north-up: drag or use the arrow keys to pan, scroll/pinch, the on-screen **+**/**−** buttons or the `+`/`−` keys to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the year. The shortcut does not fire while editing a field. Search folds accents, so `odsmal` finds Ödsmål. Country and date names follow the browser language; `?deterministic=1` pins them to British English for verification.
+The atlas opens in your system's light or dark appearance; the sun/moon button beside the zoom controls switches between **day** and **night** and remembers the choice. `?theme=light` or `?theme=dark` pins one for a link. The globe stays north-up: drag or use the arrow keys to pan, scroll, pinch, the on-screen **+**/**−** buttons or the `+`/`−` keys to zoom. **World** (or **Alt+W**, Option+W on macOS) restores the overview without changing the timeline. Search folds accents, so `odsmal` finds Ödsmål. Country names and dates follow the browser language; `?deterministic=1` pins British English.
 
-`npm run social` renders `public/social/card.png`, the 1200×630 image referenced by the Open Graph and Twitter tags. Set `VITE_SITE_URL` to the absolute site URL so those tags carry absolute URLs; the Pages workflow derives it from `configure-pages`.
+Country names appear as you leave the world view and give way to region names, then to place names; hovering a country or region highlights its outline when it is the current click target. The count line under the title opens **By the numbers**: totals, the longest stay, nights by year and places by country. **Tour** flies from the current view into the recorder's 24-second choreography; any drag, Escape, World or a selection stops it, and reduced motion holds each shot instead of flying.
 
-Country names appear as you leave the world view and give way to region names, then to place names; hovering a country or region highlights its outline when it is the current click target. The count line under the title opens **By the numbers**: totals, the longest stay, nights by year and places by country, all derived from the published visits. **Tour** flies from the current view into the recorder's globe-and-regions choreography and plays it on in the browser; any drag, Escape, World or a selection stops it, and reduced motion holds each shot instead of flying. **Places** opens a compact directory. **In view** follows the visible map area, excluding the far side of the globe; **All places** also includes off-screen destinations. Both respect the year filter. Search cities, regions or countries, and page through six places at a time in first-visit order. Selecting a place closes the directory and opens its caption. On a phone the directory is a bottom sheet that rides above the on-screen keyboard; opening it does not raise the keyboard, and **Search** on the keyboard lowers it again so the results are in reach. A tap selects the nearest place, journey stop or home within a thumb's reach, and a place's name answers as well as its point. Consecutive visits form **journeys**. No lines are drawn in the normal map view. Selecting a stop, hovering a journey in the directory, or choosing it from the directory's **Journeys** scope puts it in focus: dotted arcs and numbered stops appear in travel order, and other places, countries and regions recede. The arcs are deliberately curved, so they read as "from here to there" and never as the road taken. The caption says which journey a place belongs to, shows an itinerary strip whose segments are as wide as the nights stayed, and steps to the previous or next stop (also **←**/**→** while the caption has focus). Choosing a journey from the directory frames the whole round trip. **Home** (see [data authoring](DATA.md#home)) is a hollow ring rather than a pin. It is not a visit, but journeys leave from it and return to it along fainter legs, and a trip to a single place shows its way out and back when selected. Clicking the ring opens a short home caption. **Escape** or a click on empty map lets a focused journey go. **Escape** closes the caption or directory and restores keyboard focus.
+**Places** opens the directory. **In view** follows the visible map area; **All places** includes off-screen destinations. Both respect the timeline. Search cities, regions or countries and page through places in first-visit order. On a phone the directory is a bottom sheet that rides above the keyboard, and a tap selects the nearest place, journey stop or home within a thumb's reach.
 
-The timeline scrubber has one tick per visit date and a final **All visits** position. **Through** (the default) means “first visited by this date”; **During** lights only visits under way in that month. Its reset restores all visits. Undated visits remain available throughout. The address bar follows what you see: a selected place, a camera you moved (`#/view/…`) and the timeline position (`?through=…&mode=only`), so any view can be shared.
+Consecutive visits form **journeys**. No lines are drawn in the normal view. Selecting a stop, hovering a journey in the directory, or choosing it from the directory's **Journeys** scope puts it in focus: dotted arcs and numbered stops appear in travel order and everything else recedes. The arcs are deliberately curved: "from here to there", never the road taken. The caption names the journey, shows an itinerary strip whose segments are as wide as the nights stayed, and steps to the previous or next stop (also **←**/**→** while the caption has focus). **Home** is a hollow ring rather than a pin; journeys leave from it and return to it along fainter legs, and clicking the ring opens a short home caption. **Escape** or a click on empty map lets a journey go, closes the caption or directory, and restores keyboard focus.
+
+The timeline has one tick per visit date and a final **All visits** position. **Through** means "first visited by this date"; **During** lights only visits under way in that month. Undated visits stay lit throughout. The address bar follows what you see: a selected place (`#/place/<id>`), a camera you moved (`#/view/…`) and the timeline (`?through=…&mode=only`), so any view can be shared.
 
 ## Add a place
 
@@ -46,33 +35,52 @@ Add an entry to `data/visits.ts` with only the fields you have:
 { country: "GR", city: "Kalamos", dateRange: ["2025-04-27", "2025-05-02"] }
 ```
 
-Use uppercase country codes (`DE`, `GR`, `GB`) and `YYYY-MM-DD` dates. A single-day visit uses `date` instead of `dateRange`. IDs and city labels are generated automatically; tags are not supported. Set your home base once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }` instead of adding it as a visit. Journeys start and end there.
+Or let the command do it:
 
-Or let the command do it: `NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02` validates, appends, geocodes and prints the resolved point; `npm run import -- file.csv` does the same for a spreadsheet export. Otherwise run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, using your own contact email or URL, then `npm run build`. Commit the config and updated geocache/source manifest, then redeploy `dist/`. No region codes or coordinates need to be authored. Same-named cities can require an optional qualifier rather than a guessed location. See [data authoring](DATA.md) for identity stability, precision and boundary-provider limitations.
+```sh
+NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02
+npm run import -- file.csv
+```
+
+Both validate, append, geocode and print the resolved point. If you edit by hand, run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, then `npm run build`. Commit the config, the geocache and `data/sources.json`. Set your home once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }`; journeys start and end there. See [data authoring](DATA.md) for identity, precision, home and journeys.
+
+## Record a tour
+
+Install FFmpeg with `ffprobe` and `libx264` (macOS: `brew install ffmpeg`) and Chromium (`npx playwright install chromium`), then:
+
+```sh
+npm run record
+npm run record -- --format portrait --place Berlin --out recordings/berlin-tour
+npm run record -- --help
+```
+
+The default renders portrait 1080×1920, square 1080×1080 and landscape 1920×1080 into a UTC-stamped directory under `recordings/`: silent H.264 MP4, 24 seconds, 720 frames at 30 fps, with a full-resolution poster PNG each. The camera establishes the globe, settles over the anchor's region at zoom 4.75–5, pulls back, reveals a second region and ends on a calm pullback; every moving frame is rendered, so recording takes longer than playback. `--format` accepts `all`, `portrait`, `square` or `landscape`; `--place` takes a public ID or a unique label and sets the first regional focus; `--out` must not exist yet. Recording builds once with `VITE_BASE=/atlas/` and serves it on port 4180, so do not run verification at the same time. It needs global tiles through z6, which the preview archive does not have: build the full basemap first.
 
 ## Install and offline
 
-The site ships a web manifest and icons, so it can be installed from the browser menu. A build-generated service worker precaches the application shell (page, scripts, styles, fonts, sprites, glyphs) and serves it when the network is gone. With a bundled archive, open the map credits and choose **Save the map for offline use** to keep the tile archive in the browser; the worker then answers byte-range requests from that copy. **Remove** deletes it. Verification never registers the worker (`?deterministic=1` skips registration) and the `data.offline-shell` gate fails if a shell asset is missing from the precache or an archive is listed.
+The site ships a web manifest and icons, so it can be installed from the browser menu. A build-generated service worker precaches the shell (page, scripts, styles, fonts, sprites, glyphs) and serves it when the network is gone. With a bundled archive, open the map credits and choose **Save the map for offline use** to keep the tile archive in the browser; **Remove** deletes it. `?deterministic=1` skips registration, so verification stays pure.
 
-## Privacy first
+## Privacy
 
-Publication precision defaults to `city`. Even explicit street coordinates are replaced by the warm city's coordinates unless that visit explicitly requests `publishPrecision: 'exact'`. Coordinates alone do not bypass the publication policy. Exact coordinates bypass geocoding when exact publication was intentionally selected. Source addresses, precision flags and cache provenance never enter production payloads. Do not publish your repository with real private addresses in it: **the build protects `dist/`, not Git history**. See [data authoring](DATA.md).
+Publication precision defaults to `city`: even an authored street coordinate is replaced by the city's coordinates unless the visit sets `publishPrecision: 'exact'`. Source addresses, precision flags and cache provenance never enter the build output. The build protects `dist/`, not Git history: do not commit private addresses to a public repository.
 
 ## Basemap deployment
 
 ### Remote archive
 
-Set `VITE_BASEMAP=remote`, `VITE_BASEMAP_URL` to your archive URL, and `VITE_TILE_ORIGINS` to any exact redirect origins reported by the hosting probe. Explicit remote mode refuses a missing URL. With no environment configured the local sample remains usable; no unrelated public tile service is silently selected. The preferred production host is a **Hugging Face dataset repository pinned to a commit SHA**, based on live range/CORS/browser measurements; publishing your own extract still requires your account.
+Set `VITE_BASEMAP=remote`, `VITE_BASEMAP_URL` to your archive URL and `VITE_TILE_ORIGINS` to any redirect origins the hosting probe reports. Remote mode refuses a missing URL, a mutable Hugging Face revision or a dated planet-build URL. The recommended host is a Hugging Face dataset resolve URL pinned to a commit SHA. Before deploying, run:
 
-Run `npm run verify:hosting -- URL --origin https://your-site.example --min-zoom 0 --max-zoom 14 --bounds -180,-85.0511287,180,85.0511287` before deploying. Dated `build.protomaps.com` archives are extraction inputs, never browser URLs.
+```sh
+npm run verify:hosting -- URL --origin https://your-site.example --min-zoom 0 --max-zoom 14 --bounds -180,-85.0511287,180,85.0511287
+```
 
-Without overrides, the hosting probe requires vector Protomaps layers, z0–14 and global bounds. Transport success on a public sample is not an app-compatibility certificate: the measured HF sample is an MGRS archive, not the basemap to deploy. For a country-only archive without city detail, pass `--max-zoom 6`.
+The probe requires exact byte-range answers, exposed `Content-Range`, CORS from your origin, vector Protomaps layers, z0–14 and global bounds, measured from a real Chromium page. For a country-only archive without city detail, pass `--max-zoom 6`.
 
-`npm run tiles:publish -- --help` describes the `hf` CLI publishing command. It stages only the archive and an OSM-derived dataset card, uploads them, verifies remote identity, and writes a full immutable resolve URL into `.env.production`. It never uploads `data/visits.ts`. Authentication and permission to write your dataset are required. Read the [measured hosting decisions](DECISIONS.md), including the unverified Storage Bucket prerequisite.
+`npm run tiles:publish -- --help` describes publishing with the `hf` CLI: it uploads the archive and an OSM-derived dataset card to your own dataset, verifies the remote bytes and writes the immutable resolve URL into `.env.production`. It never uploads `data/visits.ts`.
 
-### Fully bundled archive
+### Bundled archive
 
-Install [`pmtiles`](https://docs.protomaps.com/pmtiles/cli) and [`tile-join` from Tippecanoe](https://github.com/felt/tippecanoe). On macOS, `brew install tippecanoe` supplies `tile-join`; release binaries/source builds support Linux. Then run:
+Install [`pmtiles`](https://docs.protomaps.com/pmtiles/cli) and `tile-join` from [Tippecanoe](https://github.com/felt/tippecanoe) (`brew install tippecanoe` on macOS), then:
 
 ```sh
 npm run generate
@@ -81,33 +89,27 @@ mv /tmp/new-basemap.pmtiles public/tiles/basemap.pmtiles
 VITE_BASEMAP=bundled npm run build
 ```
 
-Find a current source at [Protomaps builds](https://maps.protomaps.com/builds); dated URLs expire. The script checks prerequisites, extracts global z0–6, extracts z7–14 within 20 km of each city, merges overlapping tile coordinates without duplicated features, verifies the archive and warns above 250 MB. `CITY_PADDING_KM` changes the coverage radius. The output path must not exist, protecting an existing archive until replacement is explicit. A complete example build was exercised: **211,759,571 bytes**, global z0–6 plus six city windows through z14. The same archive can be hosted remotely or bundled; only its URL changes.
+Find a current source at [Protomaps builds](https://maps.protomaps.com/builds); dated URLs expire. The script extracts global z0–6 plus z7–14 within 20 km of each city (`CITY_PADDING_KM` changes the radius), merges overlapping tiles, verifies the archive and warns above 250 MB. A full extract is about 212 MB and is ignored by Git. The output path must not exist yet. The same archive can be bundled or hosted remotely; only its URL changes.
 
-## Verification, not guesswork
+## Verification
 
 ```sh
-npm run verify -- --quick
-npm run verify
-npm run verify:approve
+npm run verify -- --quick      # the CI gate: lint, types, unit, fixture build, style, payload, budgets
+npm run verify                 # full run: runtime, a11y, performance, visual diffs; local, needs a GPU
+npm run verify:approve         # write visual baselines, only for an intended pixel change
 npm run verify -- --set-baseline
 ```
 
-Quick mode runs static, unit, cold fixture generation and payload budgets in under 60 seconds; measured inner-loop runs take about 8 seconds on an Apple M1. Full mode serves the immutable fixture under `/atlas/`, uses pinned Chromium/DPR/viewport, traces five real camera choreographies, audits origins, tests keyboard and reduced motion, runs axe and compares six exact PNGs. Install Chromium with `npx playwright install chromium`. `verification/report.json` contains every measured gate, thresholds, deltas and the lexicographic objective. Missing output or baselines fail; only `verify:approve` writes visual baselines. Raw traces and diff images go to `verification/artifacts/`.
+Quick mode runs in under a minute on hosted Linux and gates deployment. Full mode serves the fixture under `/atlas/`, uses pinned Chromium, DPR and viewport, traces real camera choreographies, audits network origins, tests keyboard paths and reduced motion, runs axe and compares six exact PNGs. It needs real GPU acceleration; software renderers fail the performance gates on purpose. It never runs in CI: run it locally before merging a change that touches rendering, motion or pixels, and commit the approved baselines. `verification/report.json` holds every measured gate, threshold and delta; diff images go to `verification/artifacts/`. Missing output or baselines fail. Only `verify:approve` writes baselines.
 
-Normal-motion startup and camera performance are measured separately from deterministic visual capture. Cold FCP uses CDP 150 ms latency / 1.6 Mbps down; warm FCP proves HTTP cache use. Static serving uses ordinary gzip compression for text, but never compresses PMTiles byte ranges. Performance measurements require real GPU acceleration; software renderers fail visibly. The hosted `quick` job runs static, unit, fixture-build, style and budget gates on `ubuntu-latest` and gates deployment. Runtime, performance and visual checks are a local step, by choice: run `npm run verify` on a machine with a real GPU before merging a change that touches rendering, motion or pixels, approve baselines there with `npm run verify:approve`, and commit them. There is no CI runner for the full run and none is planned.
+Fixture verification (`ATLAS_FIXTURE=1`) uses fictional visits and committed boundaries and forbids every download. The owner build currently emits about 615 KB gzip of boundary geometry across all levels of detail, above the 400 KB target and below the 1 MB limit; only the coarse level (about 98 KB) travels with the style.
 
-Measured sizes live in `verification/report.json`, which every run rewrites; the fixture build is the one CI measures. The owner's larger geography emits about **615 KB gzip** of boundary LODs across all files, above the 400 KB target and below the 1 MB hard limit; of which only the coarse LODs (about 98 KB gzip) travel with the style; fine LODs load when you zoom past the region band. The full report is authoritative; evolution records measured changes rather than visual guesses.
+## Deployment
 
-## Static hosting and security
+The workflow runs quick verification on every push and pull request, comments the objective table on same-repository pull requests, and deploys `main` to GitHub Pages. Set repository variables `VITE_BASEMAP_URL` and `VITE_TILE_ORIGINS`; the deploy job fails without the URL. `VITE_SITE_URL` is derived from the Pages URL so Open Graph tags are absolute; `npm run social` renders the 1200×630 card they reference. A Cloudflare Pages job is commented alongside.
 
-The Vite build injects a restrictive CSP: scripts/fonts/styles from self, only explicit tile/redirect connect origins, blob workers for MapLibre, data/blob image decoding, no objects, no form submissions. MapLibre's positioned DOM requires `style-src-attr 'unsafe-inline'`; script execution does **not** permit inline or eval. Deploy over HTTP(S), not `file://`. `_headers` is included for Cloudflare-compatible hosts. Hashed assets get a one-year immutable policy; when replacing an un-hashed archive, change its URL or purge caches. GitHub Pages controls its own cache headers and cannot honour `_headers`; use an immutable remote archive there. Do not assume a host supports byte ranges: run the probe. Never gzip a PMTiles object at the CDN.
-
-The workflow builds and deploys GitHub Pages after quick verification passes on hosted Linux; a Cloudflare Pages alternative is commented alongside it. Configure repository variables `VITE_BASEMAP_URL` and `VITE_TILE_ORIGINS`. Pull requests receive the objective table and verification artifacts. Fork PRs do not receive write-token comment permissions.
-
-Full verification never runs in CI. A pull request that changes what the browser draws should say that a local full run passed and include the approved baselines. The Cloudflare alternative is a separate commented job that rebuilds with a root base.
+The build injects a strict CSP: scripts, fonts and styles from self, only explicit tile origins for connections, blob workers for MapLibre, no inline script except the hashed theme boot. Deploy over HTTP(S), not `file://`. `_headers` gives hashed assets a one-year immutable policy and marks `sw.js` no-cache on hosts that honour it; GitHub Pages does not, so use an immutable remote archive there. Never gzip a PMTiles object at the CDN.
 
 ## Data provenance
 
-Natural Earth ADM0 is public domain; geoBoundaries gbOpen ADM1 is CC-BY 4.0; OSM tiles are ODbL; Protomaps supplies basemap/style assets. See [full attribution](ATTRIBUTION.md). Boundary fixtures and upstream URLs/checksums are committed; missing non-fixture boundaries download from pinned sources, but geocoding never happens in a build. New label glyph ranges are vendored from a pinned Protomaps asset commit. Fixture verification forbids both kinds of downloads.
-
-Nominatim is used only by the explicit cache command, with a descriptive contact-bearing User-Agent, a minimum 1.1 seconds between requests, country filtering and ambiguity failure. Read its [usage policy](https://operations.osmfoundation.org/policies/nominatim/) before refreshing a large configuration.
+Natural Earth is public domain; geoBoundaries gbOpen is CC-BY 4.0; OSM tiles are ODbL; Protomaps supplies basemap and style assets. See [attribution](ATTRIBUTION.md). Boundary sources are pinned by URL and SHA-256 in `data/sources.json`; missing non-fixture boundaries download from those sources at build, but geocoding never happens in a build. Nominatim is used only by the explicit commands, with a contact-bearing User-Agent and at least 1.1 s between requests; read its [usage policy](https://operations.osmfoundation.org/policies/nominatim/) before refreshing a large configuration.
