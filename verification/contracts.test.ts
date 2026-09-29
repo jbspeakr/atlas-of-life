@@ -12,10 +12,9 @@ import {
 import type { Visit, Cache } from "../scripts/config.ts";
 import { expression } from "@maplibre/maplibre-gl-style-spec";
 import { bands } from "../src/map/expressions.ts";
-import { readFileSync } from "node:fs";
 import { mergeThemes } from "../scripts/themes.ts";
 import { globeRadius, starOpacity, starTile, starfield } from "../src/map/sky.ts";
-import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 import { BoundaryRepository } from "../scripts/boundaries.ts";
 import { geocodeConfig } from "../scripts/geocode.ts";
 const good: Visit = {
@@ -886,16 +885,15 @@ describe("day and night themes", () => {
   it("refuses palettes that differ in anything but colour", () => {
     expect(() => mergeThemes({ "line-width": 1 }, { "line-width": 2 }, isLight)).toThrow(/line-width/);
   });
-  it("generates a style that evaluates to each palette", () => {
-    const style = JSON.parse(readFileSync("src/generated/style.json", "utf8")) as StyleSpecification;
-    expect(style.state).toEqual({ theme: { default: "dark" } });
-    const water = style.layers.find((layer) => layer.id === "water") as { paint: Record<string, unknown> };
-    const colour = (theme: string) => {
-      const parsed = expression.createExpression(water.paint["fill-color"], null, { theme });
+  it("evaluates each palette from the theme global state", () => {
+    // The generated style itself is gated in verification/style.ts, after the build.
+    const merged = mergeThemes("#080f18", "#d3dce4", isLight);
+    const colour = (theme?: string) => {
+      const parsed = expression.createExpression(merged, null, theme ? { theme } : {});
       if (parsed.result === "error") throw new Error(JSON.stringify(parsed.value));
       return String(parsed.value.evaluate({ zoom: 2 }));
     };
-    expect(colour("dark")).toBe(colour("x"));
+    expect(colour("dark")).toBe(colour());
     expect(colour("light")).not.toBe(colour("dark"));
   });
   it("seeds a sparse, repeatable starfield", () => {

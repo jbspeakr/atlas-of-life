@@ -4,7 +4,10 @@ import type { Check } from "./types";
 export function styleChecks(): Check[] {
   const style = JSON.parse(
     readFileSync("src/generated/style.json", "utf8"),
-  ) as { layers: { id: string; paint?: Record<string, unknown> }[] };
+  ) as {
+    state?: Record<string, { default?: unknown }>;
+    layers: { id: string; paint?: Record<string, unknown> }[];
+  };
   const samples = ["countries", "regions", "pins"].map((id) => {
     const layer = style.layers.find((layer) => layer.id === id);
     const paint =
@@ -143,5 +146,40 @@ export function styleChecks(): Check[] {
     "lte",
     "boundaries outside a focused journey must recede to 30 % or less",
   );
+  // Both palettes live in one style: each of these must read differently by
+  // day than by night, and the style must open on night before the page says otherwise.
+  const themedPaint: [string, string][] = [
+    ["water", "fill-color"],
+    ["earth", "fill-color"],
+    ["countries", "fill-color"],
+    ["pins", "circle-color"],
+    ["place-labels", "text-color"],
+    ["place-labels", "text-halo-color"],
+  ];
+  let unthemed = style.state?.theme?.default === "dark" ? 0 : 1;
+  for (const [id, property] of themedPaint) {
+    const colour = (theme: string) => {
+      const parsed = expression.createExpression(
+        style.layers.find((layer) => layer.id === id)?.paint?.[property],
+        null,
+        { theme },
+      );
+      return parsed.result === "error"
+        ? null
+        : String(parsed.value.evaluate({ zoom: 2 }, { type: "Point", properties: {} } as never));
+    };
+    const night = colour("dark");
+    if (night === null || night === colour("light")) unthemed++;
+  }
+  checks.push({
+    id: "theme.palettes",
+    category: "correctness",
+    status: unthemed === 0 ? "pass" : "fail",
+    metric: unthemed,
+    threshold: 0,
+    comparator: "lte",
+    unit: "count",
+    message: `src/generated/style.json: night default and a distinct day colour for ${themedPaint.length} sampled paints; measured ${unthemed} missing, threshold lte 0`,
+  });
   return checks;
 }
