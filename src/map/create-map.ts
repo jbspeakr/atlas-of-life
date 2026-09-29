@@ -19,6 +19,8 @@ import { activeLayer } from "./layers";
 import { visibleAt, type Dated, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
 import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
+import { attachSky } from "./sky";
+import { currentTheme, type Theme } from "../theme";
 export type Place = {
   id: string;
   label: string;
@@ -94,6 +96,7 @@ export type Atlas = {
   stop: () => void;
   reset: () => void;
   zoomBy: (delta: number) => void;
+  setTheme: (theme: Theme) => void;
   filter: (through: string | null, mode: TimeMode) => void;
   destroy: () => void;
 };
@@ -131,6 +134,9 @@ export async function createMap(
   style.sprite = new URL("sprites/dark", base).href;
   if (media.matches || deterministic)
     style.transition = { duration: 0, delay: 0 };
+  // The first frame already wears the theme the page booted with.
+  const initialTheme = currentTheme();
+  style.state = { theme: { default: initialTheme } };
   const home = { center: [10, 35] as [number, number], zoom: innerWidth < 700 ? 0.65 : 1.8 };
   const map = new maplibregl.Map({
     container,
@@ -145,6 +151,15 @@ export async function createMap(
     attributionControl: false,
     canvasContextAttributes: { antialias: true },
     fadeDuration: media.matches || deterministic ? 0 : 200,
+  });
+  const sky = attachSky(map, initialTheme, () => media.matches);
+  // Global state can only change once the style has loaded; until then the
+  // latest choice waits and is applied on arrival.
+  let theme = initialTheme;
+  let styled = false;
+  map.once("style.load", () => {
+    styled = true;
+    if (theme !== initialTheme) map.setGlobalStateProperty("theme", theme);
   });
   map.touchZoomRotate.disableRotation();
   map.keyboard.disableRotation();
@@ -585,7 +600,14 @@ export async function createMap(
       };
       filtering = requestAnimationFrame(frame);
     },
+    setTheme(next) {
+      if (next === theme) return;
+      theme = next;
+      sky.setTheme(next);
+      if (styled) map.setGlobalStateProperty("theme", next);
+    },
     destroy() {
+      sky.destroy();
       touring = false;
       cancelAnimationFrame(revealFrame);
       cancelAnimationFrame(tourFrame);

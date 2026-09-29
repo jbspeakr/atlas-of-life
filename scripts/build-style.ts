@@ -20,6 +20,7 @@ import {
   undimmed,
   withVisibility,
 } from "../src/map/expressions.ts";
+import { mergeThemes } from "./themes.ts";
 import mapAssets from "../data/map-assets.json";
 if (
   !existsSync("public/tiles/basemap.pmtiles") &&
@@ -34,30 +35,79 @@ if (
     "Installed the committed preview tile fixture. Use basemap:build for complete global z0–6 coverage.",
   );
 }
-const quietColors = Object.fromEntries(
-  Object.entries(DARK)
-    .filter(([, value]) => typeof value === "string" && value.startsWith("#"))
-    .map(([key]) => [key, key.includes("casing") ? "#121c27" : "#243240"]),
-);
-const flavor: Flavor = {
-  ...DARK,
-  ...quietColors,
-  background: "#080f18",
-  earth: "#121c27",
-  water: "#080f18",
-  boundaries: "#2b3947",
-  buildings: "#1b2733",
-  park_a: "#15212b",
-  park_b: "#15212b",
-  wood_a: "#15212b",
-  wood_b: "#15212b",
-  country_label: "#a7b2bf",
-  city_label: "#a7b2bf",
-  state_label: "#a7b2bf",
+// Two palettes share one style. Every colour that differs is a `global-state`
+// switch, so changing theme repaints in place and keeps feature-state intact.
+const palettes = {
+  dark: {
+    ocean: "#080f18",
+    land: "#121c27",
+    line: "#2b3947",
+    quiet: "#243240",
+    building: "#1b2733",
+    green: "#15212b",
+    accent: "#efc784",
+    fill: "#efc784",
+    outline: "#bcaa88",
+    ink: "#f1eee7",
+    muted: "#a7b2bf",
+    halo: "#080f18",
+    onAccent: "#080f18",
+  },
+  light: {
+    ocean: "#d3dce4",
+    land: "#f7f5f0",
+    line: "#bcc3ca",
+    quiet: "#e4e2dc",
+    building: "#eae7e0",
+    green: "#eeeee6",
+    accent: "#c98a22",
+    fill: "#c27a14",
+    outline: "#b0874a",
+    ink: "#1e2731",
+    muted: "#56626e",
+    halo: "#f7f5f0",
+    onAccent: "#1e2731",
+  },
 };
+type Palette = (typeof palettes)["dark"];
+const theme: ExpressionSpecification = [
+  "==",
+  ["to-string", ["global-state", "theme"]],
+  "light",
+];
+const color = (role: keyof Palette): string | ExpressionSpecification =>
+  palettes.dark[role] === palettes.light[role]
+    ? palettes.dark[role]
+    : ["case", theme, palettes.light[role], palettes.dark[role]];
+const flavorOf = (palette: Palette): Flavor => ({
+  ...DARK,
+  ...Object.fromEntries(
+    Object.entries(DARK)
+      .filter(([, value]) => typeof value === "string" && value.startsWith("#"))
+      .map(([key]) => [key, key.includes("casing") ? palette.land : palette.quiet]),
+  ),
+  background: palette.ocean,
+  earth: palette.land,
+  water: palette.ocean,
+  boundaries: palette.line,
+  buildings: palette.building,
+  park_a: palette.green,
+  park_b: palette.green,
+  wood_a: palette.green,
+  wood_b: palette.green,
+  country_label: palette.muted,
+  city_label: palette.muted,
+  state_label: palette.muted,
+});
 // Cartography carries the quiet context; only authored place names receive labels.
-const baseLayers = layers("basemap", flavor).filter(
-  (layer) => !layer.id.includes("landcover"),
+const baseLayers = (palette: Palette) =>
+  layers("basemap", flavorOf(palette)).filter(
+    (layer) => !layer.id.includes("landcover"),
+  ) as LayerSpecification[];
+const themedBaseLayers = mergeThemes(
+  baseLayers(palettes.dark),
+  baseLayers(palettes.light),
+  theme,
 ) as LayerSpecification[];
 const geo = (name: string) =>
   JSON.parse(
@@ -127,6 +177,7 @@ const hoverWidth = (rest: number, hover: number): ExpressionSpecification => [
 const style: StyleSpecification = {
   version: 8,
   name: "Atlas — lamplight",
+  state: { theme: { default: "dark" } },
   projection: { type: "globe" },
   glyphs: "./glyphs/{fontstack}/{range}.pbf",
   sprite: "./sprites/dark",
@@ -189,13 +240,13 @@ const style: StyleSpecification = {
     },
   },
   layers: [
-    ...baseLayers,
+    ...themedBaseLayers,
     {
       id: "countries",
       type: "fill",
       source: "countries",
       paint: {
-        "fill-color": "#efc784",
+        "fill-color": color("fill"),
         "fill-opacity": withVisibility(bands.country, 0.24),
         "fill-antialias": false,
       },
@@ -205,7 +256,7 @@ const style: StyleSpecification = {
       type: "line",
       source: "countries",
       paint: {
-        "line-color": "#bcaa88",
+        "line-color": color("outline"),
         "line-width": hoverWidth(0.8, 1.6),
         "line-opacity": withVisibility(bands.country, 0.7),
       },
@@ -215,7 +266,7 @@ const style: StyleSpecification = {
       type: "fill",
       source: "regions",
       paint: {
-        "fill-color": "#efc784",
+        "fill-color": color("fill"),
         "fill-opacity": withVisibility(bands.region, 0.4),
       },
     },
@@ -224,7 +275,7 @@ const style: StyleSpecification = {
       type: "line",
       source: "regions",
       paint: {
-        "line-color": "#efc784",
+        "line-color": color("accent"),
         "line-width": hoverWidth(0.8, 1.6),
         "line-opacity": withVisibility(bands.region),
       },
@@ -236,7 +287,7 @@ const style: StyleSpecification = {
       filter: ["all", ["==", ["get", "kind"], "leg"], nothing],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#efc784",
+        "line-color": color("accent"),
         "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.3, 10, 1.8],
         // Round-capped zero-length dashes draw dots: sparser for the way out and home.
         "line-dasharray": [0, 3.2],
@@ -250,7 +301,7 @@ const style: StyleSpecification = {
       filter: ["all", ["==", ["get", "kind"], "hop"], nothing],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#efc784",
+        "line-color": color("accent"),
         "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.9, 10, 2.6],
         "line-dasharray": [0, 2.1],
         "line-opacity": scaleBand(bands.focus, ["*", 0.95, revealed]),
@@ -261,7 +312,7 @@ const style: StyleSpecification = {
       type: "circle",
       source: "pins",
       paint: {
-        "circle-color": "#efc784",
+        "circle-color": color("accent"),
         "circle-blur": 0.75,
         "circle-radius": [
           "interpolate",
@@ -306,7 +357,7 @@ const style: StyleSpecification = {
       type: "circle",
       source: "pins",
       paint: {
-        "circle-color": "#efc784",
+        "circle-color": color("accent"),
         "circle-radius": [
           "interpolate",
           ["exponential", 1.3],
@@ -330,7 +381,7 @@ const style: StyleSpecification = {
           4,
           2,
         ],
-        "circle-stroke-color": "#f1eee7",
+        "circle-stroke-color": color("ink"),
         "circle-stroke-opacity": pinOpacity,
       },
     },
@@ -341,11 +392,11 @@ const style: StyleSpecification = {
       type: "circle",
       source: "home",
       paint: {
-        "circle-color": "#080f18",
+        "circle-color": color("halo"),
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 3.5, 8, 5.5, 16, 8],
         "circle-opacity": withVisibility(bands.home, 0.55),
         "circle-stroke-width": 1.5,
-        "circle-stroke-color": "#f1eee7",
+        "circle-stroke-color": color("ink"),
         "circle-stroke-opacity": withVisibility(bands.home),
       },
     },
@@ -354,7 +405,7 @@ const style: StyleSpecification = {
       type: "circle",
       source: "home",
       paint: {
-        "circle-color": "#f1eee7",
+        "circle-color": color("ink"),
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1, 8, 1.4, 16, 2],
         "circle-opacity": withVisibility(bands.home),
       },
@@ -381,8 +432,8 @@ const style: StyleSpecification = {
         "text-allow-overlap": false,
       },
       paint: {
-        "text-color": "#a7b2bf",
-        "text-halo-color": "#080f18",
+        "text-color": color("muted"),
+        "text-halo-color": color("halo"),
         "text-halo-width": 2,
         "text-opacity": withVisibility(bands.homeLabel),
       },
@@ -402,8 +453,8 @@ const style: StyleSpecification = {
         "symbol-sort-key": 0,
       },
       paint: {
-        "text-color": "#a7b2bf",
-        "text-halo-color": "#080f18",
+        "text-color": color("muted"),
+        "text-halo-color": color("halo"),
         "text-halo-width": 1.5,
         "text-opacity": withVisibility(bands.countryLabel),
       },
@@ -421,8 +472,8 @@ const style: StyleSpecification = {
         "symbol-sort-key": 1,
       },
       paint: {
-        "text-color": "#a7b2bf",
-        "text-halo-color": "#080f18",
+        "text-color": color("muted"),
+        "text-halo-color": color("halo"),
         "text-halo-width": 1.5,
         "text-opacity": withVisibility(bands.regionLabel),
       },
@@ -451,8 +502,8 @@ const style: StyleSpecification = {
         "symbol-sort-key": ["-", 0, ["get", "visitCount"]],
       },
       paint: {
-        "text-color": "#f1eee7",
-        "text-halo-color": "#080f18",
+        "text-color": color("ink"),
+        "text-halo-color": color("halo"),
         "text-halo-width": 2,
         "text-opacity": pinOpacity,
       },
@@ -463,14 +514,14 @@ const style: StyleSpecification = {
       source: "stops",
       filter: nothing,
       paint: {
-        "circle-color": "#efc784",
+        "circle-color": color("accent"),
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 6, 8, 8, 16, 9],
         "circle-opacity": scaleBand(bands.focus, revealed),
         "circle-stroke-color": [
           "case",
           ["boolean", ["feature-state", "current"], false],
-          "#f1eee7",
-          "#080f18",
+          color("ink"),
+          color("halo"),
         ],
         "circle-stroke-width": [
           "case",
@@ -494,7 +545,7 @@ const style: StyleSpecification = {
         "text-ignore-placement": true,
       },
       paint: {
-        "text-color": "#080f18",
+        "text-color": color("onAccent"),
         "text-opacity": scaleBand(bands.focus, revealed),
       },
     },
@@ -512,8 +563,8 @@ const style: StyleSpecification = {
         "text-optional": true,
       },
       paint: {
-        "text-color": "#f1eee7",
-        "text-halo-color": "#080f18",
+        "text-color": color("ink"),
+        "text-halo-color": color("halo"),
         "text-halo-width": 2,
         "text-opacity": scaleBand(bands.focusLabel, revealed),
       },
@@ -533,7 +584,7 @@ style.layers.splice(1, 0, {
   source: "overview",
   "source-layer": "earth",
   minzoom: 3,
-  paint: { "fill-color": "#121c27" },
+  paint: { "fill-color": color("land") },
 });
 const labels = Object.fromEntries(
   anchors.features

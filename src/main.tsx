@@ -11,6 +11,7 @@ import {
 } from "./map/create-map";
 import type { Atlas } from "./map/create-map";
 import { fold } from "./map/text";
+import { applyTheme, currentTheme, followSystem, type Theme } from "./theme";
 import { captionGeography } from "./map/caption";
 import { dateBounds, isDated, nights, visibleAt } from "./map/time";
 import type { TimeMode } from "./map/time";
@@ -153,6 +154,7 @@ function App() {
   const [error, setError] = useState("");
   const [touring, setTouring] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(currentTheme);
   const [offline, setOffline] = useState<
     { state: "unavailable" } | { state: "absent" } | { state: "saving"; received: number; total: number } | { state: "saved"; bytes: number } | { state: "error"; message: string }
   >({ state: "unavailable" });
@@ -202,6 +204,8 @@ function App() {
         }
         controller = value;
         atlas.current = value;
+        // The theme may have changed while the style was loading.
+        value.setTheme(currentTheme());
         if (value.archive.bundled && offlineSupported() && !deterministic)
           void archiveSaved(value.archive.url).then((bytes) =>
             setOffline(bytes === null ? { state: "absent" } : { state: "saved", bytes }),
@@ -223,6 +227,10 @@ function App() {
       controller?.destroy();
     };
   }, []);
+  useEffect(() => followSystem(setTheme), []);
+  useEffect(() => {
+    atlas.current?.setTheme(theme);
+  }, [theme]);
   useEffect(() => {
     if (place || home) closeButton.current?.focus({ preventScroll: true });
   }, [place, home]);
@@ -477,6 +485,28 @@ function App() {
           onClick={() => atlas.current?.zoomBy(-1)}
         >
           −
+        </button>
+        <button
+          type="button"
+          className="theme-button"
+          aria-label={theme === "dark" ? "Switch to the day theme" : "Switch to the night theme"}
+          title={theme === "dark" ? "Day theme" : "Night theme"}
+          onClick={() => {
+            const next = theme === "dark" ? "light" : "dark";
+            applyTheme(next, true);
+            setTheme(next);
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            {theme === "dark" ? (
+              <>
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+              </>
+            ) : (
+              <path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z" />
+            )}
+          </svg>
         </button>
       </nav>
       <aside className="place-browser" aria-label="Places">

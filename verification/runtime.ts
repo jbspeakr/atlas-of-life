@@ -691,6 +691,28 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
         "eq",
       );
     });
+    await run("a11y.day", "a11y", async () => {
+      await page.goto(url, { waitUntil: "load" });
+      await ready(page);
+      await page.getByRole("button", { name: "Switch to the day theme" }).click();
+      await settle(page);
+      const state = await page.evaluate(() => ({
+        page: document.documentElement.dataset.theme,
+        map: (window as unknown as AtlasWindow).__atlas.map.getGlobalState().theme,
+        stored: localStorage.getItem("atlas-theme"),
+      }));
+      await axe("day");
+      await page.evaluate(() => localStorage.removeItem("atlas-theme"));
+      record(
+        "interaction.theme",
+        "correctness",
+        state.page === "light" && state.map === "light" && state.stored === "light" ? 0 : 1,
+        "errors",
+        0,
+        `The theme toggle switched the page (${state.page}) and map global state (${state.map}) and remembered ${state.stored}.`,
+        "eq",
+      );
+    });
     await run("interaction.tour-yields", "correctness", async () => {
       await page.goto(url, { waitUntil: "load" });
       await ready(page);
