@@ -119,6 +119,9 @@ export default defineConfig(({ mode }) => {
                 file.startsWith("fonts/") ||
                 file.startsWith("sprites/") ||
                 file.startsWith("glyphs/Noto Sans Regular/") ||
+                // The home label and journey stop numbers use the Latin range of these faces.
+                file === "glyphs/Noto Sans Italic/0-255.pbf" ||
+                file === "glyphs/Noto Sans Medium/0-255.pbf" ||
                 file.startsWith("icons/") ||
                 ["favicon.svg", "manifest.webmanifest"].includes(file),
             )

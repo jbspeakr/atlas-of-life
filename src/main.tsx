@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createMap,
+  homes,
   isMissingTile,
   places,
   trips,
@@ -56,16 +57,21 @@ const siteTitle = document.title;
 if (!deterministic) registerServiceWorker(import.meta.env.BASE_URL);
 const megabytes = (bytes: number) => `${(bytes / 1_048_576).toFixed(0)} MB`;
 const narrow = matchMedia("(max-width: 700px)").matches;
-const years = visits.flatMap((v) =>
-  [v.date, ...(v.dateRange ?? [])]
-    .filter((s): s is string => Boolean(s))
-    .map((s) => Number(s.slice(0, 4))),
-);
+const years = [
+  ...visits.flatMap((v) => [v.date, ...(v.dateRange ?? [])]),
+  ...homes.map((home) => home.since),
+]
+  .filter((s): s is string => Boolean(s))
+  .map((s) => Number(s.slice(0, 4)));
 const firstYear = Math.min(...years, new Date().getUTCFullYear());
 const lastYear = Math.max(...years, firstYear);
-// One scrubber position per distinct first-visit date; the last position means every visit.
+// One scrubber position per distinct first-visit date, plus the day each home
+// began, so the atlas opens at home; the last position means every visit.
 const positions = [
-  ...new Set(visits.filter(isDated).map((visit) => dateBounds(visit)[0])),
+  ...new Set([
+    ...visits.filter(isDated).map((visit) => dateBounds(visit)[0]),
+    ...homes.flatMap((home) => (home.since ? [home.since] : [])),
+  ]),
 ].sort();
 const chronology = [...places].sort(
   (a, b) =>
@@ -79,6 +85,33 @@ for (const trip of trips)
   trip.stops.forEach((stop, index) => {
     if (!tripByPlace.has(stop)) tripByPlace.set(stop, { trip, index });
   });
+const homeById = new Map(homes.map((home) => [home.id, home]));
+const placeById = new Map(places.map((place) => [place.id, place]));
+/** Nights spent at each stop within the journey's dates, for the itinerary strip. */
+const stopNights = new Map(
+  trips.map((trip) => [
+    trip.id,
+    trip.stops.map((stop) =>
+      (visitsByPlace.get(stop) ?? [])
+        .filter((visit) => {
+          const [start, end] = dateBounds(visit);
+          return start <= trip.end && end >= trip.start;
+        })
+        .reduce((total, visit) => total + (nights(visit) ?? 0), 0),
+    ),
+  ]),
+);
+const plural = (count: number, word: string) =>
+  `${count} ${count === 1 ? word : `${word}s`}`;
+function roundTrip(trip: (typeof trips)[number]): string | undefined {
+  const from = trip.from ? homeById.get(trip.from) : undefined;
+  const to = trip.to ? homeById.get(trip.to) : undefined;
+  if (from && to && from.id === to.id) return `Round trip from ${from.label}`;
+  if (from && to) return `From ${from.label}, back to ${to.label}`;
+  if (from) return `From ${from.label}`;
+  if (to) return `Back to ${to.label}`;
+  return undefined;
+}
 const searchableTrips = trips.map((trip) => ({
   ...trip,
   searchText: fold(trip.label),
@@ -127,11 +160,13 @@ function App() {
   const statsButton = useRef<HTMLButtonElement>(null);
   const statsClose = useRef<HTMLButtonElement>(null);
   const place = places.find((p) => p.id === selected);
+  const home = selected ? homeById.get(selected) : undefined;
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected;
   useEffect(() => {
-    document.title = place ? `${place.label} · ${siteTitle}` : siteTitle;
-  }, [place]);
+    const label = place?.label ?? (home ? `${home.label}, home` : undefined);
+    document.title = label ? `${label} · ${siteTitle}` : siteTitle;
+  }, [place, home]);
   useEffect(() => {
     if (!host.current) return;
     const abort = new AbortController();
@@ -189,8 +224,12 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (place) closeButton.current?.focus({ preventScroll: true });
-  }, [place]);
+    if (place || home) closeButton.current?.focus({ preventScroll: true });
+  }, [place, home]);
+  // A hover preview never outlives the directory entry that started it.
+  useEffect(() => {
+    atlas.current?.preview(null);
+  }, [explorerOpen, scope]);
   useEffect(() => {
     if (explorerOpen) searchInput.current?.focus({ preventScroll: true });
   }, [explorerOpen]);
@@ -238,6 +277,9 @@ function App() {
         } else if (explorerOpen) {
           setExplorerOpen(false);
           browseButton.current?.focus({ preventScroll: true });
+        } else {
+          // A journey focused from the directory lets go too.
+          atlas.current?.deselect();
         }
       }
     }
@@ -334,6 +376,13 @@ function App() {
             <div><dt>Journeys</dt><dd>{stats.journeys}</dd></div>
             <div><dt>Nights away</dt><dd>{stats.nights}</dd></div>
           </dl>
+          {homes.map((entry) => (
+            <p className="stats-note" key={entry.id}>
+              Home <em>{entry.label}</em>
+              {entry.since ? `, since ${formatMonth(entry.since)}` : ""}
+              {entry.until ? ` until ${formatMonth(entry.until)}` : ""}
+            </p>
+          ))}
           {stats.longestStay && (
             <p className="stats-note">
               Longest stay <em>{stats.longestStay.label}</em>, {stats.longestStay.nights} nights
@@ -490,6 +539,10 @@ function App() {
                 {tripResults.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((trip) => (
                   <li key={trip.id}>
                     <button type="button" data-trip-id={trip.id}
+                      onMouseEnter={() => atlas.current?.preview(trip.id)}
+                      onMouseLeave={() => atlas.current?.preview(null)}
+                      onFocus={() => atlas.current?.preview(trip.id)}
+                      onBlur={() => atlas.current?.preview(null)}
                       onClick={() => {
                         setExplorerOpen(false);
                         atlas.current?.focusTrip(trip.id);
@@ -613,6 +666,38 @@ function App() {
           {place.visitCount > 1 && (
             <p className="caption-count">{place.visitCount} visits</p>
           )}
+          {membership && (() => {
+            const trip = membership.trip;
+            const from = trip.from ? homeById.get(trip.from) : undefined;
+            const to = trip.to ? homeById.get(trip.to) : undefined;
+            const perStop = stopNights.get(trip.id) ?? [];
+            const total = perStop.reduce((a, b) => a + b, 0);
+            const summary = [roundTrip(trip), total ? plural(total, "night") : undefined]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <div className="itinerary">
+                {summary && <p className="itinerary-summary">{summary}</p>}
+                {/* Segment widths follow nights stayed: a schematic, never geography. */}
+                <ol className="itinerary-strip" aria-label="Stops in this journey">
+                  {from && <li className="itinerary-home" aria-hidden="true" title={`Home, ${from.label}`} />}
+                  {trip.stops.map((stop, index) => {
+                    const label = placeById.get(stop)?.label ?? stop;
+                    const stay = perStop[index] ?? 0;
+                    const detail = `${index + 1}. ${label}${stay ? `, ${plural(stay, "night")}` : ""}`;
+                    return (
+                      <li key={`${stop}-${index}`} style={{ flexGrow: Math.max(1, stay) }}>
+                        <button type="button" tabIndex={-1} title={detail} aria-label={detail}
+                          aria-current={index === sequenceIndex ? "step" : undefined}
+                          onClick={() => atlas.current?.select(stop)} />
+                      </li>
+                    );
+                  })}
+                  {to && <li className="itinerary-home" aria-hidden="true" title={`Home, ${to.label}`} />}
+                </ol>
+              </div>
+            );
+          })()}
           <nav className="caption-steps" aria-label="Journey">
             <button type="button" aria-label={membership ? "Previous stop" : "Previous visit"}
               aria-keyshortcuts="ArrowLeft" disabled={sequenceIndex <= 0}
@@ -626,6 +711,39 @@ function App() {
               aria-keyshortcuts="ArrowRight" disabled={sequenceIndex >= sequence.length - 1}
               onClick={() => step(1)}>→</button>
           </nav>
+        </section>
+      )}
+      {home && (
+        <section
+          className="place-caption home-caption"
+          role="dialog"
+          aria-label="Home"
+          aria-describedby="place-geography"
+        >
+          <button
+            className="dismiss"
+            ref={closeButton}
+            type="button"
+            aria-label="Close home label"
+            onClick={dismiss}
+          >
+            ×
+          </button>
+          <p className="caption-kicker">Home</p>
+          <h2>{home.label}</h2>
+          <p id="place-geography">{countryNames.of(home.country) ?? home.country}</p>
+          {home.since && (
+            <p className="visit-dates">
+              Since {dateFormatter.format(new Date(`${home.since}T00:00:00Z`))}
+              {home.until && <> — {dateFormatter.format(new Date(`${home.until}T00:00:00Z`))}</>}
+            </p>
+          )}
+          {(() => {
+            const departures = trips.filter((trip) => trip.from === home.id).length;
+            return departures > 0 ? (
+              <p className="caption-count">Where {plural(departures, "journey")} began</p>
+            ) : null;
+          })()}
         </section>
       )}
       <form className="timeline" onSubmit={(e) => e.preventDefault()}>
@@ -744,7 +862,9 @@ function App() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {place
           ? `${place.label}, ${countryNames.of(place.country)}. ${place.visitCount} ${place.visitCount === 1 ? "visit" : "visits"}.`
-          : view}
+          : home
+            ? `Home, ${home.label}, ${countryNames.of(home.country)}.`
+            : view}
       </p>
       {error && (
         <p className="map-error" role="alert">

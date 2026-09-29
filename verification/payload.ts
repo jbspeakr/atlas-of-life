@@ -10,6 +10,17 @@ const allowlist: Record<string, true> = {
   dateRange: true,
   visitCount: true,
 };
+// Homes publish a city-precision point and the period they cover, nothing more.
+const homeAllowlist: Record<string, true> = {
+  id: true,
+  label: true,
+  country: true,
+  city: true,
+  coordinates: true,
+  since: true,
+  until: true,
+};
+const isHome = (keys: string[]) => keys.includes("since") || keys.includes("until");
 // Journeys are derived from public visits; their labels are generated or authored for publication.
 const tripAllowlist: Record<string, true> = {
   id: true,
@@ -17,6 +28,8 @@ const tripAllowlist: Record<string, true> = {
   start: true,
   end: true,
   stops: true,
+  from: true,
+  to: true,
 };
 /** Audit object shapes in both standalone JSON and minified production JavaScript. */
 export function payloadViolations(
@@ -33,10 +46,11 @@ export function payloadViolations(
     }
     const object = value as Record<string, unknown>;
     if ("id" in object && "label" in object && "country" in object) {
+      const home = isHome(Object.keys(object));
       for (const key of Object.keys(object))
-        if (allowlist[key] !== true)
+        if ((home ? homeAllowlist : allowlist)[key] !== true)
           violations.push(
-            `${filename}: place ${String(object.id)} contains forbidden field ${key}`,
+            `${filename}: ${home ? "home" : "place"} ${String(object.id)} contains forbidden field ${key}`,
           );
       const safe = expected[String(object.id)];
       if (safe && JSON.stringify(object.coordinates) !== JSON.stringify(safe))
@@ -97,10 +111,11 @@ export function payloadViolations(
         keys.includes("label") &&
         keys.includes("country")
       ) {
+        const home = isHome(keys);
         for (const key of keys)
-          if (allowlist[key] !== true)
+          if ((home ? homeAllowlist : allowlist)[key] !== true)
             violations.push(
-              `${filename}:${source.getLineAndCharacterOfPosition(node.pos).line + 1}: shipped place contains forbidden field ${key}`,
+              `${filename}:${source.getLineAndCharacterOfPosition(node.pos).line + 1}: shipped ${home ? "home" : "place"} contains forbidden field ${key}`,
             );
         const id = properties.get("id")!;
         const coordinates = properties.get("coordinates");
