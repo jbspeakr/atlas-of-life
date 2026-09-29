@@ -48,8 +48,10 @@ const cityName = (candidate: Candidate): string | undefined =>
 const settlementNames = (candidate: Candidate): string[] => [
   cityName(candidate) ?? "",
   ...Object.entries(candidate.namedetails ?? {})
+    // Nominatim reports names from a boundary's linked place node as _place_*,
+    // e.g. Ahlbeck's _place_alt_name "Seebad Ahlbeck;Ostseeheilbad Ahlbeck".
     .filter(([key]) =>
-      /^(?:(?:alt|short|official|loc)_)?name(?::(?!prefix$|suffix$)[\w-]+)?$/.test(
+      /^(?:_place_)?(?:(?:alt|short|official|loc)_)?name(?::(?!prefix$|suffix$)[\w-]+)?$/.test(
         key,
       ),
     )
