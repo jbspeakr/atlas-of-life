@@ -196,7 +196,7 @@ const style: StyleSpecification = {
       source: "countries",
       paint: {
         "fill-color": "#efc784",
-        "fill-opacity": withVisibility(bands.country, 0.24),
+        "fill-opacity": scaleBand(withVisibility(bands.country, 0.24), undimmed),
         "fill-antialias": false,
       },
     },
@@ -207,7 +207,7 @@ const style: StyleSpecification = {
       paint: {
         "line-color": "#bcaa88",
         "line-width": hoverWidth(0.8, 1.6),
-        "line-opacity": withVisibility(bands.country, 0.7),
+        "line-opacity": scaleBand(withVisibility(bands.country, 0.7), undimmed),
       },
     },
     {
@@ -216,7 +216,7 @@ const style: StyleSpecification = {
       source: "regions",
       paint: {
         "fill-color": "#efc784",
-        "fill-opacity": withVisibility(bands.region, 0.4),
+        "fill-opacity": scaleBand(withVisibility(bands.region, 0.4), undimmed),
       },
     },
     {
@@ -226,7 +226,7 @@ const style: StyleSpecification = {
       paint: {
         "line-color": "#efc784",
         "line-width": hoverWidth(0.8, 1.6),
-        "line-opacity": withVisibility(bands.region),
+        "line-opacity": scaleBand(withVisibility(bands.region), undimmed),
       },
     },
     {
@@ -405,7 +405,7 @@ const style: StyleSpecification = {
         "text-color": "#a7b2bf",
         "text-halo-color": "#080f18",
         "text-halo-width": 1.5,
-        "text-opacity": withVisibility(bands.countryLabel),
+        "text-opacity": scaleBand(withVisibility(bands.countryLabel), undimmed),
       },
     },
     {
@@ -424,7 +424,7 @@ const style: StyleSpecification = {
         "text-color": "#a7b2bf",
         "text-halo-color": "#080f18",
         "text-halo-width": 1.5,
-        "text-opacity": withVisibility(bands.regionLabel),
+        "text-opacity": scaleBand(withVisibility(bands.regionLabel), undimmed),
       },
     },
     {

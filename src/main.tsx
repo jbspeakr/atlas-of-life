@@ -57,6 +57,20 @@ const siteTitle = document.title;
 if (!deterministic) registerServiceWorker(import.meta.env.BASE_URL);
 const megabytes = (bytes: number) => `${(bytes / 1_048_576).toFixed(0)} MB`;
 const narrow = matchMedia("(max-width: 700px)").matches;
+const coarse = matchMedia("(pointer: coarse)");
+// The on-screen keyboard shrinks only the visual viewport. Publish how much of
+// the layout viewport it covers so the places sheet can sit just above it.
+const viewport = window.visualViewport;
+function trackKeyboard() {
+  if (!viewport) return;
+  const root = document.documentElement;
+  const inset = Math.max(0, root.clientHeight - viewport.height - viewport.offsetTop);
+  root.style.setProperty("--keyboard-inset", `${Math.round(inset)}px`);
+  root.style.setProperty("--visible-height", `${Math.round(viewport.height)}px`);
+}
+viewport?.addEventListener("resize", trackKeyboard);
+viewport?.addEventListener("scroll", trackKeyboard);
+trackKeyboard();
 const years = [
   ...visits.flatMap((v) => [v.date, ...(v.dateRange ?? [])]),
   ...homes.map((home) => home.since),
@@ -137,6 +151,7 @@ function App() {
   const closeButton = useRef<HTMLButtonElement>(null);
   const browseButton = useRef<HTMLButtonElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const explorerClose = useRef<HTMLButtonElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [scope, setScope] = useState<"view" | "all" | "trips">(narrow ? "all" : "view");
@@ -231,7 +246,11 @@ function App() {
     atlas.current?.preview(null);
   }, [explorerOpen, scope]);
   useEffect(() => {
-    if (explorerOpen) searchInput.current?.focus({ preventScroll: true });
+    if (!explorerOpen) return;
+    // On touch screens, focusing the search field would raise the keyboard
+    // over the sheet before the viewer asked to type; it opens on a tap instead.
+    if (coarse.matches) explorerClose.current?.focus({ preventScroll: true });
+    else searchInput.current?.focus({ preventScroll: true });
   }, [explorerOpen]);
   useEffect(() => {
     if (statsOpen) statsClose.current?.focus({ preventScroll: true });
@@ -503,7 +522,7 @@ function App() {
           <section className="place-explorer" id="place-explorer" aria-label="Browse places">
             <div className="explorer-heading">
               <h2>Explore places</h2>
-              <button type="button" className="icon-button" aria-label="Close places"
+              <button ref={explorerClose} type="button" className="icon-button" aria-label="Close places"
                 onClick={() => {
                   setExplorerOpen(false);
                   browseButton.current?.focus({ preventScroll: true });
@@ -526,8 +545,13 @@ function App() {
               )}
             </div>
             <input ref={searchInput} type="search" aria-label="Search places"
-              placeholder="Search city, region or country"
-              value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} />
+              placeholder="Search city, region or country" enterKeyHint="search"
+              autoComplete="off" autoCorrect="off" spellCheck={false}
+              value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }}
+              onKeyDown={(event) => {
+                // Search lowers the on-screen keyboard so the results are in reach.
+                if (event.key === "Enter" && coarse.matches) event.currentTarget.blur();
+              }} />
             <p className="explorer-context" role="status">
               {scope === "trips"
                 ? `${tripResults.length} ${tripResults.length === 1 ? "journey" : "journeys"}`
