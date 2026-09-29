@@ -196,6 +196,8 @@ export async function createMap(
       .map((visit) => placeByVisit.get(visit.id)!)[0];
   let animation = 0;
   let touring = false;
+  /** The tour's opening flight is under way; a viewer's gesture already ends it. */
+  let tourFlight = false;
   let tourFrame = 0;
   let tourTimer = 0;
   let igniting = false;
@@ -206,6 +208,9 @@ export async function createMap(
   const countries = countrySource.data as FeatureCollection;
   const regions = regionSource.data as FeatureCollection;
   const states = new Map<string, number>();
+  // Boundaries outside a focused journey recede; tracked like visibility so a
+  // fine-geometry swap re-applies them.
+  const dims = new Map<string, number>();
   // Progressive geometry: fine boundary LODs load once the viewer zooms past
   // the band where their detail is visible, then the tracked feature state is
   // re-applied so a swap can never relight a filtered-out boundary.
@@ -229,6 +234,9 @@ export async function createMap(
             { source: id, id: key.slice(id.length) },
             { visibility },
           );
+      for (const [key, dim] of dims)
+        if (key.startsWith(id))
+          map.setFeatureState({ source: id, id: key.slice(id.length) }, { dim });
     });
   };
   const refineForZoom = () => {
@@ -328,6 +336,10 @@ export async function createMap(
       },
     ]);
   }
+  const boundaries = [
+    ...countries.features.map((f) => ({ source: "countries", id: String(f.id) })),
+    ...regions.features.map((f) => ({ source: "regions", id: String(f.id) })),
+  ];
   const groupForPlace = (id: string): string | null =>
     trips.find((trip) => trip.stops.includes(id))?.id ??
     (segmentsByGroup.has(`place:${id}`) ? `place:${id}` : null);
@@ -395,6 +407,18 @@ export async function createMap(
         { source: "pins", id: candidate.id },
         { dim: group && !members.has(candidate.id) ? 1 : 0 },
       );
+    // Only the countries and regions the journey passes through stay lit.
+    const related = new Set(
+      places
+        .filter((candidate) => members.has(candidate.id))
+        .flatMap((candidate) => [candidate.country, candidate.region ?? ""]),
+    );
+    for (const boundary of boundaries) {
+      const dim = group && !related.has(boundary.id) ? 1 : 0;
+      dims.set(boundary.source + boundary.id, dim);
+      map.setFeatureState({ source: boundary.source, id: boundary.id }, { dim });
+      map.setFeatureState({ source: "anchors", id: boundary.id }, { dim });
+    }
     markCurrent(place);
     if (!group) return;
     const entries = revealEntries(group);
@@ -451,23 +475,59 @@ export async function createMap(
         next();
         return;
       }
-      const start = performance.now();
-      const frame = (now: number) => {
+      // The tour begins where the viewer is: fly from the current camera to the
+      // opening wide shot, as "World" does, then play the choreography onwards.
+      const entry = tour.keyframes[1];
+      const playFrom = (first: number) => {
+        const start = performance.now();
+        const frame = (now: number) => {
+          if (!touring) return;
+          // A frame timestamp can precede the performance.now() taken at start.
+          const index = Math.max(first, Math.min(719, first + Math.floor(((now - start) / 1000) * 30)));
+          apply(cameraAtFrame(index, tour));
+          if (index >= 719) {
+            atlas.stop();
+            return;
+          }
+          tourFrame = requestAnimationFrame(frame);
+        };
+        tourFrame = requestAnimationFrame(frame);
+      };
+      map.stop();
+      map.once("moveend", () => {
+        tourFlight = false;
         if (!touring) return;
-        // A frame timestamp can precede the performance.now() taken at start.
-        const index = Math.max(0, Math.min(719, Math.floor(((now - start) / 1000) * 30)));
-        apply(cameraAtFrame(index, tour));
-        if (index >= 719) {
+        // Another camera move interrupted the flight: the viewer took over.
+        const center = map.getCenter();
+        const drift = Math.abs(((center.lng - entry.camera.center[0] + 540) % 360) - 180);
+        if (
+          drift > 0.01 ||
+          Math.abs(center.lat - entry.camera.center[1]) > 0.01 ||
+          Math.abs(map.getZoom() - entry.camera.zoom) > 0.01
+        ) {
           atlas.stop();
           return;
         }
-        tourFrame = requestAnimationFrame(frame);
-      };
-      tourFrame = requestAnimationFrame(frame);
+        playFrom(entry.frame);
+      });
+      tourFlight = true;
+      map.flyTo({
+        center: entry.camera.center,
+        zoom: entry.camera.zoom,
+        bearing: 0,
+        pitch: 0,
+        speed: 0.72,
+        curve: 1.5,
+        easing: ease,
+        essential: true,
+      });
     },
     stop() {
       if (!touring) return;
       touring = false;
+      // Ending the flight fires moveend, which reports the view once touring is off.
+      if (tourFlight) map.stop();
+      tourFlight = false;
       cancelAnimationFrame(tourFrame);
       clearTimeout(tourTimer);
       onTour(false);
@@ -700,6 +760,9 @@ export async function createMap(
   });
   map.on("movestart", (event) => {
     if (event.originalEvent) {
+      // The gesture has already interrupted any flight; stopping the map again
+      // would cancel the gesture itself.
+      tourFlight = false;
       atlas.stop();
       finishIgnition();
       stopped = true;
@@ -752,8 +815,9 @@ export async function createMap(
     canvas.style.cursor = "";
   };
   // Only the band's pointer target responds, so a region under the cursor does
-  // not light while the viewer is still choosing a country.
-  for (const source of ["countries", "regions", "pins"] as const) {
+  // not light while the viewer is still choosing a country. Pins answer from
+  // the general pointer handlers below, which give them a tolerant reach.
+  for (const source of ["countries", "regions"] as const) {
     map.on("mousemove", source, (event) => {
       if (activeLayer(map.getZoom()) !== source) {
         if (hovered?.source === source) unhover();
@@ -774,52 +838,110 @@ export async function createMap(
   map.on("zoomend", () => {
     if (hovered && activeLayer(map.getZoom()) !== hovered.source) unhover();
   });
-  // Home answers at any zoom where its ring is drawn, ahead of the band's target.
-  const homeAt = (point: maplibregl.Point) => {
-    if (map.getZoom() < 3) return undefined;
-    return map
-      .queryRenderedFeatures(
-        [
-          [point.x - 6, point.y - 6],
-          [point.x + 6, point.y + 6],
-        ],
-        { layers: ["home-ring"] },
-      )
-      .find((feature) => (states.get("home" + String(feature.id)) ?? 1) > 0.5);
+  // A pin is a few pixels wide and a fingertip is not: a tap reaches the
+  // nearest mark within a thumb's radius, and a place's label answers as well.
+  const coarse = matchMedia("(pointer: coarse)");
+  const reachOf = (event: maplibregl.MapMouseEvent) => {
+    const type = (event.originalEvent as PointerEvent).pointerType;
+    return type === "touch" || (!type && coarse.matches) ? 24 : 8;
+  };
+  type Hit = { feature: maplibregl.MapGeoJSONFeature; distance: number };
+  const nearest = (
+    point: maplibregl.Point,
+    layers: string[],
+    reach: number,
+    accept: (feature: maplibregl.MapGeoJSONFeature) => boolean = () => true,
+  ): Hit | undefined => {
+    let best: Hit | undefined;
+    for (const feature of map.queryRenderedFeatures(
+      [
+        [point.x - reach, point.y - reach],
+        [point.x + reach, point.y + reach],
+      ],
+      { layers },
+    )) {
+      if (feature.geometry.type !== "Point" || !accept(feature)) continue;
+      const distance = map
+        .project(feature.geometry.coordinates as [number, number])
+        .dist(point);
+      // A label's anchor sits beside its text, so a label hit counts as in reach.
+      const effective = feature.layer.type === "symbol" ? Math.min(distance, reach) : distance;
+      if (effective <= reach && (!best || effective < best.distance))
+        best = { feature, distance: effective };
+    }
+    return best;
+  };
+  // Home answers at any zoom where its ring is drawn.
+  const homeAt = (point: maplibregl.Point, reach = 6) =>
+    map.getZoom() < 3
+      ? undefined
+      : nearest(point, ["home-ring"], reach, (feature) =>
+          (states.get("home" + String(feature.id)) ?? 1) > 0.5);
+  const pinAt = (point: maplibregl.Point, reach: number) =>
+    activeLayer(map.getZoom()) === "pins"
+      ? nearest(point, ["pins", "place-labels"], reach, (feature) =>
+          (states.get("pins" + String(feature.id)) ?? 1) > 0.5)
+      : undefined;
+  // A focused journey's numbered stars answer wherever they are drawn.
+  const stopAt = (point: maplibregl.Point, reach: number) =>
+    shownFocus && map.getZoom() >= 2
+      ? nearest(point, ["journey-stops", "journey-stop-labels"], reach)
+      : undefined;
+  /** The closest home, journey stop or pin to the pointer, as a place or home ID. */
+  const markAt = (point: maplibregl.Point, reach: number): string | undefined => {
+    const home = homeAt(point, reach);
+    const stop = stopAt(point, reach);
+    const pin = pinAt(point, reach);
+    const [closest] = [
+      home && { id: home.feature.id, distance: home.distance },
+      stop && { id: stop.feature.properties.place, distance: stop.distance },
+      pin && { id: pin.feature.id, distance: pin.distance },
+    ]
+      .filter((hit) => hit !== undefined)
+      .sort((a, b) => a.distance - b.distance);
+    return closest ? String(closest.id) : undefined;
   };
   map.on("mousemove", (event) => {
-    if (homeAt(event.point)) canvas.style.cursor = "pointer";
+    const pin = pinAt(event.point, 8)?.feature;
+    if (pin?.id !== undefined) {
+      if (hovered && (hovered.source !== "pins" || hovered.id !== pin.id))
+        map.setFeatureState(hovered, { hover: false });
+      hovered = { source: "pins", id: pin.id };
+      map.setFeatureState(hovered, { hover: true });
+    } else if (hovered?.source === "pins") unhover();
+    if (pin || homeAt(event.point) || stopAt(event.point, 8)) canvas.style.cursor = "pointer";
     else if (!hovered) canvas.style.cursor = "";
   });
+  map.on("mouseout", () => {
+    if (hovered?.source === "pins") unhover();
+  });
   map.on("click", (event) => {
-    const home = homeAt(event.point);
-    if (home) {
-      atlas.select(String(home.id));
+    const mark = markAt(event.point, reachOf(event));
+    if (mark) {
+      atlas.select(mark);
       return;
     }
     const layer = activeLayer(map.getZoom());
-    const feature = map.queryRenderedFeatures(event.point, {
-      layers: [layer],
-    })[0];
+    const feature =
+      layer === "pins"
+        ? undefined
+        : map.queryRenderedFeatures(event.point, { layers: [layer] })[0];
     if (feature) {
-      if (layer === "pins") atlas.select(String(feature.id));
-      else {
-        const raw = feature.properties.bbox;
-        const bbox = (typeof raw === "string" ? JSON.parse(raw) : raw) as [
-          number,
-          number,
-          number,
-          number,
-        ];
-        if (bbox)
-          fly(
-            [
-              [bbox[0], bbox[1]],
-              [bbox[2], bbox[3]],
-            ],
-            layer === "countries" ? 5.5 : 8,
-          );
-      }
+      const raw = feature.properties.bbox;
+      const bbox = (typeof raw === "string" ? JSON.parse(raw) : raw) as [
+        number,
+        number,
+        number,
+        number,
+      ];
+      if (bbox)
+        fly(
+          [
+            [bbox[0], bbox[1]],
+            [bbox[2], bbox[3]],
+          ],
+          layer === "countries" ? 5.5 : 8,
+        );
     } else {
       focus(null);
       if (selected) {

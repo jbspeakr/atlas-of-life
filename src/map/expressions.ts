@@ -131,7 +131,7 @@ export function withVisibility(
   }
   return result;
 }
-/** Places outside a focused journey recede instead of disappearing. */
+/** Places, regions and countries outside a focused journey recede instead of disappearing. */
 export const undimmed: ExpressionSpecification = [
   "-",
   1,
