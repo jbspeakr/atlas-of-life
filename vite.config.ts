@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
       {
         name: "atlas-html",
         apply: "build",
-        transformIndexHtml(html) {
+        transformIndexHtml(html, ctx) {
           const site = env.VITE_SITE_URL?.trim();
           const tags: {
             tag: string;
@@ -73,7 +73,29 @@ export default defineConfig(({ mode }) => {
               attrs: { "http-equiv": "Content-Security-Policy", content: csp },
               injectTo: "head-prepend",
             },
+            // The tile hosts are reached only after the script and style; open
+            // their connections while those download.
+            ...[...origins].map((origin) => ({
+              tag: "link",
+              attrs: { rel: "preconnect", href: origin, crossorigin: "" },
+              injectTo: "head" as const,
+            })),
           ];
+          // The style is fetched by the script; preloading it overlaps both downloads.
+          const style = Object.values(ctx.bundle ?? {}).find((output) =>
+            /^assets\/style-[^/]+\.json$/.test(output.fileName),
+          );
+          if (style)
+            tags.push({
+              tag: "link",
+              attrs: {
+                rel: "preload",
+                href: `${env.VITE_BASE || "./"}${style.fileName}`,
+                as: "fetch",
+                crossorigin: "",
+              },
+              injectTo: "head",
+            });
           if (site) {
             // Social scrapers require absolute image and canonical URLs.
             const origin = new URL(site);
@@ -154,7 +176,26 @@ export default defineConfig(({ mode }) => {
         : []),
     ],
     // Fine geometry LODs are emitted as hashed assets; never inline them as data URIs.
-    build: { target: "es2022", sourcemap: false, assetsInlineLimit: 0 },
+    build: {
+      target: "es2022",
+      sourcemap: false,
+      assetsInlineLimit: 0,
+      rollupOptions: {
+        output: {
+          // Libraries change far less often than the atlas: in their own
+          // chunks, their hashes and cached copies survive a deploy.
+          manualChunks(id) {
+            if (id.includes("/node_modules/maplibre-gl/")) return "maplibre";
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
+          },
+          // Hosts compress JSON reliably; the GeoJSON media type is not always on their list.
+          assetFileNames: (asset) =>
+            (asset.names[0] ?? "").endsWith(".geojson")
+              ? "assets/[name]-[hash].json"
+              : "assets/[name]-[hash][extname]",
+        },
+      },
+    },
     server: { host: "127.0.0.1" },
   };
 });
