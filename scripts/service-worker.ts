@@ -11,9 +11,14 @@ const ARCHIVE = "atlas-archive";
 const PRECACHE = ${JSON.stringify(precache)};
 const scopeUrl = new URL(self.registration.scope);
 const shellUrl = (path) => new URL(path, scopeUrl).href;
+// A new worker waits until no page runs the previous build: activating early
+// would delete files an open page still loads, which the deploy removed too.
+// The shell is read past the HTTP cache so a stale page never enters it.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(SHELL).then((cache) => cache.addAll(PRECACHE.map(shellUrl))).then(() => self.skipWaiting()),
+    caches.open(SHELL).then((cache) =>
+      cache.addAll(PRECACHE.map((path) => new Request(shellUrl(path), { cache: "reload" }))),
+    ),
   );
 });
 self.addEventListener("activate", (event) => {
@@ -50,13 +55,19 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+  // Only a same-origin archive can be saved; remote tiles go straight to the network.
+  if (url.origin !== scopeUrl.origin) return;
   if (url.pathname.endsWith(".pmtiles")) {
     event.respondWith(rangeFromArchive(request).then((response) => response ?? fetch(request)));
     return;
   }
-  if (url.origin !== scopeUrl.origin) return;
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match(shellUrl("./")).then((cached) => cached ?? Response.error())));
+    // Revalidate the page: a host may cache HTML for minutes after a deploy.
+    event.respondWith(
+      fetch(request, { cache: "no-cache" }).catch(() =>
+        caches.match(shellUrl("./")).then((cached) => cached ?? Response.error()),
+      ),
+    );
     return;
   }
   event.respondWith(

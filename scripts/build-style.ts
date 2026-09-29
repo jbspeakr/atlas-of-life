@@ -6,6 +6,7 @@ import {
   copyFileSync,
 } from "node:fs";
 import { DARK, layers } from "@protomaps/basemaps";
+import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 import type { Flavor } from "@protomaps/basemaps";
 import type { FeatureCollection } from "geojson";
 import type {
@@ -625,6 +626,12 @@ for (const entry of ranges) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(filename, Buffer.from(await response.arrayBuffer()));
 }
+// The browser skips style validation for speed, so the build must not.
+const invalid = validateStyleMin(style as Parameters<typeof validateStyleMin>[0]);
+if (invalid.length)
+  throw new Error(
+    `Invalid style:\n${invalid.map((error) => error.message).join("\n")}`,
+  );
 writeFileSync("src/generated/style.json", JSON.stringify(style));
 console.log(
   `Style: ${style.layers.length} layers, globe projection, all semantic layers continuously present.`,

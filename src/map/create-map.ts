@@ -6,7 +6,7 @@ import type {
   LngLatBoundsLike,
 } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
-import { Protocol } from "pmtiles";
+import { PMTiles, Protocol } from "pmtiles";
 import styleUrl from "../generated/style.json?url";
 import countriesFineUrl from "../generated/countries-fine.geojson?url";
 import regionsFineUrl from "../generated/regions-fine.geojson?url";
@@ -78,6 +78,19 @@ for (const visit of visits) {
 // tile makes MapLibre draw the nearest ancestor it has, at worst the global z6.
 const protocol = new Protocol({ errorOnMissingTile: true });
 maplibregl.addProtocol("pmtiles", protocol.tile);
+const base = new URL(import.meta.env.BASE_URL, location.href);
+const archive =
+  import.meta.env.VITE_BASEMAP !== "bundled" && import.meta.env.VITE_BASEMAP_URL
+    ? import.meta.env.VITE_BASEMAP_URL
+    : new URL("tiles/basemap.pmtiles", base).href;
+// Start what the first frame waits on while the style downloads: the worker
+// pool and the archive's header and root directory, which the tile requests share.
+maplibregl.prewarm();
+const archiveTiles = new PMTiles(archive);
+protocol.add(archiveTiles);
+archiveTiles.getHeader().catch(() => {
+  // The map awaits this same request and reports a failure itself.
+});
 /** The expected error for a tile outside the archive's detail windows. */
 export const isMissingTile = (error: Error) =>
   error.message === "Tile not found.";
@@ -116,16 +129,15 @@ export async function createMap(
   const media = matchMedia("(prefers-reduced-motion: reduce)");
   const deterministic =
     new URLSearchParams(location.search).get("deterministic") === "1";
-  const base = new URL(import.meta.env.BASE_URL, location.href);
+  // index.html preloads the style, so this request is usually already answered.
   const response = await fetch(styleUrl, { signal });
   if (!response.ok)
-    throw new Error(`Style ${styleUrl}: HTTP ${response.status}`);
+    // The URL and status let the page recognise a build removed by a deploy.
+    throw Object.assign(new Error(`Style ${styleUrl}: HTTP ${response.status}`), {
+      url: new URL(styleUrl, location.href).href,
+      status: response.status,
+    });
   const style = (await response.json()) as StyleSpecification;
-  const remote = import.meta.env.VITE_BASEMAP !== "bundled";
-  const archive =
-    remote && import.meta.env.VITE_BASEMAP_URL
-      ? import.meta.env.VITE_BASEMAP_URL
-      : new URL("tiles/basemap.pmtiles", base).href;
   for (const source of Object.values(style.sources))
     if (source.type === "vector") source.url = "pmtiles://" + archive;
   style.glyphs = new URL("glyphs/{fontstack}/{range}.pbf", base).href
@@ -149,7 +161,12 @@ export async function createMap(
     dragRotate: false,
     touchPitch: false,
     attributionControl: false,
-    canvasContextAttributes: { antialias: true },
+    // The build validates the style; skipping it here saves main-thread time.
+    validateStyle: false,
+    // Multisampling pays off on standard screens; dense ones barely show the
+    // edges it smooths, and above 2x the extra pixels cost more than they show.
+    pixelRatio: Math.min(devicePixelRatio || 1, 2),
+    canvasContextAttributes: { antialias: (devicePixelRatio || 1) < 2 },
     fadeDuration: media.matches || deterministic ? 0 : 200,
   });
   const sky = attachSky(map, initialTheme, () => media.matches);
@@ -738,22 +755,20 @@ export async function createMap(
   map.once("idle", () => {
     atlas.firstIdleMs = performance.now();
   });
-  map.on("style.load", () => {
-    if (!media.matches && !deterministic && !location.hash && !stopped) {
-      igniting = true;
-      for (const f of countries.features) {
-        states.set("countries" + f.id, 0);
-        map.setFeatureState({ source: "countries", id: f.id! }, { visibility: 0 });
-      }
-    }
-  });
-  map.on("load", () => {
+  // Boundaries, pins and routes are inline GeoJSON, so the atlas can light up
+  // as soon as the style is ready rather than after every basemap tile arrives.
+  map.once("style.load", () => {
     route();
     reportView();
     // Deterministic captures compare fine geometry regardless of camera history.
     if (deterministic) for (const id of Object.keys(fineSources)) loadFine(id);
     refineForZoom();
     if (!media.matches && !deterministic && !location.hash && !stopped) {
+      igniting = true;
+      for (const f of countries.features) {
+        states.set("countries" + f.id, 0);
+        map.setFeatureState({ source: "countries", id: f.id! }, { visibility: 0 });
+      }
       const ordered = [...countries.features].sort((a, b) => {
         const first = (id: unknown) =>
           visits
@@ -762,13 +777,15 @@ export async function createMap(
             .sort()[0] ?? "9999";
         return first(a.id).localeCompare(first(b.id));
       });
+      // However many countries there are, the last one lights within two seconds.
+      const stagger = Math.min(260, 1300 / Math.max(1, ordered.length - 1));
       const start = performance.now();
       const ignite = (now: number) => {
         let done = true;
         ordered.forEach((f, i) => {
           const visibility = Math.min(
             1,
-            Math.max(0, (now - start - i * 260) / 700),
+            Math.max(0, (now - start - i * stagger) / 700),
           );
           if (visibility < 1) done = false;
           map.setFeatureState({ source: "countries", id: f.id! }, { visibility });

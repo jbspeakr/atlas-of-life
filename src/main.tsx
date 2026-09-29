@@ -55,7 +55,28 @@ const formatMonth = (date: string) =>
   monthFormatter.format(new Date(`${date}T00:00:00Z`));
 const countryNames = new Intl.DisplayNames([locale], { type: "region" });
 const siteTitle = document.title;
-if (!deterministic) registerServiceWorker(import.meta.env.BASE_URL);
+// The worker's install downloads the whole shell; it waits until the first
+// view is drawn so it never competes with the map for bandwidth.
+const startOfflineShell = () => {
+  if (!deterministic) registerServiceWorker(import.meta.env.BASE_URL);
+};
+/**
+ * A page from before a deploy asks for hashed build files the deploy removed.
+ * Reload once to fetch the current build; a second miss is reported instead.
+ */
+function reloadForStaleBuild(error: unknown): boolean {
+  const { url, status } = error as { url?: unknown; status?: unknown };
+  if (status !== 404 || typeof url !== "string") return false;
+  if (!new URL(url, location.href).pathname.includes("/assets/")) return false;
+  try {
+    if (sessionStorage.getItem("atlas-stale-build") === url) return false;
+    sessionStorage.setItem("atlas-stale-build", url);
+  } catch {
+    return false;
+  }
+  location.reload();
+  return true;
+}
 const megabytes = (bytes: number) => `${(bytes / 1_048_576).toFixed(0)} MB`;
 const narrow = matchMedia("(max-width: 700px)").matches;
 const coarse = matchMedia("(pointer: coarse)");
@@ -225,9 +246,11 @@ function App() {
           void archiveSaved(value.archive.url).then((bytes) =>
             setOffline(bytes === null ? { state: "absent" } : { state: "saved", bytes }),
           );
+        value.map.once("idle", startOfflineShell);
         value.map.on("error", (event) => {
           // Outside the detail windows the map falls back to coarser tiles.
           if (isMissingTile(event.error)) return;
+          if (reloadForStaleBuild(event.error)) return;
           setError(
             "The map could not load its geographic data. " +
               event.error.message,
@@ -235,7 +258,10 @@ function App() {
         });
       })
       .catch((error) => {
-        if (!abort.signal.aborted) setError(String(error));
+        if (abort.signal.aborted) return;
+        startOfflineShell();
+        if (reloadForStaleBuild(error)) return;
+        setError(String(error));
       });
     return () => {
       abort.abort();
