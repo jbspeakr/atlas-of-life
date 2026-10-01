@@ -12,6 +12,10 @@ export type TripVisit = {
   trip?: string;
   date?: string;
   dateRange?: [string, string];
+  /** Authored: a day out even on a stay's arrival or departure day, or from home. */
+  dayTrip?: boolean;
+  /** The place or home the day trip was made from, once resolved. */
+  from?: string;
 };
 export type Trip = {
   id: string;
@@ -27,6 +31,53 @@ const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const day = 86_400_000;
 const addDays = (date: string, days: number) =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * day).toISOString().slice(0, 10);
+const byStart = (a: TripVisit, b: TripVisit) =>
+  dateBounds(a)[0].localeCompare(dateBounds(b)[0]) ||
+  dateBounds(a)[1].localeCompare(dateBounds(b)[1]) ||
+  a.id.localeCompare(b.id);
+const closed = (visit: TripVisit) => {
+  const [start, end] = dateBounds(visit);
+  return isDated(visit) && start !== openStart && end !== openEnd;
+};
+/** A closed range with at least one night: somewhere the traveller slept. */
+const isStay = (visit: TripVisit) => closed(visit) && dateBounds(visit)[0] < dateBounds(visit)[1];
+const covers = (stay: TripVisit, date: string) =>
+  dateBounds(stay)[0] <= date && date <= dateBounds(stay)[1];
+/**
+ * Resolves day trips to the stay they were made from. A single-date visit
+ * strictly inside a stay's range is a day trip from that stay (the innermost
+ * when stays nest): the traveller slept at the base the night before and the
+ * night after. An authored `dayTrip` also accepts a stay that merely shares
+ * the day (the one woken up in) and, failing that, the home in effect; with
+ * neither it is an error rather than a silent journey stop.
+ */
+export function assignDayTrips(
+  input: readonly TripVisit[],
+  homes: readonly TripHome[] = [],
+): TripVisit[] {
+  const stays = input.filter(isStay);
+  return input.map((visit) => {
+    const copy = { ...visit };
+    delete copy.from;
+    if (!closed(visit)) return copy;
+    const [date, end] = dateBounds(visit);
+    if (date !== end) return copy;
+    const covering = stays
+      .filter((stay) => stay.id !== visit.id && stay.placeId !== visit.placeId && covers(stay, date))
+      .sort(byStart);
+    const inside = covering
+      .filter((stay) => dateBounds(stay)[0] < date && date < dateBounds(stay)[1])
+      .at(-1);
+    if (inside) return { ...copy, from: inside.placeId };
+    if (!visit.dayTrip) return copy;
+    if (covering.length) return { ...copy, from: covering[0].placeId };
+    const home = homeAt(homes, date);
+    if (home && home.id !== visit.placeId) return { ...copy, from: home.id };
+    throw new Error(
+      `${visit.id} is marked a day trip, but no stay or home covers ${date}`,
+    );
+  });
+}
 
 function list(items: string[]): string {
   if (items.length <= 1) return items.join("");
@@ -45,32 +96,23 @@ export function tripLabel(visits: readonly TripVisit[]): string {
  * Chains dated city visits into journeys. A visit joins the current journey
  * when it starts no later than the day after the journey's latest end;
  * visits sharing an authored `trip` label always form one journey. Journeys
- * need two or more visits; open-ended ranges and undated visits never join.
+ * need two or more stops; open-ended ranges and undated visits never join,
+ * and a day trip rides with the stay it was made from rather than chaining.
  */
 export function inferTrips(input: readonly TripVisit[]): Trip[] {
   return groupTrips(input).map((entry) => entry.trip);
 }
-/** Journeys with the visits that formed them, in journey order. */
+/** Journeys with the visits that formed them (stops first, then their day trips). */
 export function groupTrips(
   input: readonly TripVisit[],
 ): { trip: Trip; visits: TripVisit[] }[] {
-  const eligible = input
-    .filter((visit) => isDated(visit))
-    .filter((visit) => {
-      const [start, end] = dateBounds(visit);
-      return start !== openStart && end !== openEnd;
-    })
-    .sort(
-      (a, b) =>
-        dateBounds(a)[0].localeCompare(dateBounds(b)[0]) ||
-        dateBounds(a)[1].localeCompare(dateBounds(b)[1]) ||
-        a.id.localeCompare(b.id),
-    );
+  const eligible = input.filter(closed).sort(byStart);
   const groups: TripVisit[][] = [];
   const authored = new Map<string, TripVisit[]>();
   let current: TripVisit[] = [];
   let latestEnd = "";
   for (const visit of eligible) {
+    if (visit.from) continue;
     if (visit.trip) {
       const group = authored.get(visit.trip) ?? [];
       group.push(visit);
@@ -89,8 +131,20 @@ export function groupTrips(
   }
   if (current.length > 1) groups.push(current);
   for (const group of authored.values()) if (group.length > 1) groups.push(group);
-  const trips = groups.map((group): { trip: Trip; visits: TripVisit[] } => {
-    const label = group[0].trip ?? tripLabel(group);
+  // A day trip belongs to the journey whose stop it was made from.
+  const dayTrips = groups.map((): TripVisit[] => []);
+  for (const visit of eligible) {
+    if (!visit.from) continue;
+    const date = dateBounds(visit)[0];
+    const index = groups.findIndex((group) =>
+      group.some((stay) => stay.placeId === visit.from && covers(stay, date)),
+    );
+    if (index >= 0) dayTrips[index].push(visit);
+  }
+  const trips = groups.map((group, index): { trip: Trip; visits: TripVisit[] } => {
+    const visits = [...group, ...dayTrips[index]];
+    const label = group[0].trip ?? tripLabel([...visits].sort(byStart));
+    // Stops alone identify a journey, so adding a day trip keeps its ID.
     const digest = createHash("sha256")
       .update(JSON.stringify(group.map((visit) => visit.id).sort()))
       .digest("hex")
@@ -106,7 +160,7 @@ export function groupTrips(
         end: group.map((visit) => dateBounds(visit)[1]).sort().at(-1)!,
         stops,
       },
-      visits: group,
+      visits,
     };
   });
   return trips
@@ -255,15 +309,21 @@ export type RouteProperties = {
   id: string;
   /** A journey ID, or `place:<id>` for a trip to a single place. */
   group: string;
-  kind: "hop" | "leg";
+  /** A hop between stops, a leg from or to home, or one way of a day trip's lens. */
+  kind: "hop" | "leg" | "excursion";
   order: number;
+  /** Excursions only: the day trip's place, its base and the distance between them. */
+  place?: string;
+  from?: string;
+  km?: number;
 };
 const samePoint = (a: [number, number], b: [number, number]) =>
   Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
 /**
  * Journeys gain home legs out and back; dated single-place trips outside a
- * journey gain the same legs under a `place:` group. All lines are arcs, drawn
- * only when their group is in focus.
+ * journey gain the same legs under a `place:` group. A day trip adds a lens
+ * (an arc out and an arc back) between its base and its place to the base's
+ * group. All lines are arcs, drawn only when their group is in focus.
  */
 export function routeFeatures(
   grouped: readonly { trip: Trip; visits: readonly TripVisit[] }[],
@@ -286,17 +346,38 @@ export function routeFeatures(
     from: [number, number],
     to: [number, number],
     side: 1 | -1,
+    extra: Pick<RouteProperties, "place" | "from" | "km"> = {},
   ) => {
     const order = features.filter((feature) => feature.properties.group === group).length;
     const id = `${group}:${order}`;
     features.push({
       type: "Feature",
       id,
-      properties: { id, group, kind, order },
+      properties: { id, group, kind, order, ...extra },
       geometry: { type: "LineString", coordinates: arc(from, to, side) },
     });
   };
-  const trips = grouped.map(({ trip }) => {
+  const homeIds = new Set(homes.map((home) => home.id));
+  const seenExcursions = new Set<string>();
+  // One lens per base and place, however often the day was repeated.
+  const excursions = (group: string, visits: readonly TripVisit[], bases: ReadonlySet<string>) => {
+    for (const visit of [...visits].sort(byStart)) {
+      if (!visit.from || !bases.has(visit.from)) continue;
+      const key = `${group}|${visit.from}|${visit.placeId}`;
+      if (seenExcursions.has(key)) continue;
+      seenExcursions.add(key);
+      const base = at(visit.from);
+      const point = at(visit.placeId);
+      const extra = {
+        place: visit.placeId,
+        from: visit.from,
+        km: Math.round(distanceKm(base, point) * 10) / 10,
+      };
+      emit(group, "excursion", base, point, 1, extra);
+      emit(group, "excursion", point, base, 1, extra);
+    }
+  };
+  const trips = grouped.map(({ trip, visits }) => {
     const points = trip.stops.map(at);
     const out = homeAt(homes, trip.start);
     const back = homeAt(homes, trip.end);
@@ -312,27 +393,36 @@ export function routeFeatures(
     for (let i = 1; i < points.length; i++)
       emit(trip.id, "hop", points[i - 1], points[i], side);
     if (returns) emit(trip.id, "leg", points[points.length - 1], returns.coordinates, side);
+    excursions(trip.id, visits, new Set(trip.stops));
     return {
       ...trip,
       ...(leaves ? { from: leaves.id } : {}),
       ...(returns ? { to: returns.id } : {}),
     };
   });
-  // A place visited on its own shows the way out and back as a lens.
+  // A place visited on its own shows the way out and back as a lens; a day
+  // trip from home is such a visit, and one from a stay draws under the stay.
   const seen = new Set<string>();
   for (const visit of standalone) {
-    if (!isDated(visit)) continue;
+    if (!closed(visit)) continue;
+    if (visit.from && !homeIds.has(visit.from)) continue;
     const [start, end] = dateBounds(visit);
-    if (start === openStart || end === openEnd) continue;
     const point = at(visit.placeId);
     const out = homeAt(homes, start);
     const back = homeAt(homes, end);
     const group = `place:${visit.placeId}`;
     const key = `${group}|${out?.id ?? ""}|${back?.id ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (out && !samePoint(out.coordinates, point)) emit(group, "leg", out.coordinates, point, 1);
-    if (back && !samePoint(back.coordinates, point)) emit(group, "leg", point, back.coordinates, 1);
+    if (!seen.has(key)) {
+      seen.add(key);
+      if (out && !samePoint(out.coordinates, point)) emit(group, "leg", out.coordinates, point, 1);
+      if (back && !samePoint(back.coordinates, point)) emit(group, "leg", point, back.coordinates, 1);
+    }
+    if (isStay(visit))
+      excursions(
+        group,
+        standalone.filter((candidate) => covers(visit, dateBounds(candidate)[0])),
+        new Set([visit.placeId]),
+      );
   }
   return { trips, routes: { type: "FeatureCollection", features } };
 }

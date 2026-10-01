@@ -19,6 +19,7 @@ export type AuthoredVisit = {
   region?: string;
   label?: string;
   trip?: string;
+  dayTrip?: true;
   date?: string;
   dateRange?: [string, string];
 };
@@ -45,12 +46,13 @@ export function parseVisitArgs(argv: readonly string[]): {
       region: { type: "string" },
       label: { type: "string" },
       trip: { type: "string" },
+      "day-trip": { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       "no-geocode": { type: "boolean", default: false },
     },
   });
   if (positionals.length !== 3)
-    throw new Error("Usage: npm run add -- <COUNTRY> <City> <date | start..end> [--region R] [--label L] [--trip T] [--dry-run] [--no-geocode]");
+    throw new Error("Usage: npm run add -- <COUNTRY> <City> <date | start..end> [--region R] [--label L] [--trip T] [--day-trip] [--dry-run] [--no-geocode]");
   const [country, city, dates] = positionals;
   const visit: AuthoredVisit = {
     country: country.toUpperCase(),
@@ -58,6 +60,7 @@ export function parseVisitArgs(argv: readonly string[]): {
     ...(values.region ? { region: values.region } : {}),
     ...(values.label ? { label: values.label } : {}),
     ...(values.trip ? { trip: values.trip } : {}),
+    ...(values["day-trip"] ? { dayTrip: true } : {}),
     ...parseDates(dates),
   };
   validate(visit, "");
@@ -89,6 +92,7 @@ export function formatVisit(visit: AuthoredVisit, indent = "    "): string {
     ...(visit.region ? [`region: ${quote(visit.region)}`] : []),
     ...(visit.label ? [`label: ${quote(visit.label)}`] : []),
     ...(visit.trip ? [`trip: ${quote(visit.trip)}`] : []),
+    ...(visit.dayTrip ? ["dayTrip: true"] : []),
     ...(visit.date ? [`date: ${quote(visit.date)}`] : []),
     ...(visit.dateRange
       ? [`dateRange: [${quote(visit.dateRange[0])}, ${quote(visit.dateRange[1])}]`]
@@ -180,7 +184,7 @@ export function parseCsv(text: string): CsvRow[] {
 }
 
 export function visitFromRow(row: CsvRow): AuthoredVisit {
-  const { country, city, start, end, label, trip, region } = row.fields;
+  const { country, city, start, end, label, trip, region, daytrip } = row.fields;
   if (!country || !city || !start) throw new Error(`line ${row.line}: country, city and start are required`);
   const visit: AuthoredVisit = {
     country: country.toUpperCase(),
@@ -188,6 +192,7 @@ export function visitFromRow(row: CsvRow): AuthoredVisit {
     ...(region ? { region } : {}),
     ...(label ? { label } : {}),
     ...(trip ? { trip } : {}),
+    ...(/^(1|true|yes|y)$/i.test(daytrip ?? "") ? { dayTrip: true as const } : {}),
     ...(end && end !== start ? { dateRange: [start, end] as [string, string] } : { date: start }),
   };
   validate(visit, `line ${row.line}: `);

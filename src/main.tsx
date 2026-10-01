@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createMap,
+  dayTripsByBase,
   homes,
   isMissingTile,
+  placeByVisit,
   places,
   trips,
   visits,
   visitsByPlace,
 } from "./map/create-map";
-import type { Atlas } from "./map/create-map";
+import type { Atlas, PublicVisit } from "./map/create-map";
 import { fold } from "./map/text";
 import { applyTheme, currentTheme, followSystem, type Theme } from "./theme";
 import { captionGeography } from "./map/caption";
@@ -129,13 +131,46 @@ const chronology = [...places].sort(
     ) || a.id.localeCompare(b.id),
 );
 const pageSize = 6;
-const tripByPlace = new Map<string, { trip: (typeof trips)[number]; index: number }>();
-for (const trip of trips)
-  trip.stops.forEach((stop, index) => {
-    if (!tripByPlace.has(stop)) tripByPlace.set(stop, { trip, index });
-  });
 const homeById = new Map(homes.map((home) => [home.id, home]));
 const placeById = new Map(places.map((place) => [place.id, place]));
+/** The places a base's day trips went to, each once, in date order. */
+const dayTripPlaces = (base: string, within?: { start: string; end: string }): string[] => [
+  ...new Set(
+    (dayTripsByBase.get(base) ?? [])
+      .filter((visit) => {
+        if (!within) return true;
+        const [start] = dateBounds(visit);
+        return within.start <= start && start <= within.end;
+      })
+      .map((visit) => placeByVisit.get(visit.id)!.id),
+  ),
+];
+/**
+ * A journey in walking order: each numbered stop, then the day trips made from
+ * it. Stepping through a journey follows this sequence; the itinerary strip
+ * draws it as segments with their satellites.
+ */
+type ItineraryEntry = { id: string; stop?: number; from?: string };
+const itineraries = new Map<string, ItineraryEntry[]>(
+  trips.map((trip) => [
+    trip.id,
+    trip.stops.flatMap((stop, index) => [
+      { id: stop, stop: index + 1 },
+      ...dayTripPlaces(stop, trip).map((id) => ({ id, from: stop })),
+    ]),
+  ]),
+);
+const tripByPlace = new Map<string, { trip: (typeof trips)[number]; index: number }>();
+for (const trip of trips)
+  itineraries.get(trip.id)!.forEach((entry, index) => {
+    if (!tripByPlace.has(entry.id)) tripByPlace.set(entry.id, { trip, index });
+  });
+const tripDayTrips = (trip: (typeof trips)[number]) =>
+  itineraries.get(trip.id)!.filter((entry) => entry.from).length;
+/** Whether every visit to the place was a day trip from somewhere else. */
+const onlyDayTrips = (place: { visitCount: number; dayTrips?: number }) =>
+  (place.dayTrips ?? 0) >= place.visitCount;
+const baseLabel = (id: string) => placeById.get(id)?.label ?? homeById.get(id)?.label ?? id;
 /** Nights spent at each stop within the journey's dates, for the itinerary strip. */
 const stopNights = new Map(
   trips.map((trip) => [
@@ -163,6 +198,7 @@ function roundTrip(trip: (typeof trips)[number]): string | undefined {
 }
 const searchableTrips = trips.map((trip) => ({
   ...trip,
+  dayTrips: tripDayTrips(trip),
   searchText: fold(trip.label),
 }));
 const searchablePlaces = chronology.map((place) => ({
@@ -369,9 +405,13 @@ function App() {
         return (
           <>
             Longest journey: {tripLink(entry.trip)}, {count(entry.nights, "night")},{" "}
-            {count(entry.stops, "stop")} in {count(entry.countries, "country", "countries")}.
+            {count(entry.stops, "stop")}
+            {entry.dayTrips ? ` and ${count(entry.dayTrips, "day trip")}` : ""} in{" "}
+            {count(entry.countries, "country", "countries")}.
           </>
         );
+      case "daytrips":
+        return <>Most day trips from one place: {placeLink(entry.place)}, {entry.dayTrips}.</>;
       case "north":
       case "south":
       case "east":
@@ -419,6 +459,9 @@ function App() {
   ) as [YearRow | undefined, YearRow | undefined];
   const comparison: [string, (row: YearRow) => ReactNode][] = [
     ["Visits", (row) => row.visits],
+    ...(stats.years.some((row) => row.dayTrips)
+      ? [["Day trips", (row: YearRow) => row.dayTrips] as [string, (row: YearRow) => ReactNode]]
+      : []),
     ["Nights away", (row) => row.nights],
     ["Countries", (row) => row.countries],
     ["New countries", (row) => row.newCountries],
@@ -540,16 +583,30 @@ function App() {
   const pageCount = Math.max(1, Math.ceil(listed / pageSize));
   // Previous/next step through the journey when the place is part of one, else the chronology.
   const membership = place ? tripByPlace.get(place.id) : undefined;
-  const sequence = membership
-    ? membership.trip.stops
+  const itinerary = membership ? itineraries.get(membership.trip.id)! : undefined;
+  const sequence = itinerary
+    ? itinerary.map((entry) => entry.id)
     : chronology.map((candidate) => candidate.id);
   const sequenceIndex = place ? sequence.indexOf(place.id) : -1;
+  const entry = itinerary?.[sequenceIndex];
   const step = (delta: number) => {
     const next = sequence[sequenceIndex + delta];
     if (next) atlas.current?.select(next);
   };
   const currentPage = Math.min(page, pageCount - 1);
   const placeVisits = place ? (visitsByPlace.get(place.id) ?? []) : [];
+  // Where this place's day trips were made from, and where day trips from it went.
+  const basesOf = [...new Set(placeVisits.flatMap((visit: PublicVisit) => (visit.from ? [visit.from] : [])))];
+  const excursionsFrom = place ? dayTripPlaces(place.id) : home ? dayTripPlaces(home.id) : [];
+  const placeLinks = (ids: string[]): ReactNode =>
+    ids.map((id, index) => (
+      <span key={id}>
+        {index > 0 && (index === ids.length - 1 ? " and " : ", ")}
+        <button type="button" className="caption-link" onClick={() => atlas.current?.select(id)}>
+          {baseLabel(id)}
+        </button>
+      </span>
+    ));
   return (
     <main className={zoom >= 6.5 ? "atlas atlas-close" : "atlas"}>
       <div ref={host} className="map" aria-label="Interactive world map" />
@@ -584,7 +641,13 @@ function App() {
             <div><dt>Countries</dt><dd>{stats.countries}</dd></div>
             <div><dt>Regions</dt><dd>{stats.regions}</dd></div>
             <div><dt>Places</dt><dd>{stats.places}</dd></div>
-            <div><dt>Visits</dt><dd>{stats.visits}</dd></div>
+            <div>
+              <dt>Visits</dt>
+              <dd>
+                {stats.visits}
+                {stats.dayTrips > 0 && <small>{count(stats.dayTrips, "day trip")}</small>}
+              </dd>
+            </div>
             <div><dt>Journeys</dt><dd>{stats.journeys}</dd></div>
             <div><dt>Nights away</dt><dd>{stats.nights}</dd></div>
           </dl>
@@ -877,7 +940,10 @@ function App() {
                       <span className="index-name">{trip.label}<small>
                         {dateFormatter.format(new Date(`${trip.start}T00:00:00Z`))} — {dateFormatter.format(new Date(`${trip.end}T00:00:00Z`))}
                       </small></span>
-                      <span className="index-year">{trip.stops.length} stops</span>
+                      <span className="index-year">
+                        {trip.stops.length} stops
+                        {trip.dayTrips > 0 && <small>{plural(trip.dayTrips, "day trip")}</small>}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -889,7 +955,7 @@ function App() {
                   <button type="button" data-place-id={p.id}
                     aria-pressed={selected === p.id}
                     onClick={() => atlas.current?.select(p.id)}>
-                    <span className="place-mark" aria-hidden="true" />
+                    <span className={onlyDayTrips(p) ? "place-mark place-mark-daytrip" : "place-mark"} aria-hidden="true" />
                     <span className="index-name">{p.label}<small>{p.countryName}</small></span>
                     <span className="index-year">{Number.isFinite(p.firstVisit) ? p.firstVisit : "Undated"}</span>
                   </button>
@@ -991,13 +1057,29 @@ function App() {
           {place.visitCount > 1 && (
             <p className="caption-count">{place.visitCount} visits</p>
           )}
+          {basesOf.length > 0 && (
+            <p className="caption-daytrip">
+              {onlyDayTrips(place) && placeVisits.length === 1 ? "Day trip" : "Day trips"} from{" "}
+              {placeLinks(basesOf)}
+            </p>
+          )}
+          {excursionsFrom.length > 0 && (
+            <p className="caption-daytrip">
+              {excursionsFrom.length === 1 ? "Day trip" : "Day trips"} to {placeLinks(excursionsFrom)}
+            </p>
+          )}
           {membership && (() => {
             const trip = membership.trip;
             const from = trip.from ? homeById.get(trip.from) : undefined;
             const to = trip.to ? homeById.get(trip.to) : undefined;
             const perStop = stopNights.get(trip.id) ?? [];
             const total = perStop.reduce((a, b) => a + b, 0);
-            const summary = [roundTrip(trip), total ? plural(total, "night") : undefined]
+            const excursions = tripDayTrips(trip);
+            const summary = [
+              roundTrip(trip),
+              total ? plural(total, "night") : undefined,
+              excursions ? plural(excursions, "day trip") : undefined,
+            ]
               .filter(Boolean)
               .join(" · ");
             return (
@@ -1010,10 +1092,23 @@ function App() {
                     const label = placeById.get(stop)?.label ?? stop;
                     const stay = perStop[index] ?? 0;
                     const detail = `${index + 1}. ${label}${stay ? `, ${plural(stay, "night")}` : ""}`;
+                    const satellites = dayTripPlaces(stop, trip);
                     return (
                       <li key={`${stop}-${index}`} style={{ flexGrow: Math.max(1, stay) }}>
+                        {satellites.length > 0 && (
+                          // Day trips sit above their stop as the hollow rings they are on the map.
+                          <span className="itinerary-satellites">
+                            {satellites.map((id) => (
+                              <button key={id} type="button" tabIndex={-1}
+                                title={`Day trip to ${baseLabel(id)}`}
+                                aria-label={`Day trip to ${baseLabel(id)}`}
+                                aria-current={entry?.id === id && entry.from === stop ? "step" : undefined}
+                                onClick={() => atlas.current?.select(id)} />
+                            ))}
+                          </span>
+                        )}
                         <button type="button" tabIndex={-1} title={detail} aria-label={detail}
-                          aria-current={index === sequenceIndex ? "step" : undefined}
+                          aria-current={entry?.stop === index + 1 ? "step" : undefined}
                           onClick={() => atlas.current?.select(stop)} />
                       </li>
                     );
@@ -1028,9 +1123,11 @@ function App() {
               aria-keyshortcuts="ArrowLeft" disabled={sequenceIndex <= 0}
               onClick={() => step(-1)}>←</button>
             <span>
-              {membership
-                ? <>Part of <em>{membership.trip.label}</em> · stop {sequenceIndex + 1} of {sequence.length}</>
-                : <>Visit {sequenceIndex + 1} of {sequence.length}</>}
+              {membership && entry?.stop
+                ? <>Part of <em>{membership.trip.label}</em> · stop {entry.stop} of {membership.trip.stops.length}</>
+                : membership && entry?.from
+                  ? <>Part of <em>{membership.trip.label}</em> · day trip from {baseLabel(entry.from)}</>
+                  : <>Visit {sequenceIndex + 1} of {sequence.length}</>}
             </span>
             <button type="button" aria-label={membership ? "Next stop" : "Next visit"}
               aria-keyshortcuts="ArrowRight" disabled={sequenceIndex >= sequence.length - 1}
@@ -1069,6 +1166,11 @@ function App() {
               <p className="caption-count">Where {plural(departures, "journey")} began</p>
             ) : null;
           })()}
+          {excursionsFrom.length > 0 && (
+            <p className="caption-daytrip">
+              {excursionsFrom.length === 1 ? "Day trip" : "Day trips"} to {placeLinks(excursionsFrom)}
+            </p>
+          )}
         </section>
       )}
       <form className="timeline" onSubmit={(e) => e.preventDefault()}>

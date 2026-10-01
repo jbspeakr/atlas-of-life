@@ -25,7 +25,8 @@ export type Milestone =
   | { kind: "first"; place: string; date: string }
   | { kind: "distance"; km: number }
   | { kind: "furthest"; place: string; home: string; km: number }
-  | { kind: "journey"; trip: string; nights: number; stops: number; countries: number }
+  | { kind: "journey"; trip: string; nights: number; stops: number; dayTrips: number; countries: number }
+  | { kind: "daytrips"; place: string; dayTrips: number }
   | { kind: "north" | "south" | "east" | "west"; place: string }
   | { kind: "arctic" | "antarctic" | "equator"; place: string; date?: string }
   | { kind: "nights"; country: string; nights: number }
@@ -34,6 +35,8 @@ export type Milestone =
 export type YearRow = {
   year: number;
   visits: number;
+  /** Of the visits, those that were day trips from a stay or from home. */
+  dayTrips: number;
   nights: number;
   countries: number;
   /** Countries and places seen for the first time that year. */
@@ -47,6 +50,8 @@ export type Stats = {
   regions: number;
   places: number;
   visits: number;
+  /** Of the visits, those that were day trips from a stay or from home. */
+  dayTrips: number;
   journeys: number;
   nights: number;
   firstYear: number | null;
@@ -130,6 +135,7 @@ export function computeStats(
     const row = years.get(year) ?? {
       year,
       visits: 0,
+      dayTrips: 0,
       nights: 0,
       countries: 0,
       newCountries: 0,
@@ -138,6 +144,7 @@ export function computeStats(
       longestStay: null,
     };
     row.visits += 1;
+    if (visit.from) row.dayTrips += 1;
     row.nights += stay;
     if (!seenCountries.has(visit.country)) row.newCountries += 1;
     if (!seenPlaces.has(place.id)) row.newPlaces += 1;
@@ -219,16 +226,36 @@ export function computeStats(
   }
   if (furthest && furthest.km > 0) milestones.push(furthest);
   const placeById = new Map(places.map((place) => [place.id, place]));
+  // A journey's day trips are the dated day visits made from its stops within its dates.
+  const journeyDayTrips = (trip: Trip) =>
+    dated.filter((visit) => {
+      const [start] = dateBounds(visit);
+      return visit.from && trip.stops.includes(visit.from) && trip.start <= start && start <= trip.end;
+    });
   const journey = trips
-    .map((trip) => ({
-      kind: "journey" as const,
-      trip: trip.id,
-      nights: daysBetween(trip.start, trip.end),
-      stops: trip.stops.length,
-      countries: new Set(trip.stops.map((stop) => placeById.get(stop)?.country)).size,
-    }))
+    .map((trip) => {
+      const excursions = journeyDayTrips(trip);
+      return {
+        kind: "journey" as const,
+        trip: trip.id,
+        nights: daysBetween(trip.start, trip.end),
+        stops: trip.stops.length,
+        dayTrips: excursions.length,
+        countries: new Set([
+          ...trip.stops.map((stop) => placeById.get(stop)?.country),
+          ...excursions.map((visit) => visit.country),
+        ]).size,
+      };
+    })
     .sort((a, b) => b.nights - a.nights || b.stops - a.stops || a.trip.localeCompare(b.trip))[0];
   if (journey) milestones.push(journey);
+  // The place most day trips were made from, when any base saw more than one.
+  const basesVisited = new Map<string, number>();
+  for (const visit of cityVisits)
+    if (visit.from) basesVisited.set(visit.from, (basesVisited.get(visit.from) ?? 0) + 1);
+  const base = [...basesVisited].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  if (base && base[1] > 1 && (placeById.has(base[0]) || homeIds.has(base[0])))
+    milestones.push({ kind: "daytrips", place: base[0], dayTrips: base[1] });
   if (places.length > 1) {
     const extreme = (kind: "north" | "south" | "east" | "west") => {
       const axis = kind === "north" || kind === "south" ? 1 : 0;
@@ -268,7 +295,8 @@ export function computeStats(
   const returned = [...places].sort((a, b) => b.visitCount - a.visitCount || byStart(a, b))[0];
   if (returned && returned.visitCount > 1)
     milestones.push({ kind: "returns", place: returned.id, visits: returned.visitCount });
-  const closed = dated.filter((visit) => dateBounds(visit)[1] !== openEnd);
+  // A day trip lies inside its stay, so it never opens or closes a gap.
+  const closed = dated.filter((visit) => dateBounds(visit)[1] !== openEnd && !visit.from);
   let gap: Extract<Milestone, { kind: "gap" }> | null = null;
   for (let i = 1; i < closed.length; i++) {
     const days = daysBetween(dateBounds(closed[i - 1])[1], dateBounds(closed[i])[0]);
@@ -283,6 +311,7 @@ export function computeStats(
     regions: new Set(visits.map((visit) => visit.region).filter(Boolean)).size,
     places: places.length,
     visits: cityVisits.length,
+    dayTrips: cityVisits.filter((visit) => visit.from).length,
     journeys: trips.length,
     nights: total,
     firstYear: sortedYears[0] ?? null,

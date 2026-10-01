@@ -10,6 +10,17 @@
     "city": "Edinburgh",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Edinburgh"
   },
+  "3847f4b45e95cb3e1d13eac5ff8b62770e1644d3e731942ebf8cfb93189d2d89": {
+    "coordinates": [
+      2.13,
+      48.805
+    ],
+    "kind": "city",
+    "country": "FR",
+    "region": "FR-IDF",
+    "city": "Versailles",
+    "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Versailles"
+  },
   "683ab1245b2a9e865db1059edfb17db59442fde2f65186757a26bf6475912219": {
     "coordinates": [
       11.575,

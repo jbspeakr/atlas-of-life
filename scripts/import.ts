@@ -4,7 +4,7 @@ import authoredConfig from "../data/visits.ts";
 import { duplicateOf, parseCsv, visitFromRow, type AuthoredVisit } from "./authoring.ts";
 import { commitVisits } from "./add.ts";
 
-const help = `Import visits from a CSV with the header country,city,start,end,label,trip[,region].
+const help = `Import visits from a CSV with the header country,city,start,end,label,trip[,region][,daytrip].
 
 Usage: npm run import -- <file.csv> [--dry-run] [--no-geocode]
 
