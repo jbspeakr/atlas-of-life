@@ -24,7 +24,8 @@ import {
   removeArchive,
   saveArchive,
 } from "./map/offline";
-import type { Stats } from "../scripts/stats";
+import type { Milestone, Stats, YearRow } from "../scripts/stats";
+import type { ReactNode } from "react";
 const stats = statsData as unknown as Stats;
 const regionLabels: Record<string, string> = regionLabelsData;
 const deterministic =
@@ -54,6 +55,18 @@ const monthFormatter = new Intl.DateTimeFormat(locale, {
 const formatMonth = (date: string) =>
   monthFormatter.format(new Date(`${date}T00:00:00Z`));
 const countryNames = new Intl.DisplayNames([locale], { type: "region" });
+const countryName = (code: string) => countryNames.of(code) ?? code;
+const numberFormatter = new Intl.NumberFormat(locale);
+const count = (value: number, noun: string, plural = `${noun}s`) =>
+  `${numberFormatter.format(value)} ${value === 1 ? noun : plural}`;
+const percent = (part: number, whole: number) => {
+  const share = whole ? (part / whole) * 100 : 0;
+  return `${share < 10 ? share.toFixed(1) : Math.round(share)} %`;
+};
+const degrees = (value: number, axis: "lat" | "lng") =>
+  `${Math.abs(value).toFixed(1)}° ${axis === "lat" ? (value >= 0 ? "N" : "S") : value >= 0 ? "E" : "W"}`;
+const earthCircumferenceKm = 40_075;
+const tripById = new Map(trips.map((trip) => [trip.id, trip]));
 const siteTitle = document.title;
 // The worker's install downloads the whole shell; it waits until the first
 // view is drawn so it never competes with the map for bandwidth.
@@ -190,6 +203,11 @@ function App() {
   const [error, setError] = useState("");
   const [touring, setTouring] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  // The two years side by side: the latest two until the viewer picks others.
+  const [compare, setCompare] = useState<[number, number]>(() => {
+    const listed = stats.years.map((row) => row.year);
+    return [listed[listed.length - 2] ?? listed[0] ?? 0, listed[listed.length - 1] ?? 0];
+  });
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const [offline, setOffline] = useState<
     { state: "unavailable" } | { state: "absent" } | { state: "saving"; received: number; total: number } | { state: "saved"; bytes: number } | { state: "error"; message: string }
@@ -293,6 +311,146 @@ function App() {
     setStatsOpen(false);
     statsButton.current?.focus({ preventScroll: true });
   }
+  // A milestone names a place as a link that lights it; selecting closes the panel.
+  const placeLink = (id: string): ReactNode => {
+    const target = placeById.get(id);
+    if (!target) return id;
+    return (
+      <a
+        href={`#/place/${encodeURIComponent(id)}`}
+        onClick={(event) => {
+          event.preventDefault();
+          atlas.current?.select(id);
+        }}
+      >
+        {target.label}
+      </a>
+    );
+  };
+  const tripLink = (id: string): ReactNode => {
+    const trip = tripById.get(id);
+    if (!trip) return id;
+    return (
+      <button
+        type="button"
+        className="stats-link"
+        onClick={() => {
+          closeStats();
+          atlas.current?.focusTrip(id);
+        }}
+      >
+        {trip.label}
+      </button>
+    );
+  };
+  const milestone = (entry: Milestone): ReactNode => {
+    switch (entry.kind) {
+      case "first":
+        return <>It began in {placeLink(entry.place)}, {formatMonth(entry.date)}.</>;
+      case "distance": {
+        const around = entry.km / earthCircumferenceKm;
+        const scale =
+          around >= 1
+            ? `, ${around.toFixed(1)} times around the world`
+            : around >= 0.05
+              ? `, ${Math.round(around * 100)} % of the way around the world`
+              : "";
+        return <>At least {numberFormatter.format(entry.km)} km as the crow flies{scale}.</>;
+      }
+      case "furthest":
+        return (
+          <>
+            Furthest from home: {placeLink(entry.place)}, {numberFormatter.format(entry.km)} km from{" "}
+            {homeById.get(entry.home)?.label ?? "home"}.
+          </>
+        );
+      case "journey":
+        return (
+          <>
+            Longest journey: {tripLink(entry.trip)}, {count(entry.nights, "night")},{" "}
+            {count(entry.stops, "stop")} in {count(entry.countries, "country", "countries")}.
+          </>
+        );
+      case "north":
+      case "south":
+      case "east":
+      case "west": {
+        const vertical = entry.kind === "north" || entry.kind === "south";
+        const point = placeById.get(entry.place)?.coordinates ?? [0, 0];
+        const label = { north: "Northernmost", south: "Southernmost", east: "Easternmost", west: "Westernmost" }[entry.kind];
+        return (
+          <>
+            {label}: {placeLink(entry.place)}, {degrees(point[vertical ? 1 : 0], vertical ? "lat" : "lng")}.
+          </>
+        );
+      }
+      case "arctic":
+      case "antarctic":
+      case "equator": {
+        const line = {
+          arctic: "North of the Arctic Circle",
+          antarctic: "South of the Antarctic Circle",
+          equator: "South of the equator",
+        }[entry.kind];
+        return (
+          <>
+            {line}
+            {entry.date ? " for the first time" : ""}: {placeLink(entry.place)}
+            {entry.date ? `, ${formatMonth(entry.date)}` : ""}.
+          </>
+        );
+      }
+      case "nights":
+        return <>Most nights in one country: {countryName(entry.country)}, {numberFormatter.format(entry.nights)}.</>;
+      case "returns":
+        return <>Most returned to: {placeLink(entry.place)}, {count(entry.visits, "visit")}.</>;
+      case "gap":
+        return (
+          <>
+            Longest time between trips: {count(entry.days, "day")}, {placeLink(entry.from)} to{" "}
+            {placeLink(entry.to)}.
+          </>
+        );
+    }
+  };
+  const compared = compare.map(
+    (year) => stats.years.find((row) => row.year === year) ?? stats.years[0],
+  ) as [YearRow | undefined, YearRow | undefined];
+  const comparison: [string, (row: YearRow) => ReactNode][] = [
+    ["Visits", (row) => row.visits],
+    ["Nights away", (row) => row.nights],
+    ["Countries", (row) => row.countries],
+    ["New countries", (row) => row.newCountries],
+    ["New places", (row) => row.newPlaces],
+    ...(stats.years.some((row) => row.furthest)
+      ? [
+          [
+            "Furthest from home",
+            (row: YearRow) =>
+              row.furthest ? (
+                <>
+                  {placeLink(row.furthest.place)}
+                  <small>{numberFormatter.format(row.furthest.km)} km</small>
+                </>
+              ) : (
+                "—"
+              ),
+          ] as [string, (row: YearRow) => ReactNode],
+        ]
+      : []),
+    [
+      "Longest stay",
+      (row) =>
+        row.longestStay ? (
+          <>
+            {placeLink(row.longestStay.place)}
+            <small>{count(row.longestStay.nights, "night")}</small>
+          </>
+        ) : (
+          "—"
+        ),
+    ],
+  ];
   function restoreFocus() {
     const target = origin.current?.isConnected ? origin.current : browseButton.current;
     target?.focus({ preventScroll: true });
@@ -429,6 +587,40 @@ function App() {
             <div><dt>Journeys</dt><dd>{stats.journeys}</dd></div>
             <div><dt>Nights away</dt><dd>{stats.nights}</dd></div>
           </dl>
+          <div className="stats-coverage">
+            <p>
+              <span className="stats-bar" aria-hidden="true">
+                <i style={{ width: `${(stats.coverage.states / stats.coverage.of) * 100}%` }} />
+              </span>
+              <strong>{stats.coverage.states}</strong> of {stats.coverage.of} countries ·{" "}
+              {percent(stats.coverage.states, stats.coverage.of)} of the world
+              {stats.coverage.territories
+                ? `, and ${count(stats.coverage.territories, "territory", "territories")}`
+                : ""}
+            </p>
+            {stats.coverage.continents.length > 0 && (
+              <table className="stats-continents">
+                <caption>
+                  {stats.coverage.continents.length} of {stats.coverage.continentsOf} continents
+                </caption>
+                <tbody>
+                  {stats.coverage.continents.map((row) => (
+                    <tr key={row.continent}>
+                      <th scope="row">{row.continent}</th>
+                      <td>
+                        {row.of > 0 && (
+                          <span className="stats-bar" aria-hidden="true">
+                            <i style={{ width: `${(row.visited / row.of) * 100}%` }} />
+                          </span>
+                        )}
+                        {row.of > 0 ? `${row.visited} of ${row.of}` : row.visited}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
           {homes.map((entry) => (
             <p className="stats-note" key={entry.id}>
               Home <em>{entry.label}</em>
@@ -438,8 +630,18 @@ function App() {
           ))}
           {stats.longestStay && (
             <p className="stats-note">
-              Longest stay <em>{stats.longestStay.label}</em>, {stats.longestStay.nights} nights
+              Longest stay {placeLink(stats.longestStay.place)}, {count(stats.longestStay.nights, "night")}
             </p>
+          )}
+          {stats.milestones.length > 0 && (
+            <>
+              <h3 className="stats-heading">Milestones</h3>
+              <ul className="stats-milestones">
+                {stats.milestones.map((entry) => (
+                  <li key={entry.kind}>{milestone(entry)}</li>
+                ))}
+              </ul>
+            </>
           )}
           {stats.years.length > 0 && (
             <table className="stats-years">
@@ -466,16 +668,58 @@ function App() {
               </tbody>
             </table>
           )}
+          {stats.years.length > 1 && compared[0] && compared[1] && (
+            <table className="stats-compare">
+              <caption>Years compared</caption>
+              <thead>
+                <tr>
+                  <th scope="col"><span className="sr-only">Figure</span></th>
+                  {(["First year", "Second year"] as const).map((name, index) => (
+                    <th scope="col" key={name}>
+                      <select
+                        aria-label={name}
+                        value={compared[index]!.year}
+                        onChange={(event) => {
+                          const next: [number, number] = [compare[0], compare[1]];
+                          next[index] = Number(event.target.value);
+                          setCompare(next);
+                        }}
+                      >
+                        {stats.years.map((row) => (
+                          <option key={row.year} value={row.year}>{row.year}</option>
+                        ))}
+                      </select>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.map(([label, cell]) => (
+                  <tr key={label}>
+                    <th scope="row">{label}</th>
+                    <td>{cell(compared[0]!)}</td>
+                    <td>{cell(compared[1]!)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <table className="stats-countries">
             <caption>Places by country</caption>
             <thead>
-              <tr><th scope="col">Country</th><th scope="col">Places</th><th scope="col">First</th></tr>
+              <tr>
+                <th scope="col">Country</th>
+                <th scope="col">Places</th>
+                <th scope="col">Regions</th>
+                <th scope="col">First</th>
+              </tr>
             </thead>
             <tbody>
               {stats.byCountry.map((row) => (
                 <tr key={row.country}>
-                  <th scope="row">{countryNames.of(row.country) ?? row.country}</th>
+                  <th scope="row">{countryName(row.country)}</th>
                   <td>{row.places}</td>
+                  <td>{row.regionsOf ? `${row.regions} of ${row.regionsOf}` : row.regions || "—"}</td>
                   <td>{row.firstYear ?? "—"}</td>
                 </tr>
               ))}

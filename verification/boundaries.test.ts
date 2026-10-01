@@ -158,7 +158,7 @@ it("pins confirmed absent ADM1 coverage and ignores whole-country Natural Earth 
   })], "VAT");
   const requests: { coordinates: [number, number] }[] = [{ coordinates: [1, 1] }];
   const result = await instance.regions("VA", "VAT", requests);
-  expect(result).toEqual({ assignments: [undefined], boundaries: [] });
+  expect(result).toEqual({ assignments: [undefined], boundaries: [], total: 0 });
   await instance.save();
   download.mockRejectedValue(new Error("Network unavailable after pinning"));
   const reopened = await BoundaryRepository.open(path);

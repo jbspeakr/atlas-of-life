@@ -24,6 +24,10 @@ Journeys are inferred from adjacent dates, not authored itineraries, because the
 
 Home is configuration, not a visit: the origin journeys leave from and return to, drawn as a hollow parchment ring, lighting no region and counting in no total. Its legs are dotted more sparsely at half strength because they are context. Home publishes at city precision only.
 
+## Numbers
+
+Coverage is measured against the 195 United Nations member and observer states because that is the number travellers already compare themselves with; the atlas accepts every ISO 3166-1 code, so a visited territory is counted beside the states rather than inflating the share. Continent membership comes from Natural Earth's `CONTINENT` field, with the UN M49 geoscheme for the handful of ocean states and territories Natural Earth files under "Seven seas", and is committed as a table so fixture builds stay offline. Distance is the great-circle length of the arcs actually drawn, reported as "at least": the atlas does not know the road taken. The furthest point is measured from the home in effect on the visit's first day. Milestones reference places, homes and journeys by public ID and the browser resolves labels and coordinates from files it already holds, so statistics never add a field to the payload. A year-versus-year map mode was deferred: it needs a second feature-state channel and new baselines.
+
 ## Boundaries and publication
 
 Build-time code owns every sensitive field. The browser reads only `src/generated/`, whose files carry an explicit allowlist of public fields; it never imports the authored config or the geocache. Coordinates publish at city precision unless a visit opts into `exact`.

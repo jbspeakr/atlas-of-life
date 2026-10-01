@@ -458,11 +458,16 @@ export class BoundaryRepository {
     country: string,
     iso3: string,
     requests: { region?: string; coordinates?: [number, number] }[],
-  ): Promise<{ boundaries: Boundary[]; assignments: (string | undefined)[] }> {
+  ): Promise<{
+    boundaries: Boundary[];
+    assignments: (string | undefined)[];
+    /** How many subdivisions the country's preferred source has: the coverage denominator. */
+    total: number;
+  }> {
     const selected = new Map<string, Boundary>();
     const assignments: (string | undefined)[] = Array(requests.length).fill(undefined);
     if (!requests.some((request) => request.region || request.coordinates))
-      return { boundaries: [], assignments };
+      return { boundaries: [], assignments, total: 0 };
     const match = (
       features: Boundary[],
       request: (typeof requests)[number],
@@ -553,7 +558,11 @@ export class BoundaryRepository {
       selected.set(id, boundary);
       assignments[index] = id;
     }
-    return { boundaries: [...selected.values()], assignments };
+    // The coverage denominator counts the whole source, never a trimmed fixture.
+    let total = preferred.length || fallback?.length || 0;
+    if (source?.fixture && process.env.ATLAS_FIXTURE !== "1")
+      total = this.regionFeatures(await this.load(source), country, iso3).length;
+    return { boundaries: [...selected.values()], assignments, total };
   }
 
   async save(): Promise<void> {
