@@ -5,7 +5,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   BoundaryRepository,
+  boundaryWeights,
   containsPoint,
+  geometryMetadata,
+  type Boundary,
   type RawFeature,
 } from "../scripts/boundaries.ts";
 
@@ -187,4 +190,28 @@ it("rejects corrupt or wrong-level preferred data rather than hiding it with fal
   await writeFile(corrupt.manifest.geoBoundaries.GRC!.cache, "tampered");
   await expect(corrupt.instance.regions("GR", "GRC", [{ coordinates: [1, 1] }]))
     .rejects.toThrow("SHA256 mismatch");
+});
+
+it("ranks boundaries by what each costs on the wire, heaviest first", () => {
+  const boundary = (id: string, vertices: number): Boundary => {
+    const ring = Array.from({ length: vertices }, (_, i) => {
+      const angle = (i / vertices) * 2 * Math.PI;
+      return [10 + Math.cos(angle), 50 + Math.sin(angle)];
+    });
+    ring.push(ring[0]);
+    const geometry = { type: "Polygon" as const, coordinates: [ring] };
+    return {
+      type: "Feature",
+      id,
+      geometry,
+      properties: { country: "DE", label: id, ...geometryMetadata(geometry) },
+    };
+  };
+  const weights = boundaryWeights({
+    type: "FeatureCollection",
+    features: [boundary("light", 8), boundary("heavy", 400), boundary("middle", 60)],
+  });
+  expect(weights.map((weight) => weight.id)).toEqual(["heavy", "middle", "light"]);
+  expect(weights[0].bytes).toBeGreaterThan(weights[1].bytes);
+  expect(weights[2].bytes).toBeGreaterThan(0);
 });

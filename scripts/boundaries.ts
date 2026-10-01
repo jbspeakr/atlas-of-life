@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import type {
   Feature,
   FeatureCollection,
@@ -184,6 +185,23 @@ export function geometryMetadata(
     throw new Error("Boundary has no polygon coordinates");
   const point = polylabel(largest as [number, number][][], 0.001);
   return { bbox, anchor: [point[0], point[1]] };
+}
+
+/**
+ * What each boundary costs on the wire, heaviest first: the gzip size of its
+ * feature on its own. Sizes are a little larger than a feature's share of the
+ * whole collection, since neighbours do not help it compress, but they rank
+ * the coastlines that decide whether a build meets the geometry budget.
+ */
+export function boundaryWeights(
+  collection: Boundaries,
+): { id: string; bytes: number }[] {
+  return collection.features
+    .map((feature) => ({
+      id: String(feature.id),
+      bytes: gzipSync(JSON.stringify(feature), { level: 9 }).byteLength,
+    }))
+    .sort((a, b) => b.bytes - a.bytes || a.id.localeCompare(b.id));
 }
 
 function ringContains(point: [number, number], ring: Position[]): boolean {
