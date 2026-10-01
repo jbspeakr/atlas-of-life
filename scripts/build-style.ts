@@ -231,12 +231,15 @@ const style: StyleSpecification = {
       promoteId: "id",
       data: {
         type: "FeatureCollection",
-        features: places.map((p) => ({
-          type: "Feature",
-          id: p.id,
-          properties: p,
-          geometry: { type: "Point", coordinates: p.coordinates },
-        })),
+        // The ring is a home's only mark, so its place draws no pin or pin label.
+        features: places
+          .filter((p) => !homes.some((home) => home.id === p.id))
+          .map((p) => ({
+            type: "Feature",
+            id: p.id,
+            properties: p,
+            geometry: { type: "Point", coordinates: p.coordinates },
+          })),
       },
     },
   },

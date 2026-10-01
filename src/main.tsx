@@ -215,8 +215,9 @@ function App() {
   const offlineAbort = useRef<AbortController | null>(null);
   const statsButton = useRef<HTMLButtonElement>(null);
   const statsClose = useRef<HTMLButtonElement>(null);
-  const place = places.find((p) => p.id === selected);
+  // A home is also a place under the same ID; the home caption speaks for both.
   const home = selected ? homeById.get(selected) : undefined;
+  const place = home ? undefined : places.find((p) => p.id === selected);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected;
   useEffect(() => {

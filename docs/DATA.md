@@ -44,7 +44,7 @@ Repeat visits to one city collapse into one place: the first chronological visit
 
 ## Home
 
-`home` is where journeys start and end: `{ country, city, since?, label?, region? }`. It is **not a visit**: it never becomes a pin, lights no region and counts in no total. The timeline gains a position at `since`, so the atlas opens at home. Do not also add everyday visits to the home city.
+`home` is where journeys start and end: `{ country, city, since?, label?, region? }`. It is also a place lived in: the home city joins the places under the home's own ID for the whole period it was home, lights its region and country and counts in the places, regions, countries and coverage. It is **not a trip**: it draws a ring rather than a pin, never joins a journey or earns a leg, and stays out of the visit count, the nights, the year rows and the dated milestones. The timeline gains a position at `since`, so the atlas opens at home. Do not also add everyday visits to the home city.
 
 If you move, list the homes with their own `since`; each ends the day before the next begins, and a journey leaves from the home in effect on its first day and returns to the one in effect on its last. Only the first home may omit `since`. Homes publish at city precision only. **The home city is public**; a `label` shows a different name, but the ring still marks the city.
 
