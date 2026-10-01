@@ -12,84 +12,24 @@ import { PMTiles, Protocol } from "pmtiles";
 import styleUrl from "../generated/style.json?url";
 import countriesFineUrl from "../generated/countries-fine.geojson?url";
 import regionsFineUrl from "../generated/regions-fine.geojson?url";
-import placesData from "../generated/places.json";
-import visitsData from "../generated/visits.json";
-import tripsData from "../generated/trips.json";
-import homeData from "../generated/home.json";
-import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
+import {
+  homes,
+  isMissingTile,
+  placeByVisit,
+  places,
+  trips,
+  visits,
+  visitsByPlace,
+  type Place,
+} from "./data";
+export * from "./data";
 import { apartKm } from "./expressions";
 import { visibleAt, type Dated, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
 import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
 import { attachSky } from "./sky";
 import { currentTheme, type Theme } from "../theme";
-export type Place = {
-  id: string;
-  label: string;
-  country: string;
-  region?: string;
-  city?: string;
-  coordinates: [number, number];
-  date?: string;
-  dateRange?: [string, string];
-  visitCount: number;
-  /** How many of the visits were day trips from elsewhere. */
-  dayTrips?: number;
-};
-export type PublicVisit = Omit<Place, "visitCount" | "dayTrips"> & {
-  visitCount?: number;
-  /** The place or home this day trip was made from. */
-  from?: string;
-};
-export type Trip = {
-  id: string;
-  label: string;
-  start: string;
-  end: string;
-  stops: string[];
-  /** Home IDs the journey left from and returned to. */
-  from?: string;
-  to?: string;
-};
-/** The base journeys start from; never a visit, published at city precision. */
-export type Home = {
-  id: string;
-  label: string;
-  country: string;
-  city: string;
-  coordinates: [number, number];
-  since?: string;
-  until?: string;
-};
-export const places = placesData as Place[];
-export const homes = homeData as Home[];
-export const visits = visitsData as PublicVisit[];
-export const trips = tripsData as Trip[];
-export const visitsByPlace = new Map<string, PublicVisit[]>();
-export const placeByVisit = new Map<string, Place>();
-/** Day-trip visits by the place or home they were made from, in date order. */
-export const dayTripsByBase = new Map<string, PublicVisit[]>();
-const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
-for (const visit of visits) {
-  if (!visit.visitCount) continue;
-  const place = placeByKey.get(placeKey(visit));
-  if (place) {
-    let group = visitsByPlace.get(place.id);
-    if (!group) {
-      group = [];
-      visitsByPlace.set(place.id, group);
-    }
-    group.push(visit);
-    placeByVisit.set(visit.id, place);
-  }
-}
-for (const visit of [...visits].sort((a, b) =>
-  (a.date ?? a.dateRange?.[0] ?? "").localeCompare(b.date ?? b.dateRange?.[0] ?? ""),
-)) {
-  if (!visit.from || !placeByVisit.has(visit.id)) continue;
-  dayTripsByBase.set(visit.from, [...(dayTripsByBase.get(visit.from) ?? []), visit]);
-}
 // The archive holds z7–14 only in padded windows around places. An empty tile
 // (or a 404, which MapLibre treats the same) renders as a blank hole; an errored
 // tile makes MapLibre draw the nearest ancestor it has, at worst the global z6.
@@ -108,9 +48,6 @@ protocol.add(archiveTiles);
 archiveTiles.getHeader().catch(() => {
   // The map awaits this same request and reports a failure itself.
 });
-/** The expected error for a tile outside the archive's detail windows. */
-export const isMissingTile = (error: { message: string }) =>
-  error.message === "Tile not found.";
 const ease = (t: number) => t * t * (3 - 2 * t);
 export type Atlas = {
   map: LibreMap;
