@@ -3,7 +3,7 @@ import { lstat, rename, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export type { CameraState, GlobeTour, TourPlace } from "../src/map/tour.ts";
-export { cameraAtFrame, createGlobeTour, selectTourStops } from "../src/map/tour.ts";
+export { cameraAtFrame, createGlobeTour, selectTourStops, tourCandidates } from "../src/map/tour.ts";
 
 export async function encodeVideo(
   frames: AsyncIterable<Buffer>,

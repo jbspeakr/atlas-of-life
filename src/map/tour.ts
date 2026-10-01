@@ -10,6 +10,18 @@ export type GlobeTour = {
   posterFrame: number;
 };
 
+/**
+ * The places a tour may visit: every published place except a home, whose
+ * only mark is its ring and which therefore draws no pin to settle on.
+ */
+export function tourCandidates<T extends { id: string }>(
+  places: readonly T[],
+  homes: readonly { id: string }[],
+): T[] {
+  const excluded = new Set(homes.map((home) => home.id));
+  return places.filter((place) => !excluded.has(place.id));
+}
+
 export function selectTourStops(places: readonly TourPlace[], anchor: TourPlace): TourPlace[] {
   if (!places.length || !places.some((place) => place.id === anchor.id))
     throw new RangeError("A globe tour needs a published anchor place.");

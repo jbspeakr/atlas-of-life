@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { cameraAtFrame, createGlobeTour, selectTourStops } from "../scripts/recording.ts";
+import { cameraAtFrame, createGlobeTour, selectTourStops, tourCandidates } from "../scripts/recording.ts";
 import type { GlobeTour, TourPlace } from "../scripts/recording.ts";
 
 const places: TourPlace[] = [
@@ -16,6 +16,15 @@ it("showcases diverse public entries instead of repeating one cluster", () => {
   expect(stops.map((stop) => stop.id).sort()).toEqual(["athens", "berlin", "oslo", "paris"]);
   expect(stops[0].id).toBe("berlin");
   expect(selectTourStops(places, places[2])[0].id).toBe("athens");
+});
+
+it("never anchors on or visits a home, which draws no pin", () => {
+  const home = { id: "home-berlin", label: "Berlin", country: "DE", coordinates: [13.4, 52.5] as [number, number] };
+  const candidates = tourCandidates([home, ...places], [{ id: home.id }]);
+  expect(candidates.map((place) => place.id)).toEqual(places.map((place) => place.id));
+  const stops = selectTourStops(candidates, candidates[0]);
+  expect(stops.some((stop) => stop.id === home.id)).toBe(false);
+  expect(tourCandidates([home], [{ id: home.id }])).toEqual([]);
 });
 
 it("measures route diversity across the dateline, not a flat longitude range", () => {

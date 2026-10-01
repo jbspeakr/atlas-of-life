@@ -10,7 +10,7 @@ import type { Place } from "../src/map/create-map.ts";
 import { camera, ready, settle, type AtlasWindow } from "../verification/browser.ts";
 import { startServer, type VerificationServer } from "../verification/server.ts";
 import type { CameraState, TourPlace } from "./recording.ts";
-import { cameraAtFrame, createGlobeTour, encodeVideo, selectTourStops } from "./recording.ts";
+import { cameraAtFrame, createGlobeTour, encodeVideo, selectTourStops, tourCandidates } from "./recording.ts";
 
 const presets = {
   portrait: { width: 540, height: 960 },
@@ -23,7 +23,7 @@ const help = `Record a cinematic 24-second globe and region flight (30 fps, sile
 Usage: npm run record -- [--format all|portrait|square|landscape]
                         [--place <public-id-or-label>] [--out <new-directory>]
 
-Defaults: all formats; first freshly built public place anchors a geographically
+Defaults: all formats; first freshly built public place (never a home) anchors a geographically
 varied route of up to four entries; unique UTC-stamped recordings/<timestamp>-<random>
 directory. --place changes that anchor, not a city close-up. Exact public IDs take
 precedence over case-insensitive exact labels; ambiguous/missing places are errors.
@@ -111,7 +111,12 @@ async function loadTour(query?: string): Promise<TourPlace[]> {
   if (!Array.isArray(data) || data.length === 0 || data.some((p) =>
     !p || typeof p.id !== "string" || !p.id || typeof p.label !== "string" || !p.label))
     throw new Error("Generated public places must be a nonempty list with IDs and labels.");
-  const places = data as Place[];
+  // A home is a place without a pin, so it can neither anchor nor join the tour.
+  const homes: unknown = JSON.parse(await readFile("src/generated/home.json", "utf8"));
+  if (!Array.isArray(homes) || homes.some((home) => !home || typeof home.id !== "string"))
+    throw new Error("Generated homes must be a list with IDs.");
+  const places = tourCandidates(data as Place[], homes as { id: string }[]);
+  if (!places.length) throw new Error("The atlas has no public place beyond home to record.");
   const id = query === undefined ? undefined : places.find((p) => p.id === query);
   const matches = query === undefined ? [places[0]] : id ? [id] :
     places.filter((p) => p.label.toLocaleLowerCase("en-GB") === query.toLocaleLowerCase("en-GB"));
