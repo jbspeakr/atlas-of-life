@@ -24,7 +24,7 @@ scripts/              Build-time Node code, run with tsx. Owns every sensitive f
   build-style.ts        Emits src/generated/style.json: Protomaps layers and atlas layers in both themes.
   themes.ts             mergeThemes(): folds the night and day palettes into one style via `state.theme`.
   boundaries.ts         Boundary repository, point-in-polygon region discovery, label anchors.
-  trips.ts / stats.ts   Journey inference and arcs; "By the numbers" figures, coverage, milestones, years.
+  trips.ts / stats.ts   Journey inference, day-trip bases and arcs; "By the numbers" figures, coverage, milestones, years.
   build-continents.ts   Regenerates data/continents.json from the cached Natural Earth file.
   geocode.ts            The only Nominatim client (explicit command, never in a build).
   add.ts / import.ts / authoring.ts   `npm run add` and `npm run import`.

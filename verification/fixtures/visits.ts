@@ -30,6 +30,15 @@ const config: Config = {
       dateRange: ["2021-09-03", "2021-09-08"],
     },
     {
+      // A day out from Paris, back the same evening: inferred, never a journey stop.
+      id: "versailles-2021",
+      label: "Versailles",
+      country: "FR",
+      region: "FR-IDF",
+      city: "Versailles",
+      date: "2021-09-05",
+    },
+    {
       id: "lyon-2022",
       label: "Lyon",
       country: "FR",

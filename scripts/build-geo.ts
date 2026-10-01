@@ -13,7 +13,7 @@ import {
   resolveVisits,
   validateConfig,
 } from "./config.ts";
-import { groupTrips, routeFeatures, type TripVisit } from "./trips.ts";
+import { assignDayTrips, groupTrips, routeFeatures, type TripVisit } from "./trips.ts";
 import { computeStats } from "./stats.ts";
 import { placeKey } from "../src/map/place-key.ts";
 import {
@@ -162,25 +162,41 @@ async function main(): Promise<void> {
   });
   const places = collapseVisits(anchored);
   const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
-  const tripVisits: TripVisit[] = anchored.flatMap((visit) => {
-    if (!visit.city && !visit.address) return [];
-    const place = placeByKey.get(placeKey(visit));
-    if (!place) return [];
-    return [
-      {
-        id: visit.id,
-        placeId: place.id,
-        country: visit.country,
-        coordinates: visit.coordinates,
-        ...(visit.trip ? { trip: visit.trip } : {}),
-        ...(visit.date !== undefined ? { date: visit.date } : {}),
-        ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
-      },
-    ];
-  });
+  const homes = resolveHomes(authored, cache);
+  // Day trips resolve to the stay (or home) they were made from before
+  // journeys form, so they ride with their base instead of chaining as stops.
+  const tripVisits: TripVisit[] = assignDayTrips(
+    anchored.flatMap((visit) => {
+      if (!visit.city && !visit.address) return [];
+      const place = placeByKey.get(placeKey(visit));
+      if (!place) return [];
+      return [
+        {
+          id: visit.id,
+          placeId: place.id,
+          country: visit.country,
+          coordinates: visit.coordinates,
+          ...(visit.trip ? { trip: visit.trip } : {}),
+          ...(visit.dayTrip ? { dayTrip: true } : {}),
+          ...(visit.date !== undefined ? { date: visit.date } : {}),
+          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+        },
+      ];
+    }),
+    homes,
+  );
+  const baseOf = new Map(tripVisits.flatMap((visit) => (visit.from ? [[visit.id, visit.from]] : [])));
+  const published = anchored.map((visit) =>
+    publicVisit({ ...visit, ...(baseOf.has(visit.id) ? { from: baseOf.get(visit.id) } : {}) }),
+  );
+  for (const place of places) {
+    const dayTrips = tripVisits.filter(
+      (visit) => visit.from && visit.placeId === place.id,
+    ).length;
+    if (dayTrips) place.dayTrips = dayTrips;
+  }
   const grouped = groupTrips(tripVisits);
   const inJourney = new Set(grouped.flatMap((entry) => entry.visits.map((visit) => visit.id)));
-  const homes = resolveHomes(authored, cache);
   const { trips, routes } = routeFeatures(
     grouped,
     tripVisits.filter((visit) => !inJourney.has(visit.id)),
@@ -224,7 +240,7 @@ async function main(): Promise<void> {
     "home.json": JSON.stringify(homes),
     "trips.json": JSON.stringify(trips),
     "stats.json": JSON.stringify(
-      computeStats(anchored.map(publicVisit), places, {
+      computeStats(published, places, {
         trips,
         homes,
         legs: routes.features.map((feature) => {
@@ -235,7 +251,7 @@ async function main(): Promise<void> {
       }),
     ),
     "routes.json": JSON.stringify(routes),
-    "visits.json": JSON.stringify(anchored.map(publicVisit)),
+    "visits.json": JSON.stringify(published),
   };
   let geometryBytes = 0;
   let inlineBytes = 0;
@@ -265,8 +281,9 @@ async function main(): Promise<void> {
     ),
   );
   await repository.save();
+  const dayTrips = tripVisits.filter((visit) => visit.from).length;
   console.log(
-    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits, ${trips.length} journeys, ${homes.length} ${homes.length === 1 ? "home" : "homes"}`,
+    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits (${dayTrips} day ${dayTrips === 1 ? "trip" : "trips"}), ${trips.length} journeys, ${homes.length} ${homes.length === 1 ? "home" : "homes"}`,
   );
 }
 

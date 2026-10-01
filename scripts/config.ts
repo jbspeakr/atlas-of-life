@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { placeKey } from "../src/map/place-key.ts";
 import { slug as toSlug } from "../src/map/text.ts";
-import { dateBounds } from "../src/map/time.ts";
+import { dateBounds, isDated } from "../src/map/time.ts";
 export { dateBounds };
 
 // Assigned ISO 3166-1 codes plus Natural Earth's documented XK territory identifier.
@@ -65,6 +65,10 @@ export const visitSchema = z
     publishPrecision: precisionSchema.optional(),
     // Optional public journey label; visits sharing it form one journey regardless of gaps.
     trip: text.optional(),
+    // A single day out from a stay or from home, returning the same evening. A
+    // single-date visit inside a stay is inferred; set it for one on the stay's
+    // arrival or departure day, or for a day out from home.
+    dayTrip: z.literal(true).optional(),
   })
   .superRefine((visit, context) => {
     if (
@@ -88,6 +92,18 @@ export const visitSchema = z
         code: "custom",
         path: ["dateRange"],
         message: "dateRange start must not be after end",
+      });
+    if (visit.dayTrip && (!isDated(visit) || dateBounds(visit)[0] !== dateBounds(visit)[1]))
+      context.addIssue({
+        code: "custom",
+        path: ["dayTrip"],
+        message: "a day trip is a single dated day; use date, not a range",
+      });
+    if (visit.dayTrip && !visit.city && !visit.address)
+      context.addIssue({
+        code: "custom",
+        path: ["dayTrip"],
+        message: "a day trip needs a city",
       });
   });
 // Home is the base journeys leave from and return to. It is also a place lived
@@ -216,8 +232,17 @@ export type Cache = z.infer<typeof cacheSchema>;
 export type PublicVisit = Pick<
   Visit,
   "id" | "label" | "country" | "region" | "city" | "date" | "dateRange"
-> & { coordinates: [number, number]; visitCount?: number };
-export type Place = PublicVisit & { visitCount: number };
+> & {
+  coordinates: [number, number];
+  visitCount?: number;
+  /** The public ID of the place or home this day trip was made from. */
+  from?: string;
+};
+export type Place = PublicVisit & {
+  visitCount: number;
+  /** How many of the visits were day trips from elsewhere; absent when none. */
+  dayTrips?: number;
+};
 export type QueryKind = "city" | "address";
 export type GeocodeQuery = { q: string; countrycodes: string; kind: QueryKind };
 const normalize = (value: string): string =>
@@ -365,7 +390,7 @@ export function resolveHomes(config: ValidatedConfig, cache: Cache): PublicHome[
   });
 }
 export function publicVisit(
-  visit: ResolvedVisit & { coordinates: [number, number] },
+  visit: ResolvedVisit & { coordinates: [number, number]; from?: string },
 ): PublicVisit {
   return {
     id: visit.id,
@@ -379,6 +404,7 @@ export function publicVisit(
     ...(visit.dateRange !== undefined
       ? { dateRange: [...visit.dateRange] as [string, string] }
       : {}),
+    ...(visit.from ? { from: visit.from } : {}),
   };
 }
 export function collapseVisits(visits: ResolvedVisit[]): Place[] {

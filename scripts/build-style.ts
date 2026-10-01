@@ -15,6 +15,7 @@ import type {
   ExpressionSpecification,
 } from "maplibre-gl";
 import {
+  apart,
   bands,
   revealed,
   scaleBand,
@@ -121,6 +122,7 @@ const places = JSON.parse(
   label: string;
   coordinates: [number, number];
   visitCount: number;
+  dayTrips?: number;
 }[];
 const anchors = JSON.parse(
   readFileSync("src/generated/anchors.json", "utf8"),
@@ -162,7 +164,44 @@ const stops: FeatureCollection = {
     });
   }),
 };
+// One satellite per day trip's place within its base's group, from the lenses
+// the geo build drew; it carries the distance that decides when it may show.
+const satellites: FeatureCollection = {
+  type: "FeatureCollection",
+  features: routes.features.flatMap((feature) => {
+    const { group, kind, place, from, km, order } = feature.properties as {
+      group: string;
+      kind: string;
+      place?: string;
+      from?: string;
+      km?: number;
+      order: number;
+    };
+    if (kind !== "excursion" || !place || !from) return [];
+    const id = `${group}#${place}`;
+    if (routes.features.some((other) => {
+      const p = other.properties as { group: string; kind: string; place?: string; order: number };
+      return p.kind === "excursion" && p.group === group && p.place === place && p.order < order;
+    }))
+      return [];
+    const target = placeById.get(place)!;
+    return [
+      {
+        type: "Feature" as const,
+        id,
+        properties: { id, group, place, from, km, label: target.label },
+        geometry: { type: "Point" as const, coordinates: target.coordinates },
+      },
+    ];
+  }),
+};
 const nothing: ExpressionSpecification = ["==", ["get", "group"], ""];
+// A place only ever seen on day trips is a hollow lamplight ring: visited, never slept in.
+const hollow: ExpressionSpecification = [
+  ">=",
+  ["coalesce", ["get", "dayTrips"], 0],
+  ["coalesce", ["get", "visitCount"], 1],
+];
 const visible: ExpressionSpecification = [
   "coalesce",
   ["feature-state", "visibility"],
@@ -212,6 +251,11 @@ const style: StyleSpecification = {
       type: "geojson",
       promoteId: "id",
       data: stops,
+    },
+    satellites: {
+      type: "geojson",
+      promoteId: "id",
+      data: satellites,
     },
     home: {
       type: "geojson",
@@ -312,6 +356,20 @@ const style: StyleSpecification = {
       },
     },
     {
+      id: "journey-excursions",
+      type: "line",
+      source: "routes",
+      filter: ["all", ["==", ["get", "kind"], "excursion"], nothing],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": color("accent"),
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.3, 10, 1.8],
+        // A lens of fine dots: out and back the same day, lighter than a hop.
+        "line-dasharray": [0, 2.1],
+        "line-opacity": apart(bands.focus, ["*", 0.75, revealed]),
+      },
+    },
+    {
       id: "pin-halos",
       type: "circle",
       source: "pins",
@@ -361,7 +419,7 @@ const style: StyleSpecification = {
       type: "circle",
       source: "pins",
       paint: {
-        "circle-color": color("accent"),
+        "circle-color": ["case", hollow, color("halo"), color("accent")],
         "circle-radius": [
           "interpolate",
           ["exponential", 1.3],
@@ -377,15 +435,12 @@ const style: StyleSpecification = {
         ],
         "circle-opacity": pinOpacity,
         "circle-stroke-width": [
-          "interpolate",
-          ["linear"],
-          ["get", "visitCount"],
-          1,
-          1,
-          4,
-          2,
+          "case",
+          hollow,
+          1.5,
+          ["interpolate", ["linear"], ["get", "visitCount"], 1, 1, 4, 2],
         ],
-        "circle-stroke-color": color("ink"),
+        "circle-stroke-color": ["case", hollow, color("accent"), color("ink")],
         "circle-stroke-opacity": pinOpacity,
       },
     },
@@ -510,6 +565,52 @@ const style: StyleSpecification = {
         "text-halo-color": color("halo"),
         "text-halo-width": 2,
         "text-opacity": pinOpacity,
+      },
+    },
+    // Day trips: small hollow rings beside their base, unnumbered, that appear
+    // once the viewer is close enough for the lens to read; stars draw above them.
+    {
+      id: "journey-daytrips",
+      type: "circle",
+      source: "satellites",
+      filter: nothing,
+      paint: {
+        "circle-color": color("halo"),
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 3.5, 8, 4.5, 16, 5.5],
+        "circle-opacity": apart(bands.focus, revealed),
+        "circle-stroke-color": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          color("ink"),
+          color("accent"),
+        ],
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          2,
+          1.5,
+        ],
+        "circle-stroke-opacity": apart(bands.focus, revealed),
+      },
+    },
+    {
+      id: "journey-daytrip-labels",
+      type: "symbol",
+      source: "satellites",
+      filter: nothing,
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 11,
+        "text-anchor": "left",
+        "text-offset": [0.8, 0],
+        "text-optional": true,
+      },
+      paint: {
+        "text-color": color("muted"),
+        "text-halo-color": color("halo"),
+        "text-halo-width": 2,
+        "text-opacity": apart(bands.focusLabel, revealed),
       },
     },
     {

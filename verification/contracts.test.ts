@@ -816,13 +816,30 @@ describe("statistics", () => {
   async function load(extra: Resolved[] = []) {
     const { computeStats } = await import("../scripts/stats.ts");
     const { publicVisit } = await import("../scripts/config.ts");
+    const { assignDayTrips } = await import("../scripts/trips.ts");
+    const { placeKey } = await import("../src/map/place-key.ts");
     const { readFileSync } = await import("node:fs");
     const cache = JSON.parse(readFileSync("verification/fixtures/geocache.json", "utf8"));
     const fixture = (await import("./fixtures/visits.ts")).default;
     const resolved = resolveVisits(validateConfig(fixture, cache), cache);
     const anchored = [...resolved.filter((visit) => visit.coordinates), ...extra] as Resolved[];
     const places = collapseVisits(anchored);
-    return { computeStats, visits: anchored.map(publicVisit), places };
+    // Day trips resolve to their base as the generator does, so `from` is published.
+    const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
+    const bases = new Map(
+      assignDayTrips(
+        anchored.map((visit) => ({
+          id: visit.id,
+          placeId: placeByKey.get(placeKey(visit))!.id,
+          country: visit.country,
+          coordinates: visit.coordinates,
+          ...(visit.date !== undefined ? { date: visit.date } : {}),
+          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+        })),
+      ).flatMap((visit) => (visit.from ? [[visit.id, visit.from] as const] : [])),
+    );
+    const visits = anchored.map((visit) => publicVisit({ ...visit, from: bases.get(visit.id) }));
+    return { computeStats, visits, places };
   }
   it("derives totals from published visits only and matches an independent recomputation", async () => {
     const { computeStats, visits, places } = await load();
@@ -833,8 +850,12 @@ describe("statistics", () => {
     expect(stats.nights).toBe(4 + 5 + 4 + 4);
     expect(stats.longestStay).toEqual({ place: "paris-2021", label: "Paris", nights: 5 });
     expect(stats.years.map((row) => row.year)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025]);
-    expect(stats.byCountry[0]).toEqual({ country: "DE", places: 2, regions: 2, regionsOf: null, firstYear: 2019 });
-    expect(computeStats(visits, places, { regionsOf: { DE: 16 } }).byCountry[0].regionsOf).toBe(16);
+    expect(stats.byCountry[0]).toEqual({ country: "FR", places: 3, regions: 2, regionsOf: null, firstYear: 2021 });
+    expect(stats.byCountry[1]).toEqual({ country: "DE", places: 2, regions: 2, regionsOf: null, firstYear: 2019 });
+    expect(computeStats(visits, places, { regionsOf: { DE: 16 } }).byCountry[1].regionsOf).toBe(16);
+    // The fixture's one day trip is a visit without nights, from Paris.
+    expect(stats.dayTrips).toBe(1);
+    expect(visits.find((visit) => visit.id === "versailles-2021")?.from).toBe("paris-2021");
     expect(JSON.stringify(stats)).not.toMatch(/coordinates|address/);
     expect(payloadViolations("stats.json", JSON.stringify(stats))).toEqual([]);
   });
@@ -879,7 +900,7 @@ describe("statistics", () => {
       { kind: "first", place: "berlin-2019", date: "2019-07-14" },
       { kind: "distance", km: Math.round(2 * distanceKm(home.coordinates, at("paris-2021"))) },
       { kind: "furthest", place: "mcmurdo", home: "home-berlin", km: Math.round(distanceKm(home.coordinates, at("mcmurdo"))) },
-      { kind: "journey", trip: "t2", nights: 8, stops: 2, countries: 1 },
+      { kind: "journey", trip: "t2", nights: 8, stops: 2, dayTrips: 0, countries: 1 },
       { kind: "north", place: "tromso-2026" },
       { kind: "south", place: "mcmurdo" },
       { kind: "east", place: "mcmurdo" },
@@ -909,12 +930,190 @@ describe("statistics", () => {
     const year = (value: number) => rows.find((row) => row.year === value)!;
     expect(year(2019)).toMatchObject({ visits: 1, nights: 0, countries: 1, newCountries: 1, newPlaces: 1, longestStay: null });
     expect(year(2020)).toMatchObject({ newCountries: 0, newPlaces: 1, longestStay: { place: "munich-2020", nights: 4 } });
-    expect(year(2021)).toMatchObject({ newCountries: 1, newPlaces: 1 });
+    expect(year(2021)).toMatchObject({ newCountries: 1, newPlaces: 2 });
     expect(year(2023)).toMatchObject({ visits: 1, newCountries: 0, newPlaces: 0, furthest: { place: "berlin-2019", km: 0 } });
     expect(year(2024).furthest).toEqual({ place: "london-2024", km: year(2024).furthest!.km });
     expect(year(2025)).toMatchObject({ newCountries: 0, newPlaces: 1 });
     expect(rows.map((row) => row.newCountries).reduce((a, b) => a + b, 0)).toBe(3);
     expect(rows.map((row) => row.newPlaces).reduce((a, b) => a + b, 0)).toBe(places.length);
+  });
+});
+describe("day trips", () => {
+  const visit = (
+    id: string,
+    placeId: string,
+    start: string,
+    end: string,
+    extra: Partial<import("../scripts/trips.ts").TripVisit> = {},
+  ): import("../scripts/trips.ts").TripVisit => ({
+    id,
+    placeId,
+    country: placeId.startsWith("pl-") ? "PL" : "DE",
+    coordinates: placeId.startsWith("pl-") ? [14.25, 53.91] : [14.19, 53.94],
+    ...(start === end ? { date: start } : { dateRange: [start, end] as [string, string] }),
+    ...extra,
+  });
+  const home = { id: "home-berlin", coordinates: [13.4, 52.5] as [number, number], since: "2024-04-25" };
+  const ahlbeck = visit("a", "de-ahlbeck", "2026-08-07", "2026-08-13");
+  const swinoujscie = visit("s", "pl-swinemunde", "2026-08-12", "2026-08-12");
+  it("accepts the flag on a dated day only, without changing the identity", () => {
+    const flagged = validateConfig({
+      visits: [{ country: "PL", city: "Swinemünde", date: "2026-08-12", dayTrip: true }],
+    });
+    const plain = validateConfig({ visits: [{ country: "PL", city: "Swinemünde", date: "2026-08-12" }] });
+    expect(flagged.visits[0].dayTrip).toBe(true);
+    expect(flagged.visits[0].id).toBe(plain.visits[0].id);
+    expect(() =>
+      validateConfig({
+        visits: [{ country: "PL", city: "Swinemünde", dateRange: ["2026-08-12", "2026-08-13"], dayTrip: true }],
+      }),
+    ).toThrow(/single dated day/);
+    expect(() =>
+      validateConfig({ visits: [{ country: "PL", city: "Swinemünde", dayTrip: true }] }),
+    ).toThrow(/single dated day/);
+    expect(() =>
+      validateConfig({ visits: [{ country: "PL", date: "2026-08-12", dayTrip: true }] }),
+    ).toThrow(/needs a city/);
+    expect(() =>
+      validateConfig({ visits: [{ country: "PL", city: "Swinemünde", date: "2026-08-12", dayTrip: false }] }),
+    ).toThrow();
+  });
+  it("infers a day trip strictly inside a stay, the innermost when stays nest", async () => {
+    const { assignDayTrips } = await import("../scripts/trips.ts");
+    const inner = visit("i", "de-heringsdorf", "2026-08-10", "2026-08-13");
+    const assigned = assignDayTrips([ahlbeck, inner, swinoujscie, visit("x", "de-x", "2026-08-11", "2026-08-11")]);
+    expect(assigned.find((v) => v.id === "s")?.from).toBe("de-heringsdorf");
+    expect(assigned.find((v) => v.id === "x")?.from).toBe("de-heringsdorf");
+    expect(assigned.find((v) => v.id === "a")?.from).toBeUndefined();
+    expect(assigned.find((v) => v.id === "i")?.from).toBeUndefined();
+    // Arrival and departure days are on the way: a stop unless the owner says otherwise.
+    const edge = visit("e", "pl-swinemunde", "2026-08-13", "2026-08-13");
+    expect(assignDayTrips([ahlbeck, edge]).find((v) => v.id === "e")?.from).toBeUndefined();
+    expect(
+      assignDayTrips([ahlbeck, { ...edge, dayTrip: true }]).find((v) => v.id === "e")?.from,
+    ).toBe("de-ahlbeck");
+    // A flagged day with no stay around it is a day out from home, if there is one.
+    const potsdam = visit("p", "de-potsdam", "2025-03-01", "2025-03-01", { dayTrip: true });
+    expect(assignDayTrips([potsdam], [home])[0].from).toBe("home-berlin");
+    expect(() => assignDayTrips([potsdam])).toThrow(/no stay or home covers 2025-03-01/);
+    // Never from itself, never for a stay, never for an open range.
+    expect(assignDayTrips([ahlbeck, visit("a2", "de-ahlbeck", "2026-08-10", "2026-08-10")])[1].from).toBeUndefined();
+    expect(assignDayTrips([{ ...swinoujscie, dateRange: ["2026-08-12", ""] }])[0].from).toBeUndefined();
+  });
+  it("keeps a day trip out of the stops and lets it ride with its base's journey", async () => {
+    const { assignDayTrips, groupTrips, routeFeatures } = await import("../scripts/trips.ts");
+    // A week by the sea with an afternoon across the border is not a two-stop journey.
+    const lone = groupTrips(assignDayTrips([ahlbeck, swinoujscie]));
+    expect(lone).toEqual([]);
+    const usedom = visit("u", "de-usedom", "2026-08-13", "2026-08-15");
+    const grouped = groupTrips(assignDayTrips([ahlbeck, swinoujscie, usedom]));
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].trip).toMatchObject({
+      stops: ["de-ahlbeck", "de-usedom"],
+      start: "2026-08-07",
+      end: "2026-08-15",
+      label: "Germany and Poland, 2026",
+    });
+    expect(grouped[0].visits.map((v) => v.id)).toEqual(["a", "u", "s"]);
+    // Stops alone identify the journey: the same digest with or without the day
+    // trip, under a label that now names Poland too.
+    const without = groupTrips(assignDayTrips([ahlbeck, usedom]))[0].trip;
+    expect(without.label).toBe("Germany, 2026");
+    expect(without.id.slice(-8)).toBe(grouped[0].trip.id.slice(-8));
+    const coordinates = new Map<string, [number, number]>([
+      ["de-ahlbeck", [14.19, 53.94]],
+      ["de-usedom", [13.92, 53.87]],
+      ["pl-swinemunde", [14.25, 53.91]],
+      ["de-potsdam", [13.06, 52.4]],
+    ]);
+    const { trips, routes } = routeFeatures(grouped, [], coordinates, [home]);
+    expect(trips[0]).toMatchObject({ from: "home-berlin", to: "home-berlin" });
+    const summary = routes.features.map((f) => [f.properties.kind, f.properties.order, f.properties.place ?? ""]);
+    expect(summary).toEqual([
+      ["leg", 0, ""],
+      ["hop", 1, ""],
+      ["leg", 2, ""],
+      ["excursion", 3, "pl-swinemunde"],
+      ["excursion", 4, "pl-swinemunde"],
+    ]);
+    const lens = routes.features.filter((f) => f.properties.kind === "excursion");
+    expect(lens[0].properties).toMatchObject({ from: "de-ahlbeck", km: expect.any(Number) });
+    expect(lens[0].properties.km).toBeGreaterThan(3);
+    expect(lens[0].properties.km).toBeLessThan(8);
+    expect(lens[0].geometry.coordinates[0]).toEqual([14.19, 53.94]);
+    expect(lens[0].geometry.coordinates.at(-1)).toEqual([14.25, 53.91]);
+    expect(lens[1].geometry.coordinates[0]).toEqual([14.25, 53.91]);
+    // Out and back bow to opposite sides, so the pair closes into a lens.
+    const mid = Math.floor(lens[0].geometry.coordinates.length / 2);
+    expect(Math.sign(lens[0].geometry.coordinates[mid][1] - 53.925)).not.toBe(
+      Math.sign(lens[1].geometry.coordinates[mid][1] - 53.925),
+    );
+    // A lone stay draws its day trips under its own lens; a day out from home gets the home legs.
+    const standalone = assignDayTrips(
+      [ahlbeck, swinoujscie, visit("s2", "pl-swinemunde", "2026-08-10", "2026-08-10"), visit("p", "de-potsdam", "2025-03-01", "2025-03-01", { dayTrip: true })],
+      [home],
+    );
+    const alone = routeFeatures([], standalone, coordinates, [home]);
+    expect(alone.routes.features.map((f) => [f.properties.group, f.properties.kind])).toEqual([
+      ["place:de-ahlbeck", "leg"],
+      ["place:de-ahlbeck", "leg"],
+      ["place:de-ahlbeck", "excursion"],
+      ["place:de-ahlbeck", "excursion"],
+      ["place:de-potsdam", "leg"],
+      ["place:de-potsdam", "leg"],
+    ]);
+  });
+  it("counts day trips as visits without nights, apart from the stays", async () => {
+    const { computeStats } = await import("../scripts/stats.ts");
+    const { publicVisit } = await import("../scripts/config.ts");
+    const resolved = [
+      { id: "a", label: "Seebad Ahlbeck", country: "DE", city: "Seebad Ahlbeck", coordinates: [14.19, 53.94] as [number, number], dateRange: ["2026-08-07", "2026-08-13"] as [string, string] },
+      { id: "s", label: "Swinemünde", country: "PL", city: "Swinemünde", coordinates: [14.25, 53.91] as [number, number], date: "2026-08-12", from: "de-ahlbeck" },
+      { id: "s2", label: "Swinemünde", country: "PL", city: "Swinemünde", coordinates: [14.25, 53.91] as [number, number], date: "2026-08-10", from: "de-ahlbeck" },
+      { id: "r", label: "Rome", country: "IT", city: "Rome", coordinates: [12.5, 41.9] as [number, number], dateRange: ["2026-10-01", "2026-10-05"] as [string, string] },
+    ];
+    const places = collapseVisits(resolved).map((place) => ({
+      ...place,
+      ...(place.city === "Swinemünde" ? { dayTrips: 2 } : {}),
+    }));
+    const ahlbeckId = places.find((place) => place.city === "Seebad Ahlbeck")!.id;
+    const visits = resolved.map((visit) => publicVisit({ ...visit, from: visit.from ? ahlbeckId : undefined }));
+    const trip = { id: "t", label: "Germany and Poland, 2026", start: "2026-08-07", end: "2026-08-13", stops: [ahlbeckId] };
+    const stats = computeStats(visits, places, { trips: [trip] });
+    expect(stats).toMatchObject({ visits: 4, dayTrips: 2, nights: 10 });
+    expect(stats.years[0]).toMatchObject({ year: 2026, visits: 4, dayTrips: 2, nights: 10, countries: 3 });
+    expect(stats.milestones).toContainEqual({ kind: "journey", trip: "t", nights: 6, stops: 1, dayTrips: 2, countries: 2 });
+    expect(stats.milestones).toContainEqual({ kind: "daytrips", place: ahlbeckId, dayTrips: 2 });
+    // The gap between trips is measured between stays; a day trip inside one never shortens it.
+    expect(stats.milestones).toContainEqual({ kind: "gap", from: ahlbeckId, to: places.find((p) => p.city === "Rome")!.id, days: 49 });
+    expect(payloadViolations("stats.json", JSON.stringify(stats))).toEqual([]);
+    expect(payloadViolations("visits.json", JSON.stringify(visits))).toEqual([]);
+    expect(payloadViolations("places.json", JSON.stringify(places))).toEqual([]);
+    expect(
+      payloadViolations("visits.json", JSON.stringify([{ ...visits[1], base: "x" }])),
+    ).toHaveLength(1);
+  });
+  it("shows a day trip's ring and lens only once it stands clear of its base", async () => {
+    const { apart, apartKm, bandAt, revealed } = await import("../src/map/expressions.ts");
+    expect(bandAt(bands.focus, 0)).toBe(0);
+    expect(bandAt(bands.focus, 1.625)).toBeCloseTo(0.5, 5);
+    expect(bandAt(bands.focus, 10)).toBe(1);
+    expect(apartKm(6)).toBeGreaterThan(apartKm(8));
+    expect(apartKm(12)).toBe(0);
+    const parsed = expression.createExpression(apart(bands.focus, revealed));
+    if (parsed.result !== "success") throw new Error("invalid expression");
+    const at = (zoom: number, km: number, reveal = 1) =>
+      Number(parsed.value.evaluate({ zoom }, { type: "Point", properties: { km } } as never, { reveal }));
+    // A 5 km lens is invisible at the continent view and fully drawn by zoom 9.
+    expect(at(4, 5)).toBe(0);
+    expect(at(9, 5)).toBe(1);
+    expect(at(11, 0.3)).toBe(0);
+    expect(at(13, 0.3)).toBe(1);
+    // A 400 km day trip reads as soon as the journey itself does.
+    expect(at(3, 400)).toBe(1);
+    expect(at(9, 5, 0)).toBe(0);
+    // Monotonic: once apart, a mark never hides again as the viewer zooms in.
+    for (let zoom = 0; zoom < 16; zoom += 0.25) expect(at(zoom + 0.25, 50)).toBeGreaterThanOrEqual(at(zoom, 50));
   });
 });
 describe("authoring commands", () => {
@@ -932,6 +1131,19 @@ const config: Config = {
 };
 export default config;
 `;
+  it("parses a day trip flag into the visit and its formatted entry", async () => {
+    const { formatVisit, parseVisitArgs, visitFromRow } = await import("../scripts/authoring.ts");
+    const { visit } = parseVisitArgs(["PL", "Swinemünde", "2026-08-12", "--day-trip"]);
+    expect(visit).toEqual({ country: "PL", city: "Swinemünde", date: "2026-08-12", dayTrip: true });
+    expect(formatVisit(visit)).toContain("dayTrip: true,");
+    expect(() => parseVisitArgs(["PL", "Swinemünde", "2026-08-12..2026-08-13", "--day-trip"])).toThrow(/single dated day/);
+    expect(
+      visitFromRow({ line: 2, fields: { country: "pl", city: "Swinemünde", start: "2026-08-12", end: "", daytrip: "yes" } }),
+    ).toMatchObject({ dayTrip: true });
+    expect(
+      visitFromRow({ line: 2, fields: { country: "pl", city: "Swinemünde", start: "2026-08-12", end: "", daytrip: "" } }).dayTrip,
+    ).toBeUndefined();
+  });
   it("parses arguments into a validated visit", async () => {
     const { parseVisitArgs } = await import("../scripts/authoring.ts");
     expect(parseVisitArgs(["de", "Wendisch Rietz", "2025-04-04..2025-04-06", "--trip", "Spring"]).visit).toEqual({

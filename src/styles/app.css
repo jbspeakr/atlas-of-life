@@ -107,6 +107,13 @@ header p {
   font: 400 1.4rem/1.1 Fraunces, serif;
   font-variant-numeric: tabular-nums;
 }
+.stats-totals dd small {
+  display: block;
+  margin-top: 2px;
+  font: inherit;
+  font-size: 10px;
+  color: var(--muted);
+}
 .stats-note {
   color: var(--muted);
   margin: 0 0 14px;
@@ -343,6 +350,20 @@ kbd {
   border-radius: 50%;
   background: var(--accent);
 }
+/* A place only ever seen on day trips: hollow, as its pin is on the map. */
+.place-mark-daytrip {
+  width: 6px;
+  height: 6px;
+  flex-basis: 6px;
+  margin: 0 -1px;
+  background: transparent;
+  border: 1px solid var(--accent);
+}
+.index-year small {
+  display: block;
+  font-size: inherit;
+  text-align: right;
+}
 .index-name {
   flex: 1;
   min-width: 0;
@@ -428,6 +449,22 @@ kbd {
 .place-caption .caption-nights {
   color: var(--accent-ink);
 }
+.place-caption .caption-daytrip {
+  color: var(--text);
+}
+.caption-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.caption-link:hover {
+  text-decoration-color: var(--accent-ink);
+}
 .dismiss {
   position: absolute;
   right: 0;
@@ -483,8 +520,41 @@ kbd {
   padding: 0;
 }
 .itinerary-strip li {
+  position: relative;
   flex: 1 1 0;
   min-width: 6px;
+}
+/* Day trips float above their stop as the hollow rings they are on the map. */
+.itinerary-satellites {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6px;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.itinerary-satellites button {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel);
+  opacity: 0.6;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.itinerary-satellites button:hover {
+  opacity: 1;
+}
+.itinerary-satellites button[aria-current="step"] {
+  opacity: 1;
+  border-width: 2px;
+}
+.place-caption .itinerary-summary + .itinerary-strip {
+  margin-top: 12px;
 }
 .itinerary-strip button {
   display: block;

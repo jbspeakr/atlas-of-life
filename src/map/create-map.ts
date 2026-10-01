@@ -16,6 +16,7 @@ import tripsData from "../generated/trips.json";
 import homeData from "../generated/home.json";
 import { placeKey } from "./place-key";
 import { activeLayer } from "./layers";
+import { apartKm } from "./expressions";
 import { visibleAt, type Dated, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
 import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
@@ -31,8 +32,14 @@ export type Place = {
   date?: string;
   dateRange?: [string, string];
   visitCount: number;
+  /** How many of the visits were day trips from elsewhere. */
+  dayTrips?: number;
 };
-type PublicVisit = Omit<Place, "visitCount"> & { visitCount?: number };
+export type PublicVisit = Omit<Place, "visitCount" | "dayTrips"> & {
+  visitCount?: number;
+  /** The place or home this day trip was made from. */
+  from?: string;
+};
 export type Trip = {
   id: string;
   label: string;
@@ -58,7 +65,9 @@ export const homes = homeData as Home[];
 export const visits = visitsData as PublicVisit[];
 export const trips = tripsData as Trip[];
 export const visitsByPlace = new Map<string, PublicVisit[]>();
-const placeByVisit = new Map<string, Place>();
+export const placeByVisit = new Map<string, Place>();
+/** Day-trip visits by the place or home they were made from, in date order. */
+export const dayTripsByBase = new Map<string, PublicVisit[]>();
 const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
 for (const visit of visits) {
   if (!visit.visitCount) continue;
@@ -72,6 +81,12 @@ for (const visit of visits) {
     group.push(visit);
     placeByVisit.set(visit.id, place);
   }
+}
+for (const visit of [...visits].sort((a, b) =>
+  (a.date ?? a.dateRange?.[0] ?? "").localeCompare(b.date ?? b.dateRange?.[0] ?? ""),
+)) {
+  if (!visit.from || !placeByVisit.has(visit.id)) continue;
+  dayTripsByBase.set(visit.from, [...(dayTripsByBase.get(visit.from) ?? []), visit]);
 }
 // The archive holds z7–14 only in padded windows around places. An empty tile
 // (or a 404, which MapLibre treats the same) renders as a blank hole; an errored
@@ -349,12 +364,32 @@ export async function createMap(
     .data as FeatureCollection;
   const stopData = (style.sources.stops as GeoJSONSourceSpecification)
     .data as FeatureCollection;
+  const satelliteData = (style.sources.satellites as GeoJSONSourceSpecification)
+    .data as FeatureCollection;
   const segmentsByGroup = new Map<string, string[]>();
+  // The outbound lens arc of each day trip, by group and place, for its satellite's cue.
+  const excursionIndex = new Map<string, number>();
   for (const feature of [...routeData.features].sort(
     (a, b) => Number(a.properties?.order) - Number(b.properties?.order),
   )) {
     const group = String(feature.properties?.group);
-    segmentsByGroup.set(group, [...(segmentsByGroup.get(group) ?? []), String(feature.id)]);
+    const segments = segmentsByGroup.get(group) ?? [];
+    if (feature.properties?.kind === "excursion") {
+      const key = `${group}#${String(feature.properties.place)}`;
+      if (!excursionIndex.has(key)) excursionIndex.set(key, segments.length);
+    }
+    segmentsByGroup.set(group, [...segments, String(feature.id)]);
+  }
+  const satellitesByGroup = new Map<string, { id: string; place: string }[]>();
+  const satelliteGroups = new Map<string, string[]>();
+  for (const feature of satelliteData.features) {
+    const group = String(feature.properties?.group);
+    const place = String(feature.properties?.place);
+    satellitesByGroup.set(group, [
+      ...(satellitesByGroup.get(group) ?? []),
+      { id: String(feature.id), place },
+    ]);
+    satelliteGroups.set(place, [...(satelliteGroups.get(place) ?? []), group]);
   }
   const stopsByGroup = new Map<string, { id: string; place: string; first: number }[]>();
   for (const feature of stopData.features) {
@@ -372,13 +407,18 @@ export async function createMap(
     ...countries.features.map((f) => ({ source: "countries", id: String(f.id) })),
     ...regions.features.map((f) => ({ source: "regions", id: String(f.id) })),
   ];
+  // A stop lights its journey; a lone stay its own lens; a day trip its base's group.
   const groupForPlace = (id: string): string | null =>
     trips.find((trip) => trip.stops.includes(id))?.id ??
-    (segmentsByGroup.has(`place:${id}`) ? `place:${id}` : null);
-  const membersOf = (group: string): string[] =>
-    group.startsWith("place:")
+    (segmentsByGroup.has(`place:${id}`) ? `place:${id}` : null) ??
+    satelliteGroups.get(id)?.[0] ??
+    null;
+  const membersOf = (group: string): string[] => [
+    ...(group.startsWith("place:")
       ? [group.slice("place:".length)]
-      : (trips.find((trip) => trip.id === group)?.stops ?? []);
+      : (trips.find((trip) => trip.id === group)?.stops ?? [])),
+    ...(satellitesByGroup.get(group) ?? []).map((satellite) => satellite.place),
+  ];
   let baseFocus: string | null = null;
   let shownFocus: string | null = null;
   let currentStop: string | null = null;
@@ -399,14 +439,23 @@ export async function createMap(
           at: arriving < 0 ? 0 : arriving * stagger + revealDuration * 0.5,
         };
       }),
+      // A day trip's ring follows its lens, after the route itself has drawn.
+      ...(satellitesByGroup.get(group) ?? []).map((satellite) => ({
+        source: "satellites",
+        id: satellite.id,
+        at: (excursionIndex.get(satellite.id) ?? segments.length) * stagger + revealDuration * 0.5,
+      })),
     ];
   };
+  // The selected place's star or day-trip ring takes the ink stroke.
   const markCurrent = (place: string | null) => {
-    if (currentStop)
-      map.setFeatureState({ source: "stops", id: currentStop }, { current: false });
+    for (const source of ["stops", "satellites"]) {
+      if (currentStop) map.setFeatureState({ source, id: currentStop }, { current: false });
+    }
     currentStop = place && shownFocus ? `${shownFocus}#${place}` : null;
     if (currentStop)
-      map.setFeatureState({ source: "stops", id: currentStop }, { current: true });
+      for (const source of ["stops", "satellites"])
+        map.setFeatureState({ source, id: currentStop }, { current: true });
   };
   const settleFocus = () => {
     cancelAnimationFrame(revealFrame);
@@ -431,7 +480,14 @@ export async function createMap(
     const match: maplibregl.FilterSpecification = ["==", ["get", "group"], group ?? ""];
     map.setFilter("journey-legs", ["all", ["==", ["get", "kind"], "leg"], match]);
     map.setFilter("journey-hops", ["all", ["==", ["get", "kind"], "hop"], match]);
-    for (const layer of ["journey-stops", "journey-stop-numbers", "journey-stop-labels"])
+    map.setFilter("journey-excursions", ["all", ["==", ["get", "kind"], "excursion"], match]);
+    for (const layer of [
+      "journey-stops",
+      "journey-stop-numbers",
+      "journey-stop-labels",
+      "journey-daytrips",
+      "journey-daytrip-labels",
+    ])
       map.setFilter(layer, match);
     const members = new Set(group ? membersOf(group) : []);
     for (const candidate of places)
@@ -921,10 +977,18 @@ export async function createMap(
       ? nearest(point, ["pins", "place-labels"], reach, (feature) =>
           (states.get("pins" + String(feature.id)) ?? 1) > 0.5)
       : undefined;
-  // A focused journey's numbered stars answer wherever they are drawn.
+  // A focused journey's numbered stars and day-trip rings answer wherever they are drawn.
   const stopAt = (point: maplibregl.Point, reach: number) =>
     shownFocus && map.getZoom() >= 2
-      ? nearest(point, ["journey-stops", "journey-stop-labels"], reach)
+      ? nearest(
+          point,
+          ["journey-stops", "journey-stop-labels", "journey-daytrips", "journey-daytrip-labels"],
+          reach,
+          // A ring still hidden beneath its base star must not catch the star's tap.
+          (feature) =>
+            !feature.layer.id.startsWith("journey-daytrip") ||
+            Number(feature.properties.km) >= apartKm(map.getZoom()),
+        )
       : undefined;
   /** The closest home, journey stop or pin to the pointer, as a place or home ID. */
   const markAt = (point: maplibregl.Point, reach: number): string | undefined => {

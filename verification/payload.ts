@@ -9,6 +9,10 @@ const allowlist: Record<string, true> = {
   date: true,
   dateRange: true,
   visitCount: true,
+  // A day trip names the public place or home it was made from; a place
+  // counts how many of its visits were day trips. Both derive from public dates.
+  from: true,
+  dayTrips: true,
 };
 // Homes publish a city-precision point and the period they cover, nothing more.
 const homeAllowlist: Record<string, true> = {
