@@ -49,7 +49,7 @@ The build finds the city, discovers which region it belongs to, generates stable
   A north-up globe that flows from the whole world to countries, regions and individual places, with names that hand over from band to band.
 
 - **Journeys, inferred**<br>
-  Adjacent dates become journeys automatically. Focus one and dotted arcs and numbered stops reveal in travel order, leaving from and returning to your home base. The arcs are curved on purpose: they say "from here to there", never "the road taken".
+  Adjacent dates become journeys automatically. Focus one and dotted arcs and numbered stops reveal in travel order, leaving from and returning to your home base. The arcs are curved on purpose: they say "from here to there", never "the road taken". A day out from a stay is a day trip, not a stop: a small lens and a hollow ring beside its base.
 
 - **Night and day**<br>
   Opens in your system's appearance. Night is lamplight on a midnight globe under a sparse, still starfield; day is the same atlas printed on paper in ink and ochre. One button switches, and the choice sticks.
@@ -178,7 +178,7 @@ Built with [MapLibre GL JS](https://maplibre.org/), [PMTiles](https://docs.proto
 | Document | What's in it |
 | --- | --- |
 | [Guide](docs/GUIDE.md) | Running, exploring, recording, basemaps, verification, hosting and security. |
-| [Data authoring](docs/DATA.md) | Writing `data/visits.ts`: home, journeys, regions, precision, IDs. |
+| [Data authoring](docs/DATA.md) | Writing `data/visits.ts`: home, journeys, day trips, regions, precision, IDs. |
 | [Decisions](docs/DECISIONS.md) | Why the atlas looks and behaves the way it does. |
 | [Roadmap](docs/ROADMAP.md) | Where the atlas goes next. |
 | [Attribution](docs/ATTRIBUTION.md) | Data and font licences. |

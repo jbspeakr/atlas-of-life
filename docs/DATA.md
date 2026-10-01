@@ -19,11 +19,12 @@ export default config;
 ```sh
 NOMINATIM_CONTACT=you@example.org npm run add -- DE "Wendisch Rietz" 2025-04-04..2025-04-06
 npm run add -- GR Kalamos 2025-04-27 --trip "Spring 2025" --dry-run
+npm run add -- DE Potsdam 2025-03-01 --day-trip
 npm run import -- trips.csv
 NOMINATIM_CONTACT=you@example.org npm run geocode   # after editing by hand
 ```
 
-`add` validates, appends in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache and prints the resolved point. `--region`, `--label` and `--trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. `import` reads a CSV with the header `country,city,start,end,label,trip[,region]`, skips rows already present and aborts before writing on any invalid row. GPX or timeline exports are not imported: they would need reverse geocoding of many points against Nominatim's usage policy. After any change, run `npm run build` and commit the config, `data/geocache.json` and `data/sources.json`.
+`add` validates, appends in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache and prints the resolved point. `--region`, `--label`, `--trip` and `--day-trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. `import` reads a CSV with the header `country,city,start,end,label,trip[,region][,daytrip]` (`daytrip` is `yes`, `true` or `1`), skips rows already present and aborts before writing on any invalid row. GPX or timeline exports are not imported: they would need reverse geocoding of many points against Nominatim's usage policy. After any change, run `npm run build` and commit the config, `data/geocache.json` and `data/sources.json`.
 
 ## Fields
 
@@ -31,6 +32,7 @@ NOMINATIM_CONTACT=you@example.org npm run geocode   # after editing by hand
 - `city`: the settlement's own name. If country plus city is ambiguous, geocoding fails rather than guessing; add a `region` (a boundary code or exact upstream name) to disambiguate.
 - `date` or `dateRange`, never both. Dates are real `YYYY-MM-DD` dates; a range has two endpoints, with `''` for an open one (`['2020-01-01', '']`). Undated visits stay lit at every timeline position.
 - `trip`: an optional public label that groups visits into one journey across a gap.
+- `dayTrip: true`: marks a single `date` as a day out from the stay or home that covers it. Only needed on a stay's arrival or departure day or for a day out from home; a day inside a stay is a day trip on its own (see [Day trips](#day-trips)).
 - `label` and `id`: optional overrides for a curated link or a landmark name; unnecessary for ordinary cities.
 - `publishPrecision: 'exact'` with `coordinates`: a deliberate public landmark placement. Everything else publishes at city precision, including an authored street coordinate.
 
@@ -50,7 +52,20 @@ If you move, list the homes with their own `since`; each ends the day before the
 
 ## Journeys
 
-Dated city visits form a journey when each starts no later than the day after the previous one ends; two or more visits are required, and open-ended or undated visits never join. With a home set, the journey gains a leg out and a leg back. A dated trip to a single place gets the same pair. To group across a gap or to name a journey, give the visits the same `trip` label; **that label is public**. Generated labels list the countries in order with the year, for example "Denmark, Norway and Sweden, 2025". Journeys publish to `trips.json` (id, label, dates, stop IDs, home IDs) and `routes.json` (one arc per hop or leg); they never carry addresses, notes or names.
+Dated city visits form a journey when each starts no later than the day after the previous one ends; two or more stops are required, and open-ended or undated visits never join. With a home set, the journey gains a leg out and a leg back. A dated trip to a single place gets the same pair. To group across a gap or to name a journey, give the visits the same `trip` label; **that label is public**. Generated labels list the countries in order with the year, day trips included, for example "Denmark, Norway and Sweden, 2025". Journeys publish to `trips.json` (id, label, dates, stop IDs, home IDs) and `routes.json` (one arc per hop or leg, two per day trip); they never carry addresses, notes or names. A journey's ID is derived from its stops alone, so adding a day trip does not change it beyond the label.
+
+## Day trips
+
+A **stay** is a range with at least one night. A **day trip** is a single `date` spent somewhere else and back at the base by evening. Author it like any visit:
+
+```ts
+{ country: "DE", city: "Seebad Ahlbeck", dateRange: ["2026-08-07", "2026-08-13"] },
+{ country: "PL", city: "Swinemünde", date: "2026-08-12" },
+```
+
+The build infers the base: a single date strictly inside a stay's range is a day trip from that stay (the innermost one when stays nest), because the traveller slept at the base the night before and the night after. A date on a stay's arrival or departure day is read as a stop on the way, since that is what the dates say; add `dayTrip: true` to make it a day trip from the stay woken up in instead. `dayTrip: true` on a date no stay covers makes it a day out from the home in effect; without a stay or a home it is an error, never a silent stop. Overnight side trips are stays like any other and chain as stops.
+
+A day trip never becomes a journey stop, so a week in one place with an afternoon across the border is not a two-stop journey and the leg home still leaves from the stay. It rides with its base: it is drawn under the base's journey (or the base's own lens) as a lens of fine dots from the base and back, with a small hollow ring instead of a numbered star, and appears only once the viewer is close enough for the two to come apart on screen. A place only ever seen on day trips is a hollow lamplight pin. The visit publishes `from` (the base's public ID) and the place publishes `dayTrips` (how many of its visits were day trips); both derive from dates already public.
 
 ## Regions
 
@@ -58,9 +73,9 @@ Geocoder administrative codes are provenance, not boundary identifiers. The buil
 
 ## Numbers
 
-`stats.json` carries totals, coverage, milestones and one row per year, all derived from the public visits, places, journeys and homes; it names places, homes and journeys by their public IDs only and never carries a coordinate. Coverage counts visited countries against the 195 United Nations member and observer states, with any other code (a territory such as Greenland or Hong Kong) counted separately, and against the states of each of the seven continents. `data/continents.json` holds that table: Natural Earth's `CONTINENT` for every accepted code, the UN M49 geoscheme for the ocean states and territories Natural Earth files under "Seven seas", and the list of states. `npm run continents` regenerates it from the cached Natural Earth file after a non-fixture `npm run generate`. Region coverage ("4 of 16") counts the subdivisions in the country's pinned boundary source.
+`stats.json` carries totals, coverage, milestones and one row per year, all derived from the public visits, places, journeys and homes; it names places, homes and journeys by their public IDs only and never carries a coordinate. A day trip counts as a visit and lights its place, region and country, adds no nights, and is counted separately in the totals and the year rows. Coverage counts visited countries against the 195 United Nations member and observer states, with any other code (a territory such as Greenland or Hong Kong) counted separately, and against the states of each of the seven continents. `data/continents.json` holds that table: Natural Earth's `CONTINENT` for every accepted code, the UN M49 geoscheme for the ocean states and territories Natural Earth files under "Seven seas", and the list of states. `npm run continents` regenerates it from the cached Natural Earth file after a non-fixture `npm run generate`. Region coverage ("4 of 16") counts the subdivisions in the country's pinned boundary source.
 
-Milestones are the first dated visit, the crow-flies total of every drawn hop and home leg, the furthest place from the home in effect on the visit's first day (the first home before any `since`), the longest journey by nights, the northern-, southern-, eastern- and westernmost places, the first visit north of the Arctic Circle, south of the Antarctic Circle and south of the equator, the country with the most nights, the most returned-to place and the longest stretch between dated visits. Each exists only when the data supports it: no home means no furthest point, one country means no "most nights". Year rows add the countries and places first seen that year, the year's furthest point and its longest stay.
+Milestones are the first dated visit, the crow-flies total of every drawn hop, home leg and day-trip lens, the furthest place from the home in effect on the visit's first day (the first home before any `since`), the longest journey by nights (with its stops, day trips and countries), the place most day trips were made from, the northern-, southern-, eastern- and westernmost places, the first visit north of the Arctic Circle, south of the Antarctic Circle and south of the equator, the country with the most nights, the most returned-to place and the longest stretch between stays (day trips lie inside a stay and never shorten it). Each exists only when the data supports it: no home means no furthest point, one country means no "most nights", a base with a single day trip means no "most day trips". Year rows add the countries and places first seen that year, the year's furthest point and its longest stay.
 
 ## Caches and precision
 

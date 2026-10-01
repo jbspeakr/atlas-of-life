@@ -23,7 +23,7 @@ Country names appear as you leave the world view and give way to region names, t
 
 **Places** opens the directory. **In view** follows the visible map area; **All places** includes off-screen destinations. Both respect the timeline. Search cities, regions or countries and page through places in first-visit order. On a phone the directory is a bottom sheet that rides above the keyboard, and a tap selects the nearest place, journey stop or home within a thumb's reach.
 
-Consecutive visits form **journeys**. No lines are drawn in the normal view. Selecting a stop, hovering a journey in the directory, or choosing it from the directory's **Journeys** scope puts it in focus: dotted arcs and numbered stops appear in travel order and everything else recedes. The arcs are deliberately curved: "from here to there", never the road taken. The caption names the journey, shows an itinerary strip whose segments are as wide as the nights stayed, and steps to the previous or next stop (also **←**/**→** while the caption has focus). **Home** is a hollow ring rather than a pin; it lights its region and counts as a place, journeys leave from it and return to it along fainter legs, and clicking the ring or choosing it in the directory opens a short home caption. **Escape** or a click on empty map lets a journey go, closes the caption or directory, and restores keyboard focus.
+Consecutive visits form **journeys**. No lines are drawn in the normal view. Selecting a stop, hovering a journey in the directory, or choosing it from the directory's **Journeys** scope puts it in focus: dotted arcs and numbered stops appear in travel order and everything else recedes. The arcs are deliberately curved: "from here to there", never the road taken. The caption names the journey, shows an itinerary strip whose segments are as wide as the nights stayed, and steps to the previous or next stop (also **←**/**→** while the caption has focus). A **day trip** (a single day out from a stay, back by evening) is not a stop: it hangs off its base as a lens of fine dots with a small hollow ring, appears once you are close enough for the two to come apart, sits above its stop's segment in the strip, and the caption reads "Day trip from …" or "Day trip to …". A place only ever seen on day trips is a hollow pin. **Home** is a hollow ring rather than a pin; it lights its region and counts as a place, journeys leave from it and return to it along fainter legs, and clicking the ring or choosing it in the directory opens a short home caption. **Escape** or a click on empty map lets a journey go, closes the caption or directory, and restores keyboard focus.
 
 The timeline has one tick per visit date and a final **All visits** position. **Through** means "first visited by this date"; **During** lights only visits under way in that month. Undated visits stay lit throughout. The address bar follows what you see: a selected place (`#/place/<id>`), a camera you moved (`#/view/…`) and the timeline (`?through=…&mode=only`), so any view can be shared.
 
@@ -39,10 +39,11 @@ Or let the command do it:
 
 ```sh
 NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02
+npm run add -- DE Potsdam 2025-03-01 --day-trip
 npm run import -- file.csv
 ```
 
-Both validate, append, geocode and print the resolved point. If you edit by hand, run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, then `npm run build`. Commit the config, the geocache and `data/sources.json`. Set your home once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }`; journeys start and end there. See [data authoring](DATA.md) for identity, precision, home and journeys.
+Both validate, append, geocode and print the resolved point. A single date inside a stay is a day trip from that stay on its own; `--day-trip` is for a day out from home or on a stay's first or last day. If you edit by hand, run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, then `npm run build`. Commit the config, the geocache and `data/sources.json`. Set your home once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }`; journeys start and end there. See [data authoring](DATA.md) for identity, precision, home, journeys and day trips.
 
 ## Record a tour
 
