@@ -98,8 +98,11 @@ export function computeStats(
   const { trips = [], homes = [], legs = [], regionsOf = {} } = input;
   const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
   const placeOf = (visit: PublicVisit) => placeByKey.get(placeKey(visit));
+  // A home is a place, a region and a country, never a trip: it stays out of
+  // the visit count, the nights, the year rows and the dated milestones.
+  const homeIds = new Set(homes.map((home) => home.id));
   const cityVisits = visits
-    .filter((visit) => visit.visitCount && placeOf(visit))
+    .filter((visit) => visit.visitCount && placeOf(visit) && !homeIds.has(visit.id))
     .sort(byStart);
   const dated = cityVisits.filter((visit) => realStart(visit) !== null);
   const homeFor = (visit: PublicVisit) =>

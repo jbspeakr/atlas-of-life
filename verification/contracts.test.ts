@@ -661,6 +661,31 @@ describe("home base", () => {
     ]);
     expect(() => resolveHomes(config, {})).toThrow(/geocache miss/);
   });
+  it("counts a home as a place, region and country but never as a trip", async () => {
+    const { homeVisits, publicVisit, resolveHomes } = await import("../scripts/config.ts");
+    const { computeStats } = await import("../scripts/stats.ts");
+    const config = validateConfig({ home: { ...berlinCity, since: "2024-04-25" }, visits: [] });
+    expect(homeVisits(config)).toEqual([
+      { id: config.homes[0].id, label: "Berlin", country: "DE", city: "Berlin", dateRange: ["2024-04-25", ""] },
+    ]);
+    expect(homeVisits(validateConfig({ home: berlinCity, visits: [] }))[0].dateRange).toBeUndefined();
+    expect(homeVisits(validateConfig({ visits: [] }))).toEqual([]);
+    const anchored = resolveVisits({ visits: homeVisits(config), publishPrecision: "city" }, cache) as (Visit & {
+      coordinates: [number, number];
+    })[];
+    const places = collapseVisits(anchored);
+    // The place shares the home's ID, so the ring and the place are one selection.
+    expect(places).toEqual([
+      expect.objectContaining({ id: config.homes[0].id, city: "Berlin", visitCount: 1, dateRange: ["2024-04-25", ""] }),
+    ]);
+    const visits = anchored.map(publicVisit);
+    const stats = computeStats(visits, places, { homes: resolveHomes(config, cache) });
+    expect(stats).toMatchObject({ countries: 1, places: 1, visits: 0, nights: 0, firstYear: null, years: [], milestones: [] });
+    expect(stats.coverage.states).toBe(1);
+    expect(stats.byCountry).toEqual([{ country: "DE", places: 1, regions: 0, regionsOf: null, firstYear: 2024 }]);
+    // Without the home list the same record would read as an ordinary visit.
+    expect(computeStats(visits, places).visits).toBe(1);
+  });
   it("publishes only the home fields", async () => {
     const { payloadViolations } = await import("../verification/payload.ts");
     const home = { id: "home-x", label: "Berlin", country: "DE", city: "Berlin", coordinates: [13.4, 52.5], since: "2024-04-25" };

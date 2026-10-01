@@ -7,6 +7,7 @@ import fixtureConfig from "../verification/fixtures/visits.ts";
 import {
   cacheSchema,
   collapseVisits,
+  homeVisits,
   publicVisit,
   resolveHomes,
   resolveVisits,
@@ -97,7 +98,12 @@ async function main(): Promise<void> {
     fixture ? fixtureConfig : authoredConfig,
     cache,
   );
-  const resolved = resolveVisits(authored, cache);
+  // A home is a place lived in: it lights its region and counts among the
+  // places, so it travels through the pipeline as a city-precision visit.
+  const resolved = [
+    ...resolveVisits(authored, cache),
+    ...resolveVisits({ visits: homeVisits(authored), publishPrecision: "city" }, cache),
+  ];
   const repository = await BoundaryRepository.open();
   const countryCodes = [
     ...new Set(resolved.map((visit) => visit.country)),

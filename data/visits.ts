@@ -2,8 +2,8 @@ import type { Config } from "../scripts/config.ts";
 
 const config: Config = {
   publishPrecision: "city",
-  // Home is where journeys start and end, not a place visited: it gets its own
-  // quiet mark and never counts as a visit.
+  // Home is where journeys start and end. It counts as a place lived in, with
+  // its region lit, under its own quiet ring; it never counts as a trip.
   home: { country: "DE", city: "Berlin", since: "2024-04-25" },
   visits: [
     {

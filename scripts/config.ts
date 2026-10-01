@@ -90,8 +90,9 @@ export const visitSchema = z
         message: "dateRange start must not be after end",
       });
   });
-// Home is the base journeys leave from and return to, never a visit. It is
-// published at city precision only; `since` starts it, and the next home ends it.
+// Home is the base journeys leave from and return to. It is also a place lived
+// in, so it lights its region and counts among the places; it is never a trip.
+// Published at city precision only; `since` starts it, and the next home ends it.
 export const homeSchema = z.strictObject({
   label: text.optional(),
   country: countrySchema,
@@ -325,6 +326,24 @@ export function resolveVisits(
       coordinates: [...coordinates] as [number, number],
     };
   });
+}
+/**
+ * The visit record each home contributes: the home city for the whole period
+ * it was home, under the home's own ID so the ring and the place are one.
+ * It joins the ordinary visits for region discovery, places and totals, but
+ * an open-ended range never joins a journey and never earns a leg.
+ */
+export function homeVisits(config: Pick<ValidatedConfig, "homes">): Visit[] {
+  return config.homes.map((home) => ({
+    id: home.id,
+    label: home.label,
+    country: home.country,
+    ...(home.region ? { region: home.region } : {}),
+    city: home.city,
+    ...(home.since || home.until
+      ? { dateRange: [home.since ?? "", home.until ?? ""] as [string, string] }
+      : {}),
+  }));
 }
 /** Homes resolve through the warm city cache only; they never publish finer than a city. */
 export function resolveHomes(config: ValidatedConfig, cache: Cache): PublicHome[] {
