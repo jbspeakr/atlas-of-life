@@ -139,7 +139,7 @@ export async function startServer(
       // Ordinary static-host compression; byte ranges on archives remain identity encoded.
       if (
         status === 200 &&
-        /\.(?:html|js|css|json|geojson)$/.test(filename) &&
+        /\.(?:html|m?js|css|json|geojson)$/.test(filename) &&
         /\bgzip\b/.test(request.headers["accept-encoding"] ?? "")
       ) {
         let bytes = compressed.get(filename);
