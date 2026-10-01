@@ -10,6 +10,7 @@
     "build": "npm run generate && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "geocode": "tsx scripts/geocode.ts",
+    "continents": "tsx scripts/build-continents.ts",
     "basemap:build": "bash scripts/build-basemap.sh",
     "tiles:publish": "tsx scripts/publish-tiles.ts",
     "analyze": "ANALYZE=1 npm run build",

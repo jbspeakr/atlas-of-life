@@ -11,7 +11,7 @@ Every item below respects those rules. Anything that adds a public field goes th
 | [Hold it in your hands](#1-hold-it-in-your-hands) | A poster, a rich link preview for every place, an atlas that embeds in your own site and reads aloud. |
 | [Time made visible](#2-time-made-visible) | Replay the years, a year in review, a life line, trips still to come. |
 | [Under the actual sky](#3-under-the-actual-sky) | The real stars over a place on the night you were there, and the weather that day. |
-| [Numbers that mean something](#4-numbers-that-mean-something) | Milestones, coverage, distances, years compared. |
+| [Numbers that mean something](#4-numbers-that-mean-something) | Then and now on the map. |
 | [Authoring without a laptop](#5-authoring-without-a-laptop) | Add a visit from your phone; import from what you already have. |
 | [In your language](#6-in-your-language) | The whole interface in German and other languages. |
 | [Foundations](#7-foundations) | Baselines, the published basemap, lighter geometry, MapLibre 6. |
@@ -106,16 +106,11 @@ For a selected visit, a soft terminator shows where it was night on the globe at
 
 ## 4. Numbers that mean something
 
-### 4a. Milestones and coverage
+### 4a. Then and now on the map
 
-Beyond totals: share of the world's countries and of each continent, the most northern, southern, eastern and western places, the furthest point from home, the first visit above the Arctic Circle, the country with the most nights, and the longest gap between trips. Each milestone is a sentence with a link that lights it on the map.
+The numbers panel already sets two years side by side. The map should show the same comparison: one year in lamplight, the other in mist outline, so the growth of a decade is visible in one view.
 
-- **How.** `stats.ts` computes them from public coordinates and dates; continent membership from Natural Earth's `CONTINENT` field at build. The numbers panel gains a "Milestones" list.
-- **Done when** the fixture recomputation test covers every milestone.
-
-### 4b. Years compared
-
-Two years side by side in the numbers panel, and a "then and now" mode on the map: one year in lamplight, the other in mist outline. It makes the growth of a decade visible in one view.
+- **How.** A second feature-state channel beside `visibility`, driven from the Years compared selects; `?compare=2024,2025` for links. Pixel changes, so it follows 7a.
 
 ## 5. Authoring without a laptop
 
@@ -161,8 +156,8 @@ Work that makes everything above cheaper and safer.
 |---|---|---|
 | 1 | 7a, 7b | Everything with pixels or a wide view depends on them. |
 | 2 | 1c, 1d, 7e | Small, no pixels, immediately useful. |
-| 3 | 3b, 4a | Build-time data, high delight per line of code. |
+| 3 | 3b | Build-time data, high delight per line of code. |
 | 4 | 2a, 2b, 1b | The share story: replay, year in review, rich links. |
 | 5 | 3a, 1a | The signature pieces: the real sky and the poster. |
 | 6 | 5a, 5b | Authoring reach. |
-| 7 | 2c, 2d, 6, 7c, 7d, 3c, 4b, 5c | As appetite allows. |
+| 7 | 2c, 2d, 6, 7c, 7d, 3c, 4a, 5c | As appetite allows. |

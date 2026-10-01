@@ -17,6 +17,7 @@ import { globeRadius, starOpacity, starTile, starfield } from "../src/map/sky.ts
 import type { ExpressionSpecification } from "maplibre-gl";
 import { BoundaryRepository } from "../scripts/boundaries.ts";
 import { geocodeConfig } from "../scripts/geocode.ts";
+import { payloadViolations } from "./payload.ts";
 const good: Visit = {
   id: "berlin",
   label: "Berlin",
@@ -778,24 +779,117 @@ describe("focus expressions", () => {
   });
 });
 describe("statistics", () => {
-  it("derives totals from published visits only and matches an independent recomputation", async () => {
+  type Resolved = ReturnType<typeof resolveVisits>[number] & { coordinates: [number, number] };
+  const home = {
+    id: "home-berlin",
+    label: "Berlin",
+    country: "DE",
+    city: "Berlin",
+    coordinates: [13.405, 52.52] as [number, number],
+    since: "2019-01-01",
+  };
+  async function load(extra: Resolved[] = []) {
     const { computeStats } = await import("../scripts/stats.ts");
+    const { publicVisit } = await import("../scripts/config.ts");
     const { readFileSync } = await import("node:fs");
     const cache = JSON.parse(readFileSync("verification/fixtures/geocache.json", "utf8"));
     const fixture = (await import("./fixtures/visits.ts")).default;
     const resolved = resolveVisits(validateConfig(fixture, cache), cache);
-    const { publicVisit } = await import("../scripts/config.ts");
-    const anchored = resolved.filter((visit) => visit.coordinates) as (typeof resolved[number] & { coordinates: [number, number] })[];
+    const anchored = [...resolved.filter((visit) => visit.coordinates), ...extra] as Resolved[];
     const places = collapseVisits(anchored);
-    const stats = computeStats(anchored.map(publicVisit), places, 0);
+    return { computeStats, visits: anchored.map(publicVisit), places };
+  }
+  it("derives totals from published visits only and matches an independent recomputation", async () => {
+    const { computeStats, visits, places } = await load();
+    const stats = computeStats(visits, places);
     expect(stats.countries).toBe(3);
     expect(stats.places).toBe(places.length);
-    expect(stats.visits).toBe(anchored.length);
+    expect(stats.visits).toBe(visits.length);
     expect(stats.nights).toBe(4 + 5 + 4 + 4);
-    expect(stats.longestStay).toEqual({ label: "Paris", nights: 5 });
+    expect(stats.longestStay).toEqual({ place: "paris-2021", label: "Paris", nights: 5 });
     expect(stats.years.map((row) => row.year)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025]);
-    expect(stats.byCountry[0]).toEqual({ country: "DE", places: 2, firstYear: 2019 });
+    expect(stats.byCountry[0]).toEqual({ country: "DE", places: 2, regions: 2, regionsOf: null, firstYear: 2019 });
+    expect(computeStats(visits, places, { regionsOf: { DE: 16 } }).byCountry[0].regionsOf).toBe(16);
     expect(JSON.stringify(stats)).not.toMatch(/coordinates|address/);
+    expect(payloadViolations("stats.json", JSON.stringify(stats))).toEqual([]);
+  });
+  it("measures coverage against the 195 states and Natural Earth's continents", async () => {
+    const { continents, states } = (await import("../data/continents.json")).default;
+    const { countryCodes } = await import("../scripts/config.ts");
+    expect(states).toHaveLength(195);
+    for (const code of countryCodes) expect(continents[code as keyof typeof continents], code).toBeTruthy();
+    expect(new Set(Object.values(continents)).size).toBe(7);
+    const { computeStats, visits, places } = await load([
+      { id: "mcmurdo", label: "McMurdo", country: "AQ", city: "McMurdo", coordinates: [166.67, -77.85], date: "2027-01-01" },
+    ]);
+    const { coverage } = computeStats(visits, places);
+    expect(coverage).toEqual({
+      states: 3,
+      of: 195,
+      territories: 1,
+      continents: [
+        { continent: "Europe", visited: 3, of: 44 },
+        { continent: "Antarctica", visited: 1, of: 0 },
+      ],
+      continentsOf: 7,
+    });
+  });
+  it("names every milestone by public id and recomputes each from the fixture", async () => {
+    const { distanceKm } = await import("../scripts/trips.ts");
+    const extra: Resolved[] = [
+      { id: "tromso-2026", label: "Tromsø", country: "NO", city: "Tromsø", coordinates: [18.96, 69.65], dateRange: ["2026-01-10", "2026-01-14"] },
+      { id: "cape-town", label: "Cape Town", country: "ZA", city: "Cape Town", coordinates: [18.42, -33.92] },
+      { id: "mcmurdo", label: "McMurdo", country: "AQ", city: "McMurdo", coordinates: [166.67, -77.85], date: "2027-01-01" },
+    ];
+    const { computeStats, visits, places } = await load(extra);
+    const at = (id: string) => places.find((place) => place.id === id)!.coordinates;
+    const trips = [
+      { id: "t1", label: "France, 2021", start: "2021-09-03", end: "2021-09-08", stops: ["paris-2021"] },
+      { id: "t2", label: "Britain, 2024", start: "2024-04-12", end: "2024-04-20", stops: ["london-2024", "edinburgh-2025"] },
+    ];
+    const legs = [[home.coordinates, at("paris-2021")], [at("paris-2021"), home.coordinates]] as const;
+    const stats = computeStats(visits, places, { trips, homes: [home], legs });
+    expect(stats.journeys).toBe(2);
+    expect(stats.milestones).toEqual([
+      { kind: "first", place: "berlin-2019", date: "2019-07-14" },
+      { kind: "distance", km: Math.round(2 * distanceKm(home.coordinates, at("paris-2021"))) },
+      { kind: "furthest", place: "mcmurdo", home: "home-berlin", km: Math.round(distanceKm(home.coordinates, at("mcmurdo"))) },
+      { kind: "journey", trip: "t2", nights: 8, stops: 2, countries: 1 },
+      { kind: "north", place: "tromso-2026" },
+      { kind: "south", place: "mcmurdo" },
+      { kind: "east", place: "mcmurdo" },
+      { kind: "west", place: "edinburgh-2025" },
+      { kind: "arctic", place: "tromso-2026", date: "2026-01-10" },
+      { kind: "antarctic", place: "mcmurdo", date: "2027-01-01" },
+      { kind: "equator", place: "mcmurdo", date: "2027-01-01" },
+      { kind: "nights", country: "GB", nights: 8 },
+      { kind: "returns", place: "berlin-2019", visits: 2 },
+      { kind: "gap", from: "london-2024", to: "edinburgh-2025", days: 473 },
+    ]);
+    expect(payloadViolations("stats.json", JSON.stringify(stats))).toEqual([]);
+    // An undated crossing still counts, without a date.
+    const undated = computeStats(visits.filter((visit) => visit.id !== "mcmurdo"), places);
+    expect(undated.milestones).toContainEqual({ kind: "equator", place: "cape-town" });
+    // Without a home or journeys the dependent milestones are simply absent.
+    const kinds = computeStats(visits, places).milestones.map((entry) => entry.kind);
+    expect(kinds).not.toContain("furthest");
+    expect(kinds).not.toContain("distance");
+    expect(kinds).not.toContain("journey");
+    const berlin = places.filter((place) => place.id === "berlin-2019").map((place) => ({ ...place, visitCount: 1 }));
+    expect(computeStats(visits.slice(0, 1), berlin).milestones.map((entry) => entry.kind)).toEqual(["first"]);
+  });
+  it("compares years by firsts and extremes", async () => {
+    const { computeStats, visits, places } = await load();
+    const rows = computeStats(visits, places, { homes: [home] }).years;
+    const year = (value: number) => rows.find((row) => row.year === value)!;
+    expect(year(2019)).toMatchObject({ visits: 1, nights: 0, countries: 1, newCountries: 1, newPlaces: 1, longestStay: null });
+    expect(year(2020)).toMatchObject({ newCountries: 0, newPlaces: 1, longestStay: { place: "munich-2020", nights: 4 } });
+    expect(year(2021)).toMatchObject({ newCountries: 1, newPlaces: 1 });
+    expect(year(2023)).toMatchObject({ visits: 1, newCountries: 0, newPlaces: 0, furthest: { place: "berlin-2019", km: 0 } });
+    expect(year(2024).furthest).toEqual({ place: "london-2024", km: year(2024).furthest!.km });
+    expect(year(2025)).toMatchObject({ newCountries: 0, newPlaces: 1 });
+    expect(rows.map((row) => row.newCountries).reduce((a, b) => a + b, 0)).toBe(3);
+    expect(rows.map((row) => row.newPlaces).reduce((a, b) => a + b, 0)).toBe(places.length);
   });
 });
 describe("authoring commands", () => {

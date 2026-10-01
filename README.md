@@ -64,7 +64,7 @@ The build finds the city, discovers which region it belongs to, generates stable
   The address bar follows the map: a place, a camera position, a timeline position. Share exactly what you see.
 
 - **By the numbers**<br>
-  Countries, regions, places, journeys, nights away, the longest stay, nights by year and places by country, all computed at build time.
+  Countries, regions, places, journeys and nights away; your share of the world's 195 countries and of each continent; milestones such as the furthest point from home, the crow-flies distance, the northernmost place and the longest journey, each a link that lights it on the map; two years side by side. All computed at build time.
 
 - **A tour, in the app and on film**<br>
   **Tour** flies from wherever you are into a 24-second cinematic sequence. `npm run record` renders the same shots to H.264 MP4 in portrait, square and landscape, ready for social media.
@@ -191,7 +191,7 @@ The [roadmap](docs/ROADMAP.md) has the detail.
 - [ ] **Hold it in your hands**: a print-quality poster, a rich link preview for every place, an embeddable atlas, a text edition for screen readers and search engines
 - [ ] **Time made visible**: replay the years on a still globe, a year in review with its own share card, a life line of homes and journeys, trips still to come
 - [ ] **Under the actual sky**: the real stars over a place on the night you were there, and the weather that day
-- [ ] **Numbers that mean something**: milestones, coverage, furthest from home, years compared
+- [x] **Numbers that mean something**: milestones, coverage, furthest from home, years compared (the then-and-now map mode remains)
 - [ ] **Authoring without a laptop**: add a visit from your phone through an issue form, import from Polarsteps or Google Timeline, two atlases on one globe
 - [ ] **In your language**: the whole interface in German and more
 - [ ] **Foundations**: approved baselines, the complete published basemap, lighter geometry, MapLibre GL 6

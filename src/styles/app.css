@@ -786,3 +786,69 @@ kbd {
     scroll-behavior: auto !important;
   }
 }
+.stats-heading {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+}
+.stats-coverage {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+.stats-coverage p {
+  margin: 0 0 10px;
+}
+.stats-coverage p .stats-bar {
+  display: block;
+  width: 100%;
+  margin: 0 0 6px;
+}
+.stats-coverage strong {
+  font-weight: 400;
+  color: var(--text);
+}
+.stats-milestones {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.stats-milestones li {
+  padding: 5px 0;
+  border-top: 1px solid var(--line);
+}
+.atlas-stats a,
+.stats-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.stats-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+.atlas-stats a:hover,
+.stats-link:hover {
+  text-decoration-color: var(--accent-ink);
+}
+.stats-compare select {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 4px;
+  min-height: 28px;
+}
+.stats-compare td small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}

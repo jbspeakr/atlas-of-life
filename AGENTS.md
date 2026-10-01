@@ -16,6 +16,7 @@ data/                 Authored input. visits.ts is the only routinely hand-edite
   geocache.json         Warm Nominatim cache; written only by `npm run geocode`/`add`.
   sources.json          Pinned boundary source URLs and SHA-256 checksums.
   map-assets.json       Pinned Protomaps glyph/sprite asset revision.
+  continents.json       Continent of every country code and the 195 states; written by `npm run continents`.
   boundaries/           Committed geoBoundaries/Natural Earth sources (DEU, FRA, GBR, world).
 scripts/              Build-time Node code, run with tsx. Owns every sensitive field.
   config.ts             Zod schema, validation, identity/ID generation, publication policy.
@@ -23,7 +24,8 @@ scripts/              Build-time Node code, run with tsx. Owns every sensitive f
   build-style.ts        Emits src/generated/style.json: Protomaps layers and atlas layers in both themes.
   themes.ts             mergeThemes(): folds the night and day palettes into one style via `state.theme`.
   boundaries.ts         Boundary repository, point-in-polygon region discovery, label anchors.
-  trips.ts / stats.ts   Journey inference and arcs; "By the numbers" figures.
+  trips.ts / stats.ts   Journey inference and arcs; "By the numbers" figures, coverage, milestones, years.
+  build-continents.ts   Regenerates data/continents.json from the cached Natural Earth file.
   geocode.ts            The only Nominatim client (explicit command, never in a build).
   add.ts / import.ts / authoring.ts   `npm run add` and `npm run import`.
   record.ts / recording.ts            Cinematic MP4 recorder (Playwright + FFmpeg).
@@ -85,6 +87,7 @@ The browser never imports `data/` or `scripts/config.ts`; it reads only `src/gen
 | `npm run verify:approve` | Writes visual baselines. Only when a pixel change is intended **and** the human asked for it. |
 | `npm run add -- CC City YYYY-MM-DD[..YYYY-MM-DD]` | Append a visit and geocode it (needs `NOMINATIM_CONTACT`). |
 | `npm run record` | Render MP4 tours (needs FFmpeg with libx264 + ffprobe, Chromium, a z0–6 basemap). |
+| `npm run continents` | Rewrite `data/continents.json` after a Natural Earth update (needs the cached full file from a non-fixture generate). |
 
 Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx tsc --noEmit` and `npm run verify -- --quick`, and read `verification/report.json` if anything fails.
 

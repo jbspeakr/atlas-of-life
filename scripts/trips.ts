@@ -179,7 +179,8 @@ export function homeAt(
   );
 }
 const earthKm = 6371;
-function distanceKm(a: [number, number], b: [number, number]): number {
+/** Great-circle distance in kilometres. */
+export function distanceKm(a: [number, number], b: [number, number]): number {
   const φ1 = a[1] * rad, φ2 = b[1] * rad;
   const cosDelta =
     Math.sin(φ1) * Math.sin(φ2) +

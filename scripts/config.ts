@@ -12,6 +12,8 @@ const countries: Record<string, true> = Object.fromEntries(
     .map((code) => [code, true]),
 );
 countries.XK = true;
+/** Every country code the schema accepts. */
+export const countryCodes: readonly string[] = Object.keys(countries);
 const countrySchema = z
   .string({
     error: (issue) =>

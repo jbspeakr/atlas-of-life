@@ -104,6 +104,7 @@ async function main(): Promise<void> {
   ].sort();
   const countries = await repository.countries(countryCodes);
   const regions: Boundary[] = [];
+  const regionsOf: Record<string, number> = {};
   for (const country of countryCodes) {
     const visits = resolved.filter((visit) => visit.country === country);
     const requests = visits.map((visit) => ({
@@ -116,6 +117,7 @@ async function main(): Promise<void> {
       requests,
     );
     regions.push(...discovered.boundaries);
+    if (discovered.total) regionsOf[country] = discovered.total;
     for (const [index, visit] of visits.entries()) {
       const region = discovered.assignments[index];
       if (region) visit.region = region;
@@ -216,7 +218,15 @@ async function main(): Promise<void> {
     "home.json": JSON.stringify(homes),
     "trips.json": JSON.stringify(trips),
     "stats.json": JSON.stringify(
-      computeStats(anchored.map(publicVisit), places, trips.length),
+      computeStats(anchored.map(publicVisit), places, {
+        trips,
+        homes,
+        legs: routes.features.map((feature) => {
+          const line = feature.geometry.coordinates;
+          return [line[0], line[line.length - 1]] as [[number, number], [number, number]];
+        }),
+        regionsOf,
+      }),
     ),
     "routes.json": JSON.stringify(routes),
     "visits.json": JSON.stringify(anchored.map(publicVisit)),
