@@ -19,7 +19,7 @@ import { activeLayer } from "./layers";
 import { apartKm } from "./expressions";
 import { visibleAt, type Dated, type TimeMode } from "./time";
 import { formatHash, parseHash } from "./router";
-import { cameraAtFrame, createGlobeTour, selectTourStops } from "./tour";
+import { cameraAtFrame, createGlobeTour, selectTourStops, tourCandidates } from "./tour";
 import { attachSky } from "./sky";
 import { currentTheme, type Theme } from "../theme";
 export type Place = {
@@ -535,8 +535,10 @@ export async function createMap(
     firstIdleMs: 0,
     archive: { url: archive, bundled: new URL(archive).origin === location.origin },
     play() {
-      if (touring || !places.length) return;
-      const stops = selectTourStops(places, places[0]);
+      // The recorder picks the same stops, so the movie and the app agree.
+      const candidates = tourCandidates(places, homes);
+      if (touring || !candidates.length) return;
+      const stops = selectTourStops(candidates, candidates[0]);
       const { width, height } = canvas.getBoundingClientRect();
       const tour = createGlobeTour(stops, { width, height });
       finishIgnition();
