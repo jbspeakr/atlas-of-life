@@ -109,7 +109,7 @@ Fixture verification (`ATLAS_FIXTURE=1`) uses fictional visits and committed bou
 
 The workflow runs quick verification on every push and pull request, comments the objective table on same-repository pull requests, and deploys `main` to GitHub Pages. Set repository variables `VITE_BASEMAP_URL` and `VITE_TILE_ORIGINS`; the deploy job fails without the URL. `VITE_SITE_URL` is derived from the Pages URL so Open Graph tags are absolute; `npm run social` renders the 1200×630 card they reference. A Cloudflare Pages job is commented alongside.
 
-The build injects a strict CSP: scripts, fonts and styles from self, only explicit tile origins for connections, blob workers for MapLibre, no inline script except the hashed theme boot. Deploy over HTTP(S), not `file://`. `_headers` gives hashed assets a one-year immutable policy and marks `sw.js` no-cache on hosts that honour it; GitHub Pages does not, so use an immutable remote archive there. Never gzip a PMTiles object at the CDN.
+The build injects a strict CSP: scripts, fonts and styles from self, only explicit tile origins for connections, a same-origin module worker for MapLibre, no inline script except the hashed theme boot. MapLibre itself ships as three ES module files under `assets/maplibre-<hash>/`, served as they are so the page and the worker share one download; viewers need a browser with WebGL2. Deploy over HTTP(S), not `file://`. `_headers` gives hashed assets a one-year immutable policy and marks `sw.js` no-cache on hosts that honour it; GitHub Pages does not, so use an immutable remote archive there. Never gzip a PMTiles object at the CDN.
 
 ## Data provenance
 

@@ -1,4 +1,6 @@
-import maplibregl from "maplibre-gl";
+// Served unbundled beside its shared chunk and worker (vite.config.ts), so the
+// worker is found next to the library and the shared chunk ships once.
+import * as maplibregl from "maplibre-gl";
 import type {
   Map as LibreMap,
   StyleSpecification,
@@ -107,7 +109,7 @@ archiveTiles.getHeader().catch(() => {
   // The map awaits this same request and reports a failure itself.
 });
 /** The expected error for a tile outside the archive's detail windows. */
-export const isMissingTile = (error: Error) =>
+export const isMissingTile = (error: { message: string }) =>
   error.message === "Tile not found.";
 const ease = (t: number) => t * t * (3 - 2 * t);
 export type Atlas = {

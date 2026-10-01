@@ -1,10 +1,33 @@
 import { defineConfig, loadEnv } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 import { serviceWorkerSource } from "./scripts/service-worker.ts";
 import { themeBootSource } from "./src/theme.ts";
+// MapLibre is ES modules whose page half and worker import one shared chunk.
+// Bundling each half would ship that chunk twice, so the three files are served
+// as they are from a directory hashed by their content: the library then finds
+// its worker beside itself, the shared chunk downloads once, and `/assets/*`
+// stays immutable across upgrades.
+const maplibreFiles = [
+  "maplibre-gl.mjs",
+  "maplibre-gl-shared.mjs",
+  "maplibre-gl-worker.mjs",
+] as const;
+const maplibreSources = Object.fromEntries(
+  maplibreFiles.map((file) => [
+    file,
+    readFileSync(join("node_modules/maplibre-gl/dist", file), "utf8").replace(
+      /\n\/\/# sourceMappingURL=\S*\s*$/,
+      "\n",
+    ),
+  ]),
+);
+const maplibreDirectory = `assets/maplibre-${createHash("sha256")
+  .update(maplibreFiles.map((file) => maplibreSources[file]).join("\n"))
+  .digest("hex")
+  .slice(0, 8)}`;
 const walk = (dir: string): string[] =>
   existsSync(dir)
     ? readdirSync(dir).flatMap((name) => {
@@ -47,7 +70,7 @@ export default defineConfig(({ mode }) => {
       throw new Error("VITE_TILE_ORIGINS must contain exact origins");
     origins.add(origin);
   }
-  const csp = `default-src 'none'; script-src 'self' 'sha256-${createHash("sha256").update(themeBootSource).digest("base64")}'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ${[...origins].join(" ")}; worker-src 'self' blob:; child-src blob:; base-uri 'self'; form-action 'none'; object-src 'none'`;
+  const csp = `default-src 'none'; script-src 'self' 'sha256-${createHash("sha256").update(themeBootSource).digest("base64")}'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ${[...origins].join(" ")}; worker-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'`;
   return {
     base: env.VITE_BASE || "./",
     plugins: [
@@ -81,6 +104,18 @@ export default defineConfig(({ mode }) => {
               injectTo: "head" as const,
             })),
           ];
+          // The library and its shared chunk are imported by the app chunk;
+          // preloading them starts their downloads with the page's own.
+          for (const file of maplibreFiles.slice(0, 2))
+            tags.push({
+              tag: "link",
+              attrs: {
+                rel: "modulepreload",
+                href: `${env.VITE_BASE || "./"}${maplibreDirectory}/${file}`,
+                crossorigin: "",
+              },
+              injectTo: "head",
+            });
           // The style is fetched by the script; preloading it overlaps both downloads.
           const style = Object.values(ctx.bundle ?? {}).find((output) =>
             /^assets\/style-[^/]+\.json$/.test(output.fileName),
@@ -113,6 +148,18 @@ export default defineConfig(({ mode }) => {
             );
           }
           return { html, tags };
+        },
+      },
+      {
+        name: "atlas-maplibre",
+        apply: "build",
+        generateBundle() {
+          for (const file of maplibreFiles)
+            this.emitFile({
+              type: "asset",
+              fileName: `${maplibreDirectory}/${file}`,
+              source: maplibreSources[file],
+            });
         },
       },
       {
@@ -175,17 +222,22 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
+    // In development the library is served from node_modules as it is, so its
+    // worker resolves beside it there too.
+    optimizeDeps: { exclude: ["maplibre-gl"] },
     // Fine geometry LODs are emitted as hashed assets; never inline them as data URIs.
     build: {
       target: "es2022",
       sourcemap: false,
       assetsInlineLimit: 0,
       rollupOptions: {
+        external: ["maplibre-gl"],
         output: {
+          // Every chunk lives in assets/, so the library's directory is a sibling.
+          paths: { "maplibre-gl": `./${maplibreDirectory.slice("assets/".length)}/maplibre-gl.mjs` },
           // Libraries change far less often than the atlas: in their own
           // chunks, their hashes and cached copies survive a deploy.
           manualChunks(id) {
-            if (id.includes("/node_modules/maplibre-gl/")) return "maplibre";
             if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
           },
           // Hosts compress JSON reliably; the GeoJSON media type is not always on their list.

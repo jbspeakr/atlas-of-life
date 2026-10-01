@@ -176,13 +176,29 @@ async function browserProbe(
         body: '<!doctype html><html><head><link rel="icon" href="data:,"><title>Archive hosting probe</title></head><body style="margin:0"><div id="map" style="width:800px;height:600px"></div></body></html>',
       }),
     );
+    // MapLibre ships as ES modules whose worker is resolved beside the library,
+    // so the probe serves the library's dist files at its own origin.
+    const vendor = `${documentUrl}/vendor/`;
+    await page.route(`${vendor}*.mjs`, async (route) => {
+      const file = new URL(route.request().url()).pathname.split("/").at(-1)!;
+      try {
+        await route.fulfill({
+          contentType: "text/javascript; charset=utf-8",
+          body: await readFile(`node_modules/maplibre-gl/dist/${file}`),
+        });
+      } catch {
+        await route.fulfill({ status: 404, body: "Not a vendored module" });
+      }
+    });
     await page.goto(documentUrl);
     await page.addStyleTag({
       path: "node_modules/maplibre-gl/dist/maplibre-gl.css",
     });
     await page.addScriptTag({
-      path: "node_modules/maplibre-gl/dist/maplibre-gl.js",
+      type: "module",
+      content: `import * as maplibregl from "${vendor}maplibre-gl.mjs"; window.maplibregl = maplibregl; window.__maplibreReady = true;`,
     });
+    await page.waitForFunction(() => "__maplibreReady" in window);
     await page.addScriptTag({ path: "node_modules/pmtiles/dist/pmtiles.js" });
     // The document is fulfilled locally at the requested origin; archive fetches are NEVER intercepted.
     const value = (await page.evaluate(`(async () => {

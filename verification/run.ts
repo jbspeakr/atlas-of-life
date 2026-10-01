@@ -130,11 +130,11 @@ check(
   "budget.js",
   "budget",
   emitted
-    .filter((p) => p.endsWith(".js"))
+    .filter((p) => /\.m?js$/.test(p))
     .reduce((n, p) => n + gzipSync(readFileSync(p)).length, 0) ||
     Number.MAX_SAFE_INTEGER,
   budgets.jsGzip,
-  "dist/assets/*.js: gzipped application budget; excessive dependencies or missing build",
+  "dist/assets/*.js and *.mjs: gzipped application budget; excessive dependencies or missing build",
   "bytes",
 );
 check(
@@ -226,7 +226,7 @@ try {
     ...resolveHomes(validated, cache).map((home) => [home.id, home.coordinates]),
   ]);
   for (const file of [...emitted, ...generated]) {
-    if (!/\.(js|json|html|css|map|geojson)$/.test(file)) continue;
+    if (!/\.(m?js|json|html|css|map|geojson)$/.test(file)) continue;
     const text = readFileSync(file, "utf8");
     problems.push(...payloadViolations(file, text, safeCoordinates));
     for (const visit of config.visits)

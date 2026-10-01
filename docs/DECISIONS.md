@@ -4,7 +4,9 @@ Why the atlas looks and behaves the way it does. Each paragraph is a settled cho
 
 ## Stack and scope
 
-Vite, React, TypeScript, MapLibre GL JS 5, PMTiles 4, Zod, Vitest and Playwright, pinned to exact versions in the lockfile. MapLibre's own circle and symbol layers provide marks, glow and collision handling; a second rendering engine such as deck.gl would not earn its dependency cost. There is no backend and no database: the output is static files. Authored visits contain only country, city and dates; IDs and labels are generated. No photographs, personal names, notes, tags or stories are supported.
+Vite, React, TypeScript, MapLibre GL JS 6, PMTiles 4, Zod, Vitest and Playwright, pinned to exact versions in the lockfile. MapLibre's own circle and symbol layers provide marks, glow and collision handling; a second rendering engine such as deck.gl would not earn its dependency cost. There is no backend and no database: the output is static files. Authored visits contain only country, city and dates; IDs and labels are generated. No photographs, personal names, notes, tags or stories are supported.
+
+MapLibre 6 is ES modules only: a page module and a worker that both import one shared chunk. The library is therefore served as its three files from a directory named by their content hash, rather than bundled, because bundling each half would ship the shared chunk twice and put the build over its JavaScript budget; served once, the three files cost 304 KB gzipped against 277 KB for the single file of version 5. The page preloads the library and the shared chunk, the worker is found beside the library without a configured URL, and the content security policy allows only same-origin workers, with no `blob:`. WebGL2 is required by the library and so by the atlas; a browser without it sees the error state. MapLibre's own globe atmosphere and sky are not used: the night starfield and the halo stay on the canvas beneath the map, which already holds the one documented gradient and draws nothing the style would then draw twice. The library's default of slicing vector tiles beyond a source's maximum zoom is kept.
 
 ## Art direction
 

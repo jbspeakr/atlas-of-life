@@ -348,7 +348,7 @@ describe("date and collapse properties", () => {
 });
 it("actual MapLibre zoom expressions have continuous overlapping bands", () => {
   const samples = Object.values(bands).map((value) => {
-    const parsed = expression.createExpression(value, {
+    const parsed = expression.createExpression(value, "band", {
       type: "number",
       default: 1,
       transition: true,
@@ -431,7 +431,7 @@ describe("label anchors and pointer bands", () => {
   it("label bands extinguish under feature-state and hand over between zooms", async () => {
     const { withVisibility } = await import("../src/map/expressions.ts");
     for (const key of ["countryLabel", "regionLabel"] as const) {
-      const parsed = expression.createExpression(withVisibility(bands[key]));
+      const parsed = expression.createExpression(withVisibility(bands[key]), key);
       expect(parsed.result).toBe("success");
       if (parsed.result !== "success") return;
       const at = (zoom: number, visibility: number) =>
@@ -440,8 +440,8 @@ describe("label anchors and pointer bands", () => {
       expect(at(5.5, 0)).toBe(0);
       expect(at(key === "countryLabel" ? 3.5 : 5.5, 1)).toBe(1);
     }
-    const country = expression.createExpression(bands.countryLabel);
-    const region = expression.createExpression(bands.regionLabel);
+    const country = expression.createExpression(bands.countryLabel, "countryLabel");
+    const region = expression.createExpression(bands.regionLabel, "regionLabel");
     if (country.result !== "success" || region.result !== "success") throw new Error();
     // Country names fade out as region names arrive; neither is fully lit at the same zoom.
     for (let zoom = 0; zoom <= 16; zoom += 0.25) {
@@ -790,8 +790,8 @@ describe("journey arcs and home legs", () => {
 describe("focus expressions", () => {
   it("draw a journey only while revealed and dim other places without hiding them", async () => {
     const { scaleBand, revealed, undimmed, withVisibility } = await import("../src/map/expressions.ts");
-    const focus = expression.createExpression(scaleBand(bands.focus, revealed));
-    const pin = expression.createExpression(scaleBand(withVisibility(bands.pin), undimmed));
+    const focus = expression.createExpression(scaleBand(bands.focus, revealed), "focus");
+    const pin = expression.createExpression(scaleBand(withVisibility(bands.pin), undimmed), "pin");
     if (focus.result !== "success" || pin.result !== "success") throw new Error("invalid expression");
     const at = (parsed: typeof focus, zoom: number, state: Record<string, number>) =>
       Number(parsed.value.evaluate({ zoom }, undefined, state));
@@ -1100,7 +1100,7 @@ describe("day trips", () => {
     expect(bandAt(bands.focus, 10)).toBe(1);
     expect(apartKm(6)).toBeGreaterThan(apartKm(8));
     expect(apartKm(12)).toBe(0);
-    const parsed = expression.createExpression(apart(bands.focus, revealed));
+    const parsed = expression.createExpression(apart(bands.focus, revealed), "focus");
     if (parsed.result !== "success") throw new Error("invalid expression");
     const at = (zoom: number, km: number, reveal = 1) =>
       Number(parsed.value.evaluate({ zoom }, { type: "Point", properties: { km } } as never, { reveal }));
@@ -1220,7 +1220,7 @@ describe("day and night themes", () => {
     // The generated style itself is gated in verification/style.ts, after the build.
     const merged = mergeThemes("#080f18", "#d3dce4", isLight);
     const colour = (theme?: string) => {
-      const parsed = expression.createExpression(merged, null, theme ? { theme } : {});
+      const parsed = expression.createExpression(merged, "merged", null, theme ? { theme } : {});
       if (parsed.result === "error") throw new Error(JSON.stringify(parsed.value));
       return String(parsed.value.evaluate({ zoom: 2 }));
     };
