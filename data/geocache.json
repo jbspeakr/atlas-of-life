@@ -32,6 +32,17 @@
     "city": "Ödsmål",
     "source": "https://nominatim.openstreetmap.org/search?q=%C3%96dsm%C3%A5l&countrycodes=se&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
   },
+  "2e69527be96c917ed053a98487c3cf66b891db997cabd01bdd93c4134857cd08": {
+    "coordinates": [
+      9.9215263,
+      57.0462626
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Aalborg",
+    "source": "https://nominatim.openstreetmap.org/search?q=Aalborg&countrycodes=dk&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
   "3021e6cc4a4ba781671c56b2d7f8e3ab2021a330a1d36389a313f248bf0367a0": {
     "coordinates": [
       -3.18916667,
@@ -163,6 +174,17 @@
     "region": "NO-33",
     "city": "Lampeland",
     "source": "https://nominatim.openstreetmap.org/search?q=Lampeland&countrycodes=no&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "a209ba92db3bd2f88d507dc555cb3784f573caace3c69f5588203338dff65c9e": {
+    "coordinates": [
+      9.8913283,
+      56.8383525
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Skørping",
+    "source": "https://nominatim.openstreetmap.org/search?q=Sk%C3%B8rping&countrycodes=dk&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "b4a32af5c76861a35eb4b76b8f2ea8b314d63254286a093c21da30de6ac63b3c": {
     "coordinates": [

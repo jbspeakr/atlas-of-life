@@ -33,6 +33,28 @@ const config: Config = {
     },
     {
       country: "DK",
+      city: "Skørping",
+      date: "2025-05-27",
+    },
+    {
+      country: "DK",
+      city: "Lille Vildmose",
+      coordinates: [56.8813664, 10.195336],
+      publishPrecision: "exact",
+      date: "2025-05-28",
+    },
+    {
+      country: "DK",
+      city: "Aalborg",
+      date: "2025-05-29",
+    },
+    {
+      country: "DK",
+      city: "Skørping",
+      date: "2025-05-31",
+    },
+    {
+      country: "DK",
       city: "Bindslev",
       dateRange: ["2025-06-01", "2025-06-03"],
     },
