@@ -29,6 +29,8 @@ const config: Config = {
     {
       country: "DK",
       city: "Storvorde",
+      coordinates: [10.273445855646422, 56.97925672981059],
+      publishPrecision: "exact",
       dateRange: ["2025-05-25", "2025-06-01"],
     },
     {
@@ -39,7 +41,7 @@ const config: Config = {
     {
       country: "DK",
       city: "Lille Vildmose",
-      coordinates: [56.8813664, 10.195336],
+      coordinates: [10.195336, 56.8813664],
       publishPrecision: "exact",
       date: "2025-05-28",
     },
