@@ -1,5 +1,4 @@
 import type { Config } from "../scripts/config.ts";
-import { dayTripsByBase } from "../src/map/data.ts";
 
 const config: Config = {
   publishPrecision: "city",
