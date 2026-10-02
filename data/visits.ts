@@ -30,7 +30,7 @@ const config: Config = {
     },
     {
       country: "GR",
-      city: "Athen",
+      city: "Athens",
       date: "2025-04-30",
       dayTrip: true
     },
