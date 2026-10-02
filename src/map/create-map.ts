@@ -9,6 +9,7 @@ import type {
 } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
 import { PMTiles, Protocol } from "pmtiles";
+import { archiveSource } from "./archive";
 import styleUrl from "../generated/style.json?url";
 import countriesFineUrl from "../generated/countries-fine.geojson?url";
 import regionsFineUrl from "../generated/regions-fine.geojson?url";
@@ -43,7 +44,7 @@ const archive =
 // Start what the first frame waits on while the style downloads: the worker
 // pool and the archive's header and root directory, which the tile requests share.
 maplibregl.prewarm();
-const archiveTiles = new PMTiles(archive);
+const archiveTiles = new PMTiles(archiveSource(archive));
 protocol.add(archiveTiles);
 archiveTiles.getHeader().catch(() => {
   // The map awaits this same request and reports a failure itself.
