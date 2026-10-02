@@ -519,16 +519,31 @@ export async function runtimeChecks(approve = false): Promise<Check[]> {
       await page.getByRole("button", { name: /^All places/ }).click();
       await page.getByRole("searchbox", { name: "Search places" }).focus();
       const observed: string[] = [];
+      // The directory lists a page at a time; the keyboard path to the rest
+      // runs through its "Next places" control, which Tab reaches after the
+      // last entry of the page.
       for (
         let count = 0;
         count < 100 && observed.length < expected.length;
         count += 1
       ) {
         await page.keyboard.press("Tab");
-        const id = await page.evaluate(() =>
-          document.activeElement?.getAttribute("data-place-id"),
-        );
-        if (id) observed.push(id);
+        const focused = await page.evaluate(() => ({
+          id: document.activeElement?.getAttribute("data-place-id"),
+          label: document.activeElement?.getAttribute("aria-label"),
+        }));
+        if (focused.id) observed.push(focused.id);
+        if (focused.label === "Next places") {
+          const first = await page.evaluate(
+            () => document.querySelector("[data-place-id]")?.getAttribute("data-place-id"),
+          );
+          await page.keyboard.press("Enter");
+          await page.waitForFunction(
+            (previous) =>
+              document.querySelector("[data-place-id]")?.getAttribute("data-place-id") !== previous,
+            first,
+          );
+        }
       }
       record(
         "a11y.chronological-tab",
