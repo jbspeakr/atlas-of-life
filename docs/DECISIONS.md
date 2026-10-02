@@ -54,6 +54,8 @@ A new worker never takes over a running page. GitHub Pages caches HTML for ten m
 
 The production basemap is a Protomaps extract served from a Hugging Face dataset resolve URL pinned to a full commit SHA: measured in a real browser, it answers exact byte-range requests with the CORS headers PMTiles needs. Cloudflare R2 works too, provided the owner's CORS rule exposes `Content-Range` as well as `ETag`. Without a configured URL the repository runs its committed preview archive; explicit remote mode refuses a missing URL, mutable revisions and dated planet-build URLs, so no third-party endpoint is ever wired in by accident. The full extract stays out of Git; the 22 MB preview archive is committed for verification. `pmtiles extract` writes PMTiles, so the build script converts through `tile-join` to merge overlapping city windows without duplicated features.
 
+Ranged archive requests bypass the browser's HTTP cache on WebKit, so every browser on iOS and Safari elsewhere. Once WebKit holds a response for the archive it answers later ranged requests from it, which PMTiles rejects as a full 200 and the map reports as a byte-serving failure; a private window, which keeps no cache, loads the same archive. Blink and Gecko keep the cache, as PMTiles itself only disables it for Chrome on Windows, and the repeat-visit saving is small either way since neither reuses one slice for another.
+
 The Pages workflow reads its base path from `actions/configure-pages` before Vite runs, so a custom domain gets `/` and a project site `/repository/` without hardcoding either.
 
 ## Verification
