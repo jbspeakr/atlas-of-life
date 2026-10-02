@@ -12,7 +12,7 @@ export function styleChecks(): Check[] {
     const layer = style.layers.find((layer) => layer.id === id);
     const paint =
       layer?.paint?.[id === "pins" ? "circle-opacity" : "fill-opacity"];
-    const parsed = expression.createExpression(paint);
+    const parsed = expression.createExpression(paint, id);
     if (parsed.result === "error")
       throw new Error(
         `src/generated/style.json ${id}: invalid opacity ${JSON.stringify(parsed.value)}`,
@@ -128,6 +128,7 @@ export function styleChecks(): Check[] {
   for (const [id, property] of boundaryPaint) {
     const parsed = expression.createExpression(
       style.layers.find((layer) => layer.id === id)?.paint?.[property],
+      `${id}.${property}`,
     );
     if (parsed.result === "error") {
       unreceded++;
@@ -161,6 +162,7 @@ export function styleChecks(): Check[] {
     const colour = (theme: string) => {
       const parsed = expression.createExpression(
         style.layers.find((layer) => layer.id === id)?.paint?.[property],
+        `${id}.${property}`,
         null,
         { theme },
       );

@@ -18,6 +18,7 @@ import { computeStats } from "./stats.ts";
 import { placeKey } from "../src/map/place-key.ts";
 import {
   BoundaryRepository,
+  boundaryWeights,
   geometryMetadata,
   root,
   type Boundary,
@@ -25,10 +26,35 @@ import {
   type RawCollection,
 } from "./boundaries.ts";
 
+/**
+ * Simplification intervals in metres, chosen from the zoom at which each level
+ * of detail is drawn so that no interval exceeds a screen pixel while its layer
+ * is more than faint. At 52° latitude a pixel spans about 4.3 km at zoom 4.5,
+ * 1.7 km at 5.75, 1.2 km at 6.3 and 47 m at 11.
+ *
+ * - Coarse countries carry the world view up to zoom 4.5.
+ * - Fine countries take over at zoom 4.5, where the country fill has already
+ *   faded to 2 % and its outline to 6 %; 1 km stays under a pixel to zoom 6.3,
+ *   beyond which the layer sits at 1 % and is context, not subject.
+ * - Coarse regions carry zooms below 3, where the region band is still dark.
+ * - Fine regions are the regions from zoom 3 on: 200 m is well under a pixel
+ *   through the band's full strength (to zoom 5.75) and draws a smooth enough
+ *   8 % context line at the place view.
+ *
+ * Coordinates are written to four decimals (11 m), a twentieth of the finest
+ * interval; the fifth decimal was a metre of precision on 100 m geometry.
+ */
+const detail = {
+  countryCoarse: { interval: 2000, quantization: 100_000 },
+  countryFine: { interval: 1000, quantization: 1_000_000 },
+  regionCoarse: { interval: 750, quantization: 100_000 },
+  regionFine: { interval: 200, quantization: 1_000_000 },
+  precision: 0.0001,
+} as const;
+
 async function simplify(
   features: Boundary[],
-  interval: number,
-  quantization: number,
+  { interval, quantization }: { interval: number; quantization: number },
 ): Promise<Boundaries> {
   if (!features.length) return { type: "FeatureCollection", features: [] };
   const input = JSON.stringify({
@@ -51,7 +77,7 @@ async function simplify(
     { "input.geojson": input },
   );
   const output = await mapshaper.applyCommands(
-    "-i output.topojson -o output.geojson format=geojson precision=0.00001",
+    `-i output.topojson -o output.geojson format=geojson precision=${detail.precision}`,
     { "output.topojson": topology["output.topojson"] },
   );
   const data = JSON.parse(output["output.geojson"]) as RawCollection;
@@ -137,10 +163,10 @@ async function main(): Promise<void> {
   const visitedRegions = regions.filter((feature) =>
     visitedRegionIds.has(String(feature.id)),
   );
-  const countryCoarse = await simplify(countries.boundaries, 2000, 100_000);
-  const countryFine = await simplify(countries.boundaries, 250, 1_000_000);
-  const regionCoarse = await simplify(visitedRegions, 750, 100_000);
-  const regionFine = await simplify(visitedRegions, 100, 1_000_000);
+  const countryCoarse = await simplify(countries.boundaries, detail.countryCoarse);
+  const countryFine = await simplify(countries.boundaries, detail.countryFine);
+  const regionCoarse = await simplify(visitedRegions, detail.regionCoarse);
+  const regionFine = await simplify(visitedRegions, detail.regionFine);
   const countryById = new Map(
     countryFine.features.map((feature) => [String(feature.id), feature]),
   );
@@ -264,6 +290,16 @@ async function main(): Promise<void> {
       `${name}: ${Buffer.byteLength(text).toLocaleString("en-US")} bytes; gzip ${bytes.toLocaleString("en-US")} bytes`,
     );
   }
+  // Per boundary, so the heaviest coastline is named when the budget is near.
+  for (const [name, collection] of [
+    ["countries-fine", countryFine],
+    ["regions-fine", regionFine],
+  ] as const)
+    console.log(
+      `${name} by boundary (gzip KB): ${boundaryWeights(collection)
+        .map(({ id, bytes }) => `${id} ${Math.round(bytes / 1024)}`)
+        .join(", ")}`,
+    );
   console.log(
     `Geometry inline gzip: ${inlineBytes.toLocaleString("en-US")} bytes (coarse LODs in style.json; target 120,000); total gzip ${geometryBytes.toLocaleString("en-US")} bytes (target 400,000; maximum 1,000,000)`,
   );

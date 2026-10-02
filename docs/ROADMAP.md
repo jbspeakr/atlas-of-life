@@ -14,7 +14,7 @@ Every item below respects those rules. Anything that adds a public field goes th
 | [Numbers that mean something](#4-numbers-that-mean-something) | Then and now on the map. |
 | [Authoring without a laptop](#5-authoring-without-a-laptop) | Add a visit from your phone; import from what you already have. |
 | [In your language](#6-in-your-language) | The whole interface in German and other languages. |
-| [Foundations](#7-foundations) | Baselines, the published basemap, lighter geometry, MapLibre 6. |
+| [Foundations](#7-foundations) | Baselines and the published basemap. |
 
 ---
 
@@ -146,18 +146,16 @@ Work that makes everything above cheaper and safer.
 
 - **7a. Approved baselines.** Run `npm run verify` locally on a machine with a GPU, fix anything non-visual that fails, approve with `npm run verify:approve`, set the metric baseline, commit.
 - **7b. The complete published basemap.** Global z0–6 with city detail on a pinned Hugging Face SHA, as described in the [guide](GUIDE.md#basemap-deployment). Unblocks the poster, the recorder and the README hero.
-- **7c. Lighter geometry.** Bring the owner build's boundary geometry under the 400 KB gzip budget. Measure per country; keep, in the fine LOD, only a country's largest polygon and those near a visited place; tune simplification; split fine LODs per country if still needed.
-- **7d. MapLibre GL 6.** ESM, WebGL2 only, and the newer globe, sky and colour-relief work. Read the changelog against `create-map.ts`, `scripts/themes.ts` and `build-style.ts`; expect pixel changes, so it follows 7a.
-- **7e. Linkable journeys and During on phones.** `#/journey/<id>` in the router; the Through/During control on narrow screens.
+- **7c. Linkable journeys and During on phones.** `#/journey/<id>` in the router; the Through/During control on narrow screens.
 
 ## Suggested order
 
 | Order | Item | Why now |
 |---|---|---|
 | 1 | 7a, 7b | Everything with pixels or a wide view depends on them. |
-| 2 | 1c, 1d, 7e | Small, no pixels, immediately useful. |
+| 2 | 1c, 1d, 7c | Small, no pixels, immediately useful. |
 | 3 | 3b | Build-time data, high delight per line of code. |
 | 4 | 2a, 2b, 1b | The share story: replay, year in review, rich links. |
 | 5 | 3a, 1a | The signature pieces: the real sky and the poster. |
 | 6 | 5a, 5b | Authoring reach. |
-| 7 | 2c, 2d, 6, 7c, 7d, 3c, 4a, 5c | As appetite allows. |
+| 7 | 2c, 2d, 6, 3c, 4a, 5c | As appetite allows. |

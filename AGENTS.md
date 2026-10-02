@@ -6,7 +6,7 @@ A map of this repository for coding agents. Read it before changing anything; it
 
 **Atlas of a Life** is a static, single-page night-sky atlas of places someone has visited. One MapLibre globe zooms continuously from world to countries to regions to places. The owner authors only country, city and dates in `data/visits.ts`; a build step geocodes nothing, but discovers regions, generates IDs and labels, infers journeys, computes statistics and writes a MapLibre style. The output in `dist/` is plain static files with a strict CSP, deployable to GitHub Pages or any static host.
 
-Stack: Vite 7, React 19, TypeScript 5 (strict), MapLibre GL 5, PMTiles 4, Zod 4, Vitest, Playwright. Node **22.12+**. No backend, no database, no deck.gl.
+Stack: Vite 7, React 19, TypeScript 5 (strict), MapLibre GL 6 (ES modules, WebGL2), PMTiles 4, Zod 4, Vitest, Playwright. Node **22.12+**. No backend, no database, no deck.gl.
 
 ## Repository layout
 

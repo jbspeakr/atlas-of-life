@@ -194,7 +194,7 @@ The [roadmap](docs/ROADMAP.md) has the detail.
 - [x] **Numbers that mean something**: milestones, coverage, furthest from home, years compared (the then-and-now map mode remains)
 - [ ] **Authoring without a laptop**: add a visit from your phone through an issue form, import from Polarsteps or Google Timeline, two atlases on one globe
 - [ ] **In your language**: the whole interface in German and more
-- [ ] **Foundations**: approved baselines, the complete published basemap, lighter geometry, MapLibre GL 6
+- [ ] **Foundations**: approved baselines and the complete published basemap
 
 Have an idea or found a bug? [Open an issue](https://github.com/jbspeakr/atlas-of-life/issues).
 

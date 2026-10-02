@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  createMap,
   dayTripsByBase,
   homes,
   isMissingTile,
@@ -10,8 +9,9 @@ import {
   trips,
   visits,
   visitsByPlace,
-} from "./map/create-map";
-import type { Atlas, PublicVisit } from "./map/create-map";
+} from "./map/data";
+import type { PublicVisit } from "./map/data";
+import type { Atlas } from "./map/create-map";
 import { fold } from "./map/text";
 import { applyTheme, currentTheme, followSystem, type Theme } from "./theme";
 import { captionGeography } from "./map/caption";
@@ -264,30 +264,36 @@ function App() {
     if (!host.current) return;
     const abort = new AbortController();
     let controller: Atlas | undefined;
-    void createMap(
-      host.current,
-      (id) => {
-        if (id) {
-          origin.current = document.activeElement as HTMLElement | null;
-          setExplorerOpen(false);
-          setStatsOpen(false);
-        } else if (selectedRef.current) restoreFocus();
-        setSelected(id);
-      },
-      (message, z, ids) => {
-        setView(message);
-        setZoom(z);
-        setVisibleIds(ids);
-        setPage(0);
-      },
-      (routedThrough, routedMode) => {
-        setThrough(routedThrough);
-        setMode(routedMode);
-        setPage(0);
-      },
-      setTouring,
-      abort.signal,
-    )
+    const container = host.current;
+    // The map module brings MapLibre with it; importing it here, after the
+    // first render, lets the title and controls paint while it downloads.
+    void import("./map/create-map")
+      .then(({ createMap }) =>
+        createMap(
+          container,
+          (id) => {
+            if (id) {
+              origin.current = document.activeElement as HTMLElement | null;
+              setExplorerOpen(false);
+              setStatsOpen(false);
+            } else if (selectedRef.current) restoreFocus();
+            setSelected(id);
+          },
+          (message, z, ids) => {
+            setView(message);
+            setZoom(z);
+            setVisibleIds(ids);
+            setPage(0);
+          },
+          (routedThrough, routedMode) => {
+            setThrough(routedThrough);
+            setMode(routedMode);
+            setPage(0);
+          },
+          setTouring,
+          abort.signal,
+        ),
+      )
       .then((value) => {
         if (abort.signal.aborted) {
           value.destroy();

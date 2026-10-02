@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 const mime: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".geojson": "application/geo+json",
@@ -138,7 +139,7 @@ export async function startServer(
       // Ordinary static-host compression; byte ranges on archives remain identity encoded.
       if (
         status === 200 &&
-        /\.(?:html|js|css|json|geojson)$/.test(filename) &&
+        /\.(?:html|m?js|css|json|geojson)$/.test(filename) &&
         /\bgzip\b/.test(request.headers["accept-encoding"] ?? "")
       ) {
         let bytes = compressed.get(filename);
