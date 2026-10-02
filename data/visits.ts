@@ -30,8 +30,10 @@ const config: Config = {
     },
     {
       country: "GR",
-      city: "Athens",
+      city: "Athen",
       date: "2025-04-30",
+      coordinates: [23.72456, 37.97478],
+      publishPrecision: "exact",
       dayTrip: true
     },
     {
