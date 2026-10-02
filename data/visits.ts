@@ -139,7 +139,7 @@ const config: Config = {
     {
       country: "NO",
       city: "Lampeland",
-      coordinates: [9.44849, 5980486],
+      coordinates: [9.44849, 59.80486],
       publishPrecision: "exact",
       dateRange: ["2025-06-07", "2025-06-12"],
     },
