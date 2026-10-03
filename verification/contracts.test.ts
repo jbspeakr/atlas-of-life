@@ -252,7 +252,7 @@ describe("authored config corpus", () => {
         coordinates: undefined,
         city: undefined,
       },
-      "geocache miss for berlin; run npm run geocode or add explicit coordinates",
+      "geocache miss for berlin (DE); run npm run geocode or add explicit coordinates",
     ],
     [{ ...good, id: "bad id" }, "id must be a stable lowercase slug"],
   ];
@@ -266,6 +266,16 @@ describe("authored config corpus", () => {
     expect(() => validateConfig({ visits: [good, good] })).toThrow(
       "duplicate id: berlin",
     ));
+  it("reports every geocache miss at once, each with city, country and date", () => {
+    const visits = [
+      { country: "GR", city: "Athen", date: "2025-04-29" },
+      { ...good, publishPrecision: "exact" },
+      { country: "GR", city: "Néa Palátia", dateRange: ["2025-04-29", "2025-05-01"] },
+    ];
+    expect(() => validateConfig({ visits }, {})).toThrow(
+      /^geocache miss for gr-athen-\w+ \(Athen, GR, 2025-04-29\), gr-nea-palatia-\w+ \(Néa Palátia, GR, 2025-04-29\.\.2025-05-01\); run npm run geocode/,
+    );
+  });
   it("rejects personal fields", () =>
     expect(() =>
       validateConfig({ visits: [{ ...good, notes: "private" }] }),
