@@ -528,7 +528,17 @@ export class BoundaryRepository {
           true,
         );
         boundary = match(fallback, request);
-        if (boundary) {
+        const shared =
+          boundary && preferred.find((feature) => feature.id === boundary?.id);
+        if (shared) {
+          // Both sources carry the subdivision; only the preferred coastline omits the
+          // point (a small island or a cruder shoreline). Natural Earth settles the
+          // membership and the preferred geometry is published once under that identity.
+          console.warn(
+            `gbOpen ADM1 ${shared.id} (${shared.properties.label}) omits ${request.coordinates?.join(",")}; Natural Earth places it inside, so the gbOpen geometry is kept`,
+          );
+          boundary = shared;
+        } else if (boundary) {
           const reason = source
             ? `gbOpen ADM1 does not cover ${request.region ?? request.coordinates?.join(",")}`
             : `gbOpen ADM1 is unavailable for ${iso3} (HTTP 404)`;
