@@ -41,9 +41,10 @@ Or let the command do it:
 NOMINATIM_CONTACT=you@example.org npm run add -- GR Kalamos 2025-04-27..2025-05-02
 npm run add -- DE Potsdam 2025-03-01 --day-trip
 npm run import -- file.csv
+npm run photos -- photos.json
 ```
 
-Both validate, append, geocode and print the resolved point. A single date inside a stay is a day trip from that stay on its own; `--day-trip` is for a day out from home or on a stay's first or last day. If you edit by hand, run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, then `npm run build`. Commit the config, the geocache and `data/sources.json`. Set your home once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }`; journeys start and end there. See [data authoring](DATA.md) for identity, precision, home, journeys and day trips.
+All three validate, append, geocode and print the resolved point; `photos` first shows what it found in a photo library export and waits for a yes (see [From photos](DATA.md#from-photos)). A single date inside a stay is a day trip from that stay on its own; `--day-trip` is for a day out from home or on a stay's first or last day. If you edit by hand, run `NOMINATIM_CONTACT=you@example.org npm run geocode` for new cities, then `npm run build`. Commit the config, the geocache and `data/sources.json`. Set your home once with `home: { country: "DE", city: "Berlin", since: "2024-04-25" }`; journeys start and end there. See [data authoring](DATA.md) for identity, precision, home, journeys and day trips.
 
 ## Record a tour
 

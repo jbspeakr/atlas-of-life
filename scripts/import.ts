@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import authoredConfig from "../data/visits.ts";
-import { duplicateOf, parseCsv, visitFromRow, type AuthoredVisit } from "./authoring.ts";
+import { parseCsv, visitsFromRows } from "./authoring.ts";
 import { commitVisits } from "./add.ts";
 
 const help = `Import visits from a CSV with the header country,city,start,end,label,trip[,region][,daytrip].
@@ -27,24 +27,7 @@ if (values.help || positionals.length !== 1) {
   process.exitCode = values.help ? 0 : 1;
 } else {
   const rows = parseCsv(await readFile(positionals[0], "utf8"));
-  const accepted: AuthoredVisit[] = [];
-  const skipped: string[] = [];
-  const failed: string[] = [];
-  const config = { ...authoredConfig, visits: [...authoredConfig.visits] };
-  for (const row of rows) {
-    try {
-      const visit = visitFromRow(row);
-      const existing = duplicateOf(config, visit);
-      if (existing) {
-        skipped.push(`line ${row.line}: ${visit.city}, ${visit.country} already present`);
-        continue;
-      }
-      accepted.push(visit);
-      config.visits.push(visit);
-    } catch (error) {
-      failed.push(error instanceof Error ? error.message : String(error));
-    }
-  }
+  const { accepted, skipped, failed } = visitsFromRows(rows, authoredConfig);
   for (const line of skipped) console.log(`skip  ${line}`);
   for (const line of failed) console.error(`error ${line}`);
   if (failed.length) {

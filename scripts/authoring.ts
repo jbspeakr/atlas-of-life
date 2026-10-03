@@ -198,3 +198,61 @@ export function visitFromRow(row: CsvRow): AuthoredVisit {
   validate(visit, `line ${row.line}: `);
   return visit;
 }
+
+/** An existing visit at the same place whose dates touch the proposed ones. */
+export function overlapsExisting(
+  config: Config,
+  visit: AuthoredVisit,
+): Config["visits"][number] | undefined {
+  const [start, end] = dateBounds(visit);
+  return config.visits.find((existing) => {
+    if (existing.country !== visit.country || fold(existing.city ?? "") !== fold(visit.city)) return false;
+    const [from, to] = dateBounds(existing);
+    return from <= end && start <= to;
+  });
+}
+
+export type RowOutcome = {
+  accepted: AuthoredVisit[];
+  /** Rows already present, as `line N: City, CC already present`. */
+  skipped: string[];
+  /** Invalid rows, as their error messages. */
+  failed: string[];
+};
+/**
+ * The CSV import loop shared by `npm run import` and `npm run photos`: each row
+ * is validated like `npm run add`, duplicates of existing or earlier rows are
+ * skipped, and invalid rows are collected rather than thrown.
+ */
+export function visitsFromRows(rows: readonly CsvRow[], base: Config): RowOutcome {
+  const config = { ...base, visits: [...base.visits] };
+  const outcome: RowOutcome = { accepted: [], skipped: [], failed: [] };
+  for (const row of rows) {
+    try {
+      const visit = visitFromRow(row);
+      const existing = duplicateOf(config, visit);
+      if (existing) {
+        outcome.skipped.push(`line ${row.line}: ${visit.city}, ${visit.country} already present`);
+        continue;
+      }
+      outcome.accepted.push(visit);
+      config.visits.push(visit);
+    } catch (error) {
+      outcome.failed.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return outcome;
+}
+
+/** The CSV `npm run import` reads, from visits; the inverse of visitFromRow. */
+export function csvFromVisits(visits: readonly AuthoredVisit[]): string {
+  const cell = (value: string | undefined): string =>
+    value && /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : (value ?? "");
+  const lines = visits.map((visit) => {
+    const [start, end] = visit.dateRange ?? [visit.date ?? "", visit.date ?? ""];
+    return [visit.country, visit.city, start, end === start ? "" : end, visit.label, visit.trip, visit.region, visit.dayTrip ? "yes" : ""]
+      .map(cell)
+      .join(",");
+  });
+  return ["country,city,start,end,label,trip,region,daytrip", ...lines].join("\n") + "\n";
+}

@@ -123,7 +123,7 @@ A GitHub issue form ("New visit": country, city, dates, optional trip) feeds a w
 
 ### 5b. Import from where the data already is
 
-Beyond CSV: a one-off `npm run import -- --from polarsteps export.zip` and `--from google-timeline Records.json` that reduce a track to days-in-a-city (stop clustering by day, then one reverse geocode per cluster under the Nominatim policy, throttled and capped, with `--dry-run` first). Migration from the apps people leave is how a personal atlas earns its first fifty places.
+`npm run photos` reads an osxphotos export today, using the city and country the phone resolved so no lookup is made per photo. Next: let the command run `osxphotos` itself on a Mac, remember the person or album that marks a trip, and read a plain folder of images through their EXIF data for libraries outside Photos. Then Polarsteps and Google Timeline exports (`--from polarsteps export.zip`, `--from google-timeline Records.json`) through the same city-day clustering, with one reverse geocode per cluster under the Nominatim policy, throttled and capped, for the clusters no export already names. Migration from the apps people leave is how a personal atlas earns its first fifty places.
 
 - **Rules.** Reverse geocoding only through the explicit command, never in a build; the result is still country, city and dates.
 
