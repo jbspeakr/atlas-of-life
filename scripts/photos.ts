@@ -221,7 +221,7 @@ export function renderProposal(reviews: readonly Review[], extras: { passedThrou
     }
   }
   const footer = [
-    extras.passedThrough ? `${plural(extras.passedThrough, "place")} passed through with too few photos` : "",
+    extras.passedThrough ? `${plural(extras.passedThrough, "place")} passed through (too few photos or too short a stop)` : "",
     extras.home ? `${plural(extras.home, "photo")} at home` : "",
     extras.unnamed ? `${plural(extras.unnamed, "photo")} without a place name` : "",
   ].filter(Boolean);
@@ -264,6 +264,12 @@ async function main(): Promise<void> {
     ...(settings.maxGapDays !== undefined ? { maxGapDays: settings.maxGapDays } : {}),
     ...flags.overrides,
     homes: await homesFromConfig(),
+    // Stays the atlas already holds are bases: a run of days beside one is day trips.
+    knownStays: authoredConfig.visits.flatMap((visit) =>
+      visit.city && visit.dateRange && visit.dateRange[0] && visit.dateRange[1]
+        ? [{ country: visit.country, city: visit.city, start: visit.dateRange[0], end: visit.dateRange[1] }]
+        : [],
+    ),
   };
   const all = readOsxphotos(await readFile(parsed.file, "utf8"));
   // Incremental by default: a week before the newest photo of the last run, so a
@@ -277,8 +283,12 @@ async function main(): Promise<void> {
     ? `home ${options.homes.map((home) => home.city).join(", ")} within ${options.homeRadiusKm} km`
     : "no home set";
   console.log(
-    `${plural(photos.length, "located photo")}${floor ? ` since ${floor}` : ""}${all.length !== photos.length ? ` of ${all.length}` : ""}; ${homeNote}; a day counts from ${options.minPhotos} photos or ${options.minSpanMinutes} minutes.`,
+    `${plural(photos.length, "located photo")}${floor ? ` since ${floor}` : ""}${all.length !== photos.length ? ` of ${all.length}` : ""}; ${homeNote}; a day counts from ${options.minPhotos} photos or ${options.minSpanMinutes} minutes, a day trip from ${options.dayTripMinPhotos} photos over ${options.minSpanMinutes} minutes, twice that on a travel day.`,
   );
+  if (photos.length && !photos.some((photo) => photo.time))
+    console.log(
+      "The export carries no photo times, so short stops cannot be told from day trips; add --field time '{created.strftime,%H:%M}' to the osxphotos command.",
+    );
   if (!result.visits.length) {
     console.log("No visits to propose.");
     console.log(renderProposal([], { passedThrough: result.passedThrough.length, ...result.dropped }));

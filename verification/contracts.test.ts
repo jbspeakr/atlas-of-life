@@ -1311,7 +1311,6 @@ describe("visits from photos", () => {
       { country: "FR", city: "Lyon", date: "2022-05-21" },
       { country: "GB", city: "London", dateRange: ["2024-04-12", "2024-04-16"] },
       { country: "GB", city: "Windsor", date: "2024-04-12", dayTrip: true },
-      { country: "GB", city: "Brighton", date: "2024-04-14" },
       { country: "GB", city: "Edinburgh", dateRange: ["2025-08-02", "2025-08-06"] },
     ]);
     const munich = result.visits[0];
@@ -1320,11 +1319,14 @@ describe("visits from photos", () => {
     expect(munich.album).toBe("Bavaria 2020");
     expect(munich.point?.[0]).toBeCloseTo(11.5756, 1);
     // The undated record never left the reader; every photo at home vanished before clustering.
-    expect(photos).toHaveLength(235);
+    expect(photos).toHaveLength(263);
     expect(result.dropped).toEqual({ home: 42, unnamed: 0, undated: 0 });
-    // A train window and a motorway stop are passed through; a quiet day inside a stay is not.
+    // A train window, two photos over an afternoon, a half-hour lunch stop with many photos and
+    // a motorway stop are all passed through; a quiet day inside a stay is not.
     expect(result.passedThrough.map((day) => `${day.city} ${day.date}`)).toEqual([
       "Kassel 2020-08-10",
+      "Brighton 2024-04-14",
+      "Morpeth 2025-08-02",
       "Newcastle upon Tyne 2025-08-02",
     ]);
     expect(result.lastDate).toBe("2025-08-07");
@@ -1339,6 +1341,39 @@ describe("visits from photos", () => {
     const potsdam = day("Potsdam", 52.3906, 13.0645, 12);
     expect(clusterPhotos(potsdam, { ...defaultClusterOptions, homes: [berlin] }).visits).toHaveLength(1);
     expect(clusterPhotos(potsdam, { ...defaultClusterOptions, homeRadiusKm: 30, homes: [berlin] }).visits).toEqual([]);
+  });
+  it("lets one stay be the base and turns an overlapping run elsewhere into day trips", async () => {
+    const { clusterPhotos, defaultClusterOptions } = await import("../scripts/clusters.ts");
+    const days = (city: string, lat: number, lon: number, dates: [string, number][]) =>
+      dates.flatMap(([date, n]) =>
+        Array.from({ length: n }, (_, i) => ({
+          date,
+          time: `${String(9 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
+          latitude: lat,
+          longitude: lon,
+          country: "SE",
+          city,
+        })),
+      );
+    // A cottage week: the base is photographed every day, a village nearby on three of them.
+    const base = days("Råda", 59.86, 13.5, [["2025-06-12", 8], ["2025-06-13", 12], ["2025-06-14", 10], ["2025-06-15", 9], ["2025-06-16", 11], ["2025-06-17", 12]]);
+    const nearby = days("Ransäter", 59.78, 13.43, [["2025-06-14", 12], ["2025-06-15", 6], ["2025-06-16", 13]]);
+    const result = clusterPhotos([...base, ...nearby], defaultClusterOptions);
+    expect(result.visits.map(({ photos: _n, point: _p, ...visit }) => visit)).toEqual([
+      { country: "SE", city: "Råda", dateRange: ["2025-06-12", "2025-06-17"] },
+      { country: "SE", city: "Ransäter", date: "2025-06-14" },
+      { country: "SE", city: "Ransäter", date: "2025-06-16" },
+    ]);
+    expect(result.passedThrough.map((day) => `${day.city} ${day.date}`)).toEqual(["Ransäter 2025-06-15"]);
+    // When the atlas already holds the base, the nearby run never becomes a stay at all,
+    // and on the base's arrival day the bar for a day trip doubles.
+    const known = clusterPhotos(nearby, {
+      ...defaultClusterOptions,
+      knownStays: [{ country: "SE", city: "Råda", start: "2025-06-14", end: "2025-06-17" }],
+    });
+    expect(known.visits.map(({ photos: _n, point: _p, ...visit }) => visit)).toEqual([
+      { country: "SE", city: "Ransäter", date: "2025-06-16" },
+    ]);
   });
   it("is independent of photo order and of duplicates in the export", async () => {
     const { clusterPhotos, defaultClusterOptions } = await import("../scripts/clusters.ts");
@@ -1381,6 +1416,6 @@ describe("visits from photos", () => {
     expect(text).toMatch(/^Trip 2024-04-12 \.\. 2024-04-16$/m);
     expect(text).toMatch(/^ {5}London, GB .* stay .* 41 photos {2}already in the atlas$/m);
     expect(text).toMatch(/^ {2}2 {2}Windsor, GB .* day trip .* 6 photos$/m);
-    expect(text).toMatch(/Skipped: 2 places passed through with too few photos; 42 photos at home\.$/);
+    expect(text).toMatch(/Skipped: 2 places passed through \(too few photos or too short a stop\); 42 photos at home\.$/);
   });
 });

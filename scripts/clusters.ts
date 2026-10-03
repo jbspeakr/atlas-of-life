@@ -37,6 +37,8 @@ export type ClusterOptions = {
   maxGapDays: number;
   /** Unnamed photos join a named city-day of the same date within this distance. */
   mergeKm: number;
+  /** Stays the atlas already holds; they are bases, and a run beside one is day trips. */
+  knownStays?: { country: string; city: string; start: string; end: string }[];
 };
 
 export const defaultClusterOptions: ClusterOptions = {
@@ -53,10 +55,12 @@ export type CityDay = {
   country: string;
   city: string;
   photos: number;
+  /** Whether any photo of the day carried a time of day. */
+  timed: boolean;
   /** Minutes between the first and last timed photo; 0 without times. */
   spanMinutes: number;
   albums: Map<string, number>;
-  /** Mean of the located photos, for the rare reverse lookup. */
+  /** A point among the located photos, for the rare reverse lookup. */
   point?: [number, number];
 };
 
@@ -168,6 +172,7 @@ export function cityDays(
         country: photo.country,
         city: photo.city,
         photos: 0,
+        timed: false,
         spanMinutes: 0,
         albums: new Map(),
         spellings: new Map(),
@@ -208,6 +213,7 @@ export function cityDays(
       return {
         ...day,
         city,
+        timed: first !== undefined,
         spanMinutes: first !== undefined && last !== undefined ? last - first : 0,
         point: representative({ longitudes, latitudes }),
       };
@@ -232,6 +238,13 @@ function sharedAlbum(days: readonly CityDay[]): string | undefined {
 }
 
 /** Reduces photos to proposed visits under the rules above. */
+type Stay = { country: string; city: string; start: string; end: string };
+const samePlace = (a: { country: string; city: string }, b: { country: string; city: string }): boolean =>
+  a.country === b.country && fold(a.city) === fold(b.city);
+const overlaps = (a: { start: string; end: string }, b: { start: string; end: string }): boolean =>
+  a.start <= b.end && b.start <= a.end;
+
+/** Reduces photos to proposed visits under the rules above. */
 export function clusterPhotos(
   photos: readonly PhotoPoint[],
   options: ClusterOptions = defaultClusterOptions,
@@ -245,9 +258,8 @@ export function clusterPhotos(
     list.push(day);
     byPlace.set(key, list);
   }
-  const visits: ProposedVisit[] = [];
-  const stays: { start: string; end: string }[] = [];
-  const singles: { day: CityDay; run: CityDay[] }[] = [];
+  const candidates: CityDay[][] = [];
+  let singles: CityDay[] = [];
   for (const run of byPlace.values()) {
     // Runs of city-days at one place, split where the gap exceeds the allowance. A
     // run needs one substantial day; the quiet days beside it are its arrival and
@@ -256,12 +268,8 @@ export function clusterPhotos(
     const flush = () => {
       if (!current.length) return;
       if (!current.some((day) => qualifies(day, options))) passedThrough.push(...current);
-      else if (current.length > 1) {
-        const start = current[0].date;
-        const end = current[current.length - 1].date;
-        stays.push({ start, end });
-        visits.push(proposal(current, { dateRange: [start, end] }));
-      } else singles.push({ day: current[0], run: current });
+      else if (current.length > 1) candidates.push(current);
+      else singles.push(current[0]);
       current = [];
     };
     for (const day of run) {
@@ -271,27 +279,55 @@ export function clusterPhotos(
     }
     flush();
   }
-  for (const { day, run } of singles) {
-    const inside = stays.some((stay) => stay.start < day.date && day.date < stay.end);
-    const edge = stays.some((stay) => stay.start === day.date || stay.end === day.date);
-    // A lone day inside a stay is a day trip the build infers from the dates; on a
-    // stay's arrival or departure day it must be marked, as a plain date would read
-    // as a stop on the way. A lone day touching no stay stands on its own merits.
-    if (inside || edge || day.photos >= options.dayTripMinPhotos)
-      visits.push(proposal(run, { date: day.date, ...(edge && !inside ? { dayTrip: true as const } : {}) }));
+  // One bed a night: of two stays at different places with overlapping dates, the
+  // better photographed one is the base and the other dissolves into lone days,
+  // which the day-trip rules below judge one by one. Stays the atlas already holds
+  // are bases from the start, so a run beside a known stay never becomes a second one.
+  const stays: Stay[] = [...(options.knownStays ?? [])];
+  const visits: ProposedVisit[] = [];
+  const weight = (run: CityDay[]) => run.reduce((sum, day) => sum + day.photos, 0);
+  candidates.sort(
+    (a, b) =>
+      weight(b) - weight(a) ||
+      b.length - a.length ||
+      a[0].date.localeCompare(b[0].date) ||
+      a[0].country.localeCompare(b[0].country) ||
+      fold(a[0].city).localeCompare(fold(b[0].city)),
+  );
+  for (const run of candidates) {
+    const stay: Stay = { country: run[0].country, city: run[0].city, start: run[0].date, end: run[run.length - 1].date };
+    if (stays.some((other) => !samePlace(other, stay) && overlaps(other, stay))) singles.push(...run);
+    else {
+      stays.push(stay);
+      visits.push(proposal(run, { dateRange: [stay.start, stay.end] }));
+    }
+  }
+  // A lone day is a day trip when it has enough photos spread over enough of the day;
+  // short bursts are stops. On a stay's arrival or departure day the bar doubles, since
+  // most places photographed on a travel day are where the car or train paused.
+  for (const day of singles) {
+    const elsewhere = stays.filter((stay) => !samePlace(stay, day));
+    const inside = elsewhere.some((stay) => stay.start < day.date && day.date < stay.end);
+    const edge = !inside && elsewhere.some((stay) => stay.start === day.date || stay.end === day.date);
+    const enough =
+      day.photos >= options.dayTripMinPhotos * (edge ? 2 : 1) &&
+      (!day.timed || day.spanMinutes >= options.minSpanMinutes);
+    // Inside a stay the build infers the day trip from the dates; on the stay's
+    // arrival or departure day it must be marked, as a plain date would read as a
+    // stop on the way. A lone day touching no stay stands as a dated visit.
+    if (enough) visits.push(proposal([day], { date: day.date, ...(edge ? { dayTrip: true as const } : {}) }));
     else passedThrough.push(day);
   }
-  visits.sort((a, b) => (a.date ?? a.dateRange?.[0] ?? "").localeCompare(b.date ?? b.dateRange?.[0] ?? "") || a.country.localeCompare(b.country) || fold(a.city).localeCompare(fold(b.city)));
+  singles = [];
+  visits.sort(
+    (a, b) =>
+      (a.date ?? a.dateRange?.[0] ?? "").localeCompare(b.date ?? b.dateRange?.[0] ?? "") ||
+      a.country.localeCompare(b.country) ||
+      fold(a.city).localeCompare(fold(b.city)),
+  );
   // A quiet day inside a stay at the same place is part of the stay, not a place passed through.
   const covered = (day: CityDay) =>
-    visits.some(
-      (visit) =>
-        visit.dateRange &&
-        visit.country === day.country &&
-        fold(visit.city) === fold(day.city) &&
-        visit.dateRange[0] <= day.date &&
-        day.date <= visit.dateRange[1],
-    );
+    stays.some((stay) => samePlace(stay, day) && stay.start <= day.date && day.date <= stay.end);
   const remaining = passedThrough
     .filter((day) => !covered(day))
     .sort((a, b) => a.date.localeCompare(b.date) || fold(a.city).localeCompare(fold(b.city)));
