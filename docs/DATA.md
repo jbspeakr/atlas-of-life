@@ -21,10 +21,28 @@ NOMINATIM_CONTACT=you@example.org npm run add -- DE "Wendisch Rietz" 2025-04-04.
 npm run add -- GR Kalamos 2025-04-27 --trip "Spring 2025" --dry-run
 npm run add -- DE Potsdam 2025-03-01 --day-trip
 npm run import -- trips.csv
+NOMINATIM_CONTACT=you@example.org npm run photos -- photos.json
 NOMINATIM_CONTACT=you@example.org npm run geocode   # after editing by hand
 ```
 
 `add` validates, appends in the file's own style, refuses a duplicate (same country, folded city and dates), warms the geocache and prints the resolved point. `--region`, `--label`, `--trip` and `--day-trip` set the optional fields; `--dry-run` prints without writing; `--no-geocode` defers the cache step. `import` reads a CSV with the header `country,city,start,end,label,trip[,region][,daytrip]` (`daytrip` is `yes`, `true` or `1`), skips rows already present and aborts before writing on any invalid row. GPX or timeline exports are not imported: they would need reverse geocoding of many points against Nominatim's usage policy. After any change, run `npm run build` and commit the config, `data/geocache.json` and `data/sources.json`.
+
+### From photos
+
+`photos` proposes visits from a photo library export and adds the ones you confirm. Export the metadata on a Mac with [osxphotos](https://github.com/RhetTbull/osxphotos), which reads the Photos library in place, including photos kept only in iCloud; `npm run photos -- --help` prints the exact command. Filter it to the person or album that marks a trip:
+
+```sh
+osxphotos query --person "Name" --location --json \
+  --field date '{created.date}' --field time '{created.strftime,%H:%M}' \
+  --field lat '{photo.latitude}' --field lon '{photo.longitude}' \
+  --field country '{place.country_code}' --field city '{place.address.city}' \
+  --field albums '{album}' > photos.json
+NOMINATIM_CONTACT=you@example.org npm run photos -- photos.json
+```
+
+Photos are never the unit. Each one collapses to its local date plus the city and country Photos attached; photos at a home city, or within 25 km of its cached point, are everyday life and are dropped. A city-day counts with at least 5 photos or photos spread over 2 hours, so a train window or a motorway stop never qualifies. Consecutive counting days at one place, bridging one quiet day, become a stay; a lone counting day becomes a visit when it falls inside a stay elsewhere (a day trip the build infers), on a stay's arrival or departure day (marked `dayTrip: true`) or has at least 10 photos. Everything else is passed through and shown as one count. Photos without a place name join a named city-day of the same date within 15 km, otherwise they are counted and skipped.
+
+The proposal is printed first, grouped into trips of touching dates with the rows already in the atlas marked, and nothing is written until you answer `Y`. `edit` opens the proposal as the import CSV in `$EDITOR` and imports what you save; `n` records the proposals in `data/photos.json` so they are not offered again. A shared album name is shown as a hint but never written as the public `trip` label unless you add it. Each run starts a week before the newest photo of the last run, recorded in `data/photos.json`; `--since DATE` or `--all` widen it. The thresholds live in the same file and the flags `--home-radius`, `--min-photos`, `--day-trip-photos` and `--max-gap-days` override them for one run. `--dry-run` and `--no-geocode` work as for `add`. Only country, city and dates reach the repository: the export, its coordinates and the person's name stay where they are.
 
 ## Fields
 

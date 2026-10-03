@@ -28,6 +28,7 @@ scripts/              Build-time Node code, run with tsx. Owns every sensitive f
   build-continents.ts   Regenerates data/continents.json from the cached Natural Earth file.
   geocode.ts            The only Nominatim client (explicit command, never in a build).
   add.ts / import.ts / authoring.ts   `npm run add` and `npm run import`.
+  photos.ts / photo-sources.ts / clusters.ts   `npm run photos`: osxphotos export → city-days → proposed visits.
   record.ts / recording.ts            Cinematic MP4 recorder (Playwright + FFmpeg).
   build-social.ts / build-icons.ts    Social card and PWA icons (run by hand, output committed).
   service-worker.ts     Source of the generated dist/sw.js (see vite.config.ts).
@@ -86,6 +87,7 @@ The browser never imports `data/` or `scripts/config.ts`; it reads only `src/gen
 | `npm run verify` | Full run: runtime, a11y, performance, visual diffs. Local only; needs Chromium and a real GPU. Never in CI. |
 | `npm run verify:approve` | Writes visual baselines. Only when a pixel change is intended **and** the human asked for it. |
 | `npm run add -- CC City YYYY-MM-DD[..YYYY-MM-DD]` | Append a visit and geocode it (needs `NOMINATIM_CONTACT`). |
+| `npm run photos -- photos.json` | Propose visits from an osxphotos export, add the confirmed ones and geocode them (needs `NOMINATIM_CONTACT`). |
 | `npm run record` | Render MP4 tours (needs FFmpeg with libx264 + ffprobe, Chromium, a z0–6 basemap). |
 | `npm run continents` | Rewrite `data/continents.json` after a Natural Earth update (needs the cached full file from a non-fixture generate). |
 
