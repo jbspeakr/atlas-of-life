@@ -1275,3 +1275,112 @@ describe("archive cache policy", () => {
     for (const agent of others) expect(bypassesHttpCache(agent), agent).toBe(false);
   });
 });
+
+describe("visits from photos", () => {
+  const fixture = new URL("./fixtures/photos.json", import.meta.url);
+  const berlin = { country: "DE", city: "Berlin", coordinates: [13.405, 52.52] as [number, number] };
+  const load = async () => {
+    const { readOsxphotos } = await import("../scripts/photo-sources.ts");
+    const { readFile } = await import("node:fs/promises");
+    return readOsxphotos(await readFile(fixture, "utf8"));
+  };
+  it("reads osxphotos records in the compact field shape and the full shape", async () => {
+    const { photoFromRecord } = await import("../scripts/photo-sources.ts");
+    expect(
+      photoFromRecord({ date: "2024-04-25", time: "22:14", lat: "52.52602", lon: "13.4387", country: "DE", city: "Berlin", albums: "_" }),
+    ).toEqual({ date: "2024-04-25", time: "22:14", latitude: 52.52602, longitude: 13.4387, country: "DE", city: "Berlin" });
+    expect(
+      photoFromRecord({
+        date: "2025-04-29T11:02:10+03:00",
+        latitude: 37.97,
+        longitude: 23.72,
+        place: { country_code: "gr", names: { city: ["Athens"] }, address: {} },
+        albums: ["Greece 2025", "Family"],
+      }),
+    ).toEqual({ date: "2025-04-29", time: "11:02", latitude: 37.97, longitude: 23.72, country: "GR", city: "Athens", albums: ["Greece 2025", "Family"] });
+    expect(photoFromRecord({ date: "_", lat: "1", lon: "2" })).toBeUndefined();
+  });
+  it("reduces the fixture library to the stays and day trips a person would author", async () => {
+    const { clusterPhotos, defaultClusterOptions } = await import("../scripts/clusters.ts");
+    const photos = await load();
+    const result = clusterPhotos(photos, { ...defaultClusterOptions, homes: [berlin] });
+    expect(result.visits.map(({ photos: _n, album: _a, point: _p, ...visit }) => visit)).toEqual([
+      { country: "DE", city: "München", dateRange: ["2020-08-10", "2020-08-14"] },
+      { country: "FR", city: "Paris", dateRange: ["2021-09-03", "2021-09-08"] },
+      { country: "FR", city: "Versailles", date: "2021-09-05" },
+      { country: "FR", city: "Lyon", date: "2022-05-21" },
+      { country: "GB", city: "London", dateRange: ["2024-04-12", "2024-04-16"] },
+      { country: "GB", city: "Windsor", date: "2024-04-12", dayTrip: true },
+      { country: "GB", city: "Brighton", date: "2024-04-14" },
+      { country: "GB", city: "Edinburgh", dateRange: ["2025-08-02", "2025-08-06"] },
+    ]);
+    const munich = result.visits[0];
+    // The photo-free 12th is bridged, the unnamed photo joined the named day, and the shared album is offered.
+    expect(munich.photos).toBe(37);
+    expect(munich.album).toBe("Bavaria 2020");
+    expect(munich.point?.[0]).toBeCloseTo(11.5756, 1);
+    // The undated record never left the reader; every photo at home vanished before clustering.
+    expect(photos).toHaveLength(235);
+    expect(result.dropped).toEqual({ home: 42, unnamed: 0, undated: 0 });
+    // A train window and a motorway stop are passed through; a quiet day inside a stay is not.
+    expect(result.passedThrough.map((day) => `${day.city} ${day.date}`)).toEqual([
+      "Kassel 2020-08-10",
+      "Newcastle upon Tyne 2025-08-02",
+    ]);
+    expect(result.lastDate).toBe("2025-08-07");
+  });
+  it("keeps home by name when the point is unknown and by distance when the name differs", async () => {
+    const { clusterPhotos, defaultClusterOptions } = await import("../scripts/clusters.ts");
+    const day = (city: string, lat: number, lon: number, n: number) =>
+      Array.from({ length: n }, (_, i) => ({ date: "2026-03-07", time: `${10 + i}:00`, latitude: lat, longitude: lon, country: "DE", city }));
+    const byName = clusterPhotos(day("Berlin", 52.52, 13.405, 8), { ...defaultClusterOptions, homes: [{ country: "DE", city: "Berlin" }] });
+    expect(byName.dropped.home).toBe(8);
+    // Potsdam's centre is about 26 km from Berlin's: a day trip at the default radius, home at 30 km.
+    const potsdam = day("Potsdam", 52.3906, 13.0645, 12);
+    expect(clusterPhotos(potsdam, { ...defaultClusterOptions, homes: [berlin] }).visits).toHaveLength(1);
+    expect(clusterPhotos(potsdam, { ...defaultClusterOptions, homeRadiusKm: 30, homes: [berlin] }).visits).toEqual([]);
+  });
+  it("is independent of photo order and of duplicates in the export", async () => {
+    const { clusterPhotos, defaultClusterOptions } = await import("../scripts/clusters.ts");
+    const photos = await load();
+    const options = { ...defaultClusterOptions, homes: [berlin] };
+    const expected = JSON.stringify(clusterPhotos(photos, options).visits);
+    fc.assert(
+      fc.property(fc.shuffledSubarray(photos, { minLength: photos.length }), (shuffled) => {
+        expect(JSON.stringify(clusterPhotos(shuffled, options).visits)).toBe(expected);
+      }),
+      { numRuns: 25 },
+    );
+  });
+  it("round-trips the proposal through the import CSV and spots overlaps with the atlas", async () => {
+    const { csvFromVisits, parseCsv, visitsFromRows, overlapsExisting } = await import("../scripts/authoring.ts");
+    const proposal = [
+      { country: "GB", city: "Windsor", date: "2024-04-12", dayTrip: true as const },
+      { country: "DE", city: "Wendisch Rietz", dateRange: ["2025-04-04", "2025-04-06"] as [string, string], trip: "Spring, 2025" },
+    ];
+    const config = { visits: [{ country: "DE", city: "Wendisch Rietz", dateRange: ["2025-04-05", "2025-04-09"] as [string, string] }] };
+    const { accepted, skipped, failed } = visitsFromRows(parseCsv(csvFromVisits(proposal)), config);
+    expect(failed).toEqual([]);
+    expect(skipped).toEqual([]);
+    expect(accepted).toEqual(proposal);
+    expect(overlapsExisting(config, proposal[1])).toBeDefined();
+    expect(overlapsExisting(config, { country: "DE", city: "Wendisch Rietz", date: "2025-04-10" })).toBeUndefined();
+    expect(overlapsExisting(config, proposal[0])).toBeUndefined();
+  });
+  it("lays the proposal out by trip with the atlas's own rows marked", async () => {
+    const { renderProposal } = await import("../scripts/photos.ts");
+    const text = renderProposal(
+      [
+        { visit: { country: "GB", city: "London", dateRange: ["2024-04-12", "2024-04-16"], photos: 41 }, status: "present" },
+        { visit: { country: "GB", city: "Windsor", date: "2024-04-12", dayTrip: true, photos: 6 }, status: "new" },
+        { visit: { country: "FR", city: "Lyon", date: "2022-05-21", photos: 12, album: "Rhône" }, status: "new" },
+      ],
+      { passedThrough: 2, home: 42, unnamed: 0 },
+    );
+    expect(text).toMatch(/^ {2}1 {2}Lyon, FR .* day .* 12 photos {2}album "Rhône"$/m);
+    expect(text).toMatch(/^Trip 2024-04-12 \.\. 2024-04-16$/m);
+    expect(text).toMatch(/^ {5}London, GB .* stay .* 41 photos {2}already in the atlas$/m);
+    expect(text).toMatch(/^ {2}2 {2}Windsor, GB .* day trip .* 6 photos$/m);
+    expect(text).toMatch(/Skipped: 2 places passed through with too few photos; 42 photos at home\.$/);
+  });
+});
