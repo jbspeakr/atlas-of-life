@@ -24,7 +24,7 @@ const config: Config = {
     },
     {
       country: "GR",
-      city: "Néa Palátia",
+      city: "Nea Palatia",
       date: "2025-04-29",
       dayTrip: true
     },
@@ -32,13 +32,11 @@ const config: Config = {
       country: "GR",
       city: "Athen",
       date: "2025-04-30",
-      coordinates: [23.72456, 37.97478],
-      publishPrecision: "exact",
       dayTrip: true
     },
     {
       country: "GR",
-      city: "Néa Palátia",
+      city: "Nea Palatia",
       date: "2025-05-01",
       dayTrip: true
     },
@@ -147,7 +145,7 @@ const config: Config = {
     },
     {
       country: "NO",
-      city: "ørje",
+      city: "Ørje",
       date: "2025-06-12",
       dayTrip: true
     },
@@ -186,7 +184,7 @@ const config: Config = {
     },
     {
       country: "SE",
-      city: "åmål",
+      city: "Åmål",
       date: "2025-06-18",
       dayTrip: true
     },
@@ -286,13 +284,15 @@ const config: Config = {
     },
     {
       country: "IT",
-      city: "Reggio C. Catona",
+      city: "Catona",
+      region: "IT-78",
       date: "2026-03-05",
       dayTrip: true
     },
     {
       country: "IT",
-      city: "Reggio C. Archi",
+      city: "Archi",
+      region: "IT-78",
       date: "2026-03-05",
       dayTrip: true
     },
