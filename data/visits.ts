@@ -333,7 +333,6 @@ const config: Config = {
     {
       country: "IT",
       city: "Catona",
-      region: "IT-78",
       coordinates: [15.63800, 38.18480],
       publishPrecision: "exact",
       date: "2026-03-05",
@@ -342,7 +341,6 @@ const config: Config = {
     {
       country: "IT",
       city: "Archi",
-      region: "IT-78",
       coordinates: [15.65778, 38.15127],
       publishPrecision: "exact",
       date: "2026-03-05",

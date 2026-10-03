@@ -141,6 +141,26 @@ it("uses actual fallback coverage for a coastal gap, without nearest-region gues
   expect(pinned.fallbacks).toEqual([expect.objectContaining({ country: "GR", region: "GR-A1" })]);
 });
 
+it("keeps the preferred geometry when the fallback confirms a subdivision both sources carry", async () => {
+  const { instance, path } = await repository(
+    [gb("GR-A1")],
+    [rectangle({ iso_a2: "GR", iso_3166_2: "GR-A1", name_en: "Attica" }, 0, 3)],
+  );
+  const requests: { coordinates: [number, number] }[] = [
+    { coordinates: [2.1, 1] },
+    { coordinates: [1, 1] },
+  ];
+  const result = await instance.regions("GR", "GRC", requests);
+  expect(result.assignments).toEqual(["GR-A1", "GR-A1"]);
+  expect(result.boundaries.map((feature) => feature.id)).toEqual(["GR-A1"]);
+  expect(result.boundaries[0].properties.bbox).toEqual([0, 0, 2, 2]);
+  const reversed = await instance.regions("GR", "GRC", [...requests].reverse());
+  expect(reversed.assignments).toEqual(["GR-A1", "GR-A1"]);
+  await instance.save();
+  const pinned = JSON.parse(await readFile(path, "utf8"));
+  expect(pinned.fallbacks).toEqual([]);
+});
+
 it("does not count a polygon hole as regional coverage", async () => {
   const shape = gb();
   if (shape.geometry.type !== "Polygon") throw new Error("Expected polygon");

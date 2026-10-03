@@ -69,7 +69,7 @@ A day trip never becomes a journey stop, so a week in one place with an afternoo
 
 ## Regions
 
-Geocoder administrative codes are provenance, not boundary identifiers. The build locates each city's point inside the country's geoBoundaries gbOpen ADM1 polygons, falling back to Natural Earth, and publishes that polygon's own identity: Kalamos resolves to Attica, and Reggio Calabria to Italy's *Sud* macro-area, because that is what the pinned source contains. A city outside every polygon keeps its pin and country with a build warning; no nearest-polygon guess is made. An authored `region` is a constraint: the point must lie inside it.
+Geocoder administrative codes are provenance, not boundary identifiers. The build locates each city's point inside the country's geoBoundaries gbOpen ADM1 polygons, falling back to Natural Earth, and publishes that polygon's own identity: Kalamos resolves to Attica, and Reggio Calabria to Italy's *Sud* macro-area, because that is what the pinned source contains. A city outside every polygon keeps its pin and country with a build warning; no nearest-polygon guess is made. When only the gbOpen coastline omits the point and Natural Earth places it in a subdivision gbOpen also carries, the visit lights that subdivision with the gbOpen geometry. An authored `region` is a constraint: the point must lie inside a polygon the pinned sources name that way, so check the source's own codes and labels before pinning one; a visit with exact coordinates never needs it for geocoding.
 
 ## Numbers
 
