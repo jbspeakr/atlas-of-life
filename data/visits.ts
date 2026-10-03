@@ -8,8 +8,22 @@ const config: Config = {
   visits: [
     {
       country: "DE",
+      city: "Burg",
+      date: "2025-02-17",
+      coordinates: [14.13477, 51.83822],
+      publishPrecision: "exact",
+      dayTrip: true
+    },
+    {
+      country: "DE",
       city: "Wendisch Rietz",
       dateRange: ["2025-04-04", "2025-04-06"],
+    },
+    {
+      country: "DE",
+      city: "Potsdam",
+      date: "2025-04-07",
+      dayTrip: true
     },
     {
       country: "GR",
@@ -24,7 +38,7 @@ const config: Config = {
     },
     {
       country: "GR",
-      city: "Néa Palátia",
+      city: "Nea Palatia",
       date: "2025-04-29",
       dayTrip: true
     },
@@ -32,13 +46,11 @@ const config: Config = {
       country: "GR",
       city: "Athen",
       date: "2025-04-30",
-      coordinates: [23.72456, 37.97478],
-      publishPrecision: "exact",
       dayTrip: true
     },
     {
       country: "GR",
-      city: "Néa Palátia",
+      city: "Nea Palatia",
       date: "2025-05-01",
       dayTrip: true
     },
@@ -97,7 +109,7 @@ const config: Config = {
     {
       country: "DK",
       city: "Bindslev",
-      coordinates: [10.15046, 57.55413],
+      coordinates: [10.15033, 57.55403],
       publishPrecision: "exact",
       dateRange: ["2025-06-01", "2025-06-03"],
     },
@@ -110,6 +122,8 @@ const config: Config = {
     {
       country: "NO",
       city: "Kristiansand",
+      coordinates: [7.949089, 58.1530416],
+      publishPrecision: "exact",
       date: "2025-06-03",
       dayTrip: true
     },
@@ -135,6 +149,8 @@ const config: Config = {
     {
       country: "NO",
       city: "Valle",
+      coordinates: [7.53296, 59.21218],
+      publishPrecision: "exact",
       date: "2025-06-07",
       dayTrip: true
     },
@@ -147,7 +163,7 @@ const config: Config = {
     },
     {
       country: "NO",
-      city: "ørje",
+      city: "Ørje",
       date: "2025-06-12",
       dayTrip: true
     },
@@ -163,18 +179,24 @@ const config: Config = {
     {
       country: "SE",
       city: "Munkfors",
+      coordinates: [13.53875, 59.83574],
+      publishPrecision: "exact",
       date: "2025-06-13",
       dayTrip: true
     },
     {
       country: "SE",
       city: "Karlstad",
+      coordinates: [13.51119, 59.38010],
+      publishPrecision: "exact",
       date: "2025-06-15",
       dayTrip: true
     },
     {
       country: "SE",
       city: "Hagfors",
+      coordinates: [13.51119, 59.38010],
+      publishPrecision: "exact",
       date: "2025-06-17",
       dayTrip: true
     },
@@ -186,13 +208,17 @@ const config: Config = {
     },
     {
       country: "SE",
-      city: "åmål",
+      city: "Åmål",
+      coordinates: [12.70607, 59.05221],
+      publishPrecision: "exact",
       date: "2025-06-18",
       dayTrip: true
     },
     {
       country: "SE",
       city: "Ödsmål",
+      coordinates: [11.84521, 58.14068],
+      publishPrecision: "exact",
       dateRange: ["2025-06-18", "2025-06-24"],
     },
     {
@@ -204,6 +230,8 @@ const config: Config = {
     {
       country: "SE",
       city: "Härön",
+      coordinates: [11.51336, 58.01591],
+      publishPrecision: "exact",
       date: "2025-06-19",
       dayTrip: true
     },
@@ -216,12 +244,16 @@ const config: Config = {
     {
       country: "SE",
       city: "Stenungsund",
+      coordinates: [11.82542, 58.07478],
+      publishPrecision: "exact",
       date: "2025-06-20",
       dayTrip: true
     },
     {
       country: "SE",
       city: "Trollhättan",
+      coordinates: [12.28910, 58.28283],
+      publishPrecision: "exact",
       date: "2025-06-22",
       dayTrip: true
     },
@@ -235,6 +267,8 @@ const config: Config = {
     {
       country: "SE",
       city: "Göteborg",
+      coordinates: [11.94000, 57.68592],
+      publishPrecision: "exact",
       date: "2025-06-24",
       dayTrip: true
     },
@@ -242,6 +276,8 @@ const config: Config = {
       country: "SE",
       city: "Eslöv",
       date: "2025-06-26",
+      coordinates: [13.30364, 55.83881],
+      publishPrecision: "exact",
       dayTrip: true
     },
     {
@@ -256,11 +292,15 @@ const config: Config = {
       country: "SE",
       city: "Malmö",
       date: "2025-06-28",
+      coordinates: [13.01359, 55.59466],
+      publishPrecision: "exact",
       dayTrip: true
     },
     {
       country: "SE",
       city: "Trelleborg",
+      coordinates: [13.15386, 55.37138],
+      publishPrecision: "exact",
       date: "2025-07-01",
       dayTrip: true
     },
@@ -280,25 +320,39 @@ const config: Config = {
       dateRange: ["2025-09-17", "2025-09-20"],
     },
     {
+      country: "DE",
+      city: "Bad Saarow",
+      date: "2025-11-02",
+      dayTrip: true
+    },
+    {
       country: "IT",
       city: "Reggio Calabria",
       dateRange: ["2026-03-04", "2026-03-11"],
     },
     {
       country: "IT",
-      city: "Reggio C. Catona",
+      city: "Catona",
+      region: "IT-78",
+      coordinates: [15.63800, 38.18480],
+      publishPrecision: "exact",
       date: "2026-03-05",
       dayTrip: true
     },
     {
       country: "IT",
-      city: "Reggio C. Archi",
+      city: "Archi",
+      region: "IT-78",
+      coordinates: [15.65778, 38.15127],
+      publishPrecision: "exact",
       date: "2026-03-05",
       dayTrip: true
     },
     {
       country: "IT",
       city: "Gambarie",
+      coordinates: [15.83663, 38.16679],
+      publishPrecision: "exact",
       date: "2026-03-07",
       dayTrip: true
     },

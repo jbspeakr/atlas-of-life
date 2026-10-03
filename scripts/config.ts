@@ -309,16 +309,27 @@ function cached(
   }
   return entry;
 }
-function missing(visit: Visit): never {
+/** The visit as a reader of the error sees it: ID, then city, country and date. */
+function describeMiss(visit: Visit): string {
+  const when = visit.date ?? visit.dateRange?.filter(Boolean).join("..");
+  const context = [visit.city, visit.country, when].filter(Boolean).join(", ");
+  return `${visit.id} (${context})`;
+}
+/**
+ * Every visit without a warm cache entry is reported in one error, so one
+ * `npm run geocode` (or one round of explicit coordinates) covers them all.
+ */
+function missing(visits: Visit[]): never {
   throw new Error(
-    `geocache miss for ${visit.id}; run npm run geocode or add explicit coordinates with publishPrecision: 'exact' for a deliberate public landmark`,
+    `geocache miss for ${visits.map(describeMiss).join(", ")}; run npm run geocode or add explicit coordinates with publishPrecision: 'exact' for a deliberate public landmark`,
   );
 }
 export function resolveVisits(
   config: Pick<ValidatedConfig, "visits" | "publishPrecision">,
   cache: Cache,
 ): ResolvedVisit[] {
-  return config.visits.map((visit) => {
+  const misses: Visit[] = [];
+  const resolved = config.visits.map((visit): ResolvedVisit | undefined => {
     // Country- and region-only records remain boundary visits, never city pins.
     if (!visit.city && !visit.address) return { ...visit };
     const exact =
@@ -340,7 +351,10 @@ export function resolveVisits(
     const coordinates = exact
       ? (visit.coordinates ?? address?.coordinates ?? cityEntry?.coordinates)
       : cityEntry?.coordinates;
-    if (!coordinates) missing(visit);
+    if (!coordinates) {
+      misses.push(visit);
+      return undefined;
+    }
     if (!exact && !city)
       throw new Error(
         `city precision for ${visit.id} requires a resolved city; add city and run npm run geocode or explicitly set publishPrecision: 'exact'`,
@@ -351,6 +365,8 @@ export function resolveVisits(
       coordinates: [...coordinates] as [number, number],
     };
   });
+  if (misses.length) missing(misses);
+  return resolved as ResolvedVisit[];
 }
 /**
  * The visit record each home contributes: the home city for the whole period
