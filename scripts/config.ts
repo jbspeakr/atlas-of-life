@@ -69,6 +69,11 @@ export const visitSchema = z
     // single-date visit inside a stay is inferred; set it for one on the stay's
     // arrival or departure day, or for a day out from home.
     dayTrip: z.literal(true).optional(),
+    // A stop on the way between two stays when the dates alone cannot tell:
+    // a single date beside a stay that ended the day before or begins the day
+    // after, with a night spent in transit between. A date that shares its
+    // day with the stay left and the stay reached is on the way by itself.
+    via: z.literal(true).optional(),
   })
   .superRefine((visit, context) => {
     if (
@@ -104,6 +109,24 @@ export const visitSchema = z
         code: "custom",
         path: ["dayTrip"],
         message: "a day trip needs a city",
+      });
+    if (visit.via && visit.dayTrip)
+      context.addIssue({
+        code: "custom",
+        path: ["via"],
+        message: "a visit is a day trip or on the way, not both",
+      });
+    if (visit.via && (!isDated(visit) || dateBounds(visit)[0] !== dateBounds(visit)[1]))
+      context.addIssue({
+        code: "custom",
+        path: ["via"],
+        message: "a stop on the way is a single dated day; use date, not a range",
+      });
+    if (visit.via && !visit.city && !visit.address)
+      context.addIssue({
+        code: "custom",
+        path: ["via"],
+        message: "a stop on the way needs a city",
       });
   });
 // Home is the base journeys leave from and return to. It is also a place lived
@@ -237,11 +260,15 @@ export type PublicVisit = Pick<
   visitCount?: number;
   /** The public ID of the place or home this day trip was made from. */
   from?: string;
+  /** The public IDs of the stop or home left and the one reached, for a visit on the way. */
+  between?: [string, string];
 };
 export type Place = PublicVisit & {
   visitCount: number;
   /** How many of the visits were day trips from elsewhere; absent when none. */
   dayTrips?: number;
+  /** How many of the visits were stops on the way between other places; absent when none. */
+  via?: number;
 };
 export type QueryKind = "city" | "address";
 export type GeocodeQuery = { q: string; countrycodes: string; kind: QueryKind };
@@ -406,7 +433,11 @@ export function resolveHomes(config: ValidatedConfig, cache: Cache): PublicHome[
   });
 }
 export function publicVisit(
-  visit: ResolvedVisit & { coordinates: [number, number]; from?: string },
+  visit: ResolvedVisit & {
+    coordinates: [number, number];
+    from?: string;
+    between?: [string, string];
+  },
 ): PublicVisit {
   return {
     id: visit.id,
@@ -421,6 +452,7 @@ export function publicVisit(
       ? { dateRange: [...visit.dateRange] as [string, string] }
       : {}),
     ...(visit.from ? { from: visit.from } : {}),
+    ...(visit.between ? { between: [...visit.between] as [string, string] } : {}),
   };
 }
 export function collapseVisits(visits: ResolvedVisit[]): Place[] {

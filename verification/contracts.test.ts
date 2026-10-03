@@ -1126,6 +1126,169 @@ describe("day trips", () => {
     for (let zoom = 0; zoom < 16; zoom += 0.25) expect(at(zoom + 0.25, 50)).toBeGreaterThanOrEqual(at(zoom, 50));
   });
 });
+describe("stops on the way", () => {
+  const visit = (
+    id: string,
+    placeId: string,
+    start: string,
+    end: string,
+    extra: Partial<import("../scripts/trips.ts").TripVisit> = {},
+  ): import("../scripts/trips.ts").TripVisit => ({
+    id,
+    placeId,
+    country: placeId.startsWith("no-") ? "NO" : "DK",
+    coordinates: { "dk-bindslev": [10.19, 57.55], "no-kristiansand": [7.99, 58.15], "no-eigeroy": [5.93, 58.46], "dk-storvorde": [10.27, 56.98], "dk-skagen": [10.59, 57.72], "dk-hirtshals": [9.96, 57.59] }[placeId] as [number, number] ?? [10, 57],
+    ...(start === end ? { date: start } : { dateRange: [start, end] as [string, string] }),
+    ...extra,
+  });
+  const home = { id: "home-berlin", coordinates: [13.4, 52.5] as [number, number], since: "2024-04-25" };
+  const storvorde = visit("st", "dk-storvorde", "2025-05-25", "2025-06-01");
+  const bindslev = visit("b", "dk-bindslev", "2025-06-01", "2025-06-03");
+  const eigeroy = visit("e", "no-eigeroy", "2025-06-03", "2025-06-07");
+  const kristiansand = visit("k", "no-kristiansand", "2025-06-03", "2025-06-03");
+  const skagen = visit("sk", "dk-skagen", "2025-06-01", "2025-06-01");
+  it("accepts the flag on a dated day only, never with a day trip, without changing the identity", () => {
+    const flagged = validateConfig({
+      visits: [{ country: "NO", city: "Kristiansand", date: "2025-06-03", via: true }],
+    });
+    const plain = validateConfig({ visits: [{ country: "NO", city: "Kristiansand", date: "2025-06-03" }] });
+    expect(flagged.visits[0].via).toBe(true);
+    expect(flagged.visits[0].id).toBe(plain.visits[0].id);
+    expect(() =>
+      validateConfig({ visits: [{ country: "NO", city: "Kristiansand", dateRange: ["2025-06-03", "2025-06-04"], via: true }] }),
+    ).toThrow(/single dated day/);
+    expect(() =>
+      validateConfig({ visits: [{ country: "NO", city: "Kristiansand", date: "2025-06-03", via: true, dayTrip: true }] }),
+    ).toThrow(/not both/);
+    expect(() => validateConfig({ visits: [{ country: "NO", date: "2025-06-03", via: true }] })).toThrow(/needs a city/);
+  });
+  it("lies between the stay left and the stay reached on the day both change", async () => {
+    const { assignDayTrips, assignVia } = await import("../scripts/trips.ts");
+    const resolve = (visits: import("../scripts/trips.ts").TripVisit[], homes = [home]) =>
+      assignVia(assignDayTrips(visits, homes), homes);
+    const between = (visits: ReturnType<typeof resolve>, id: string) => visits.find((v) => v.id === id)?.between;
+    const chain = resolve([storvorde, bindslev, eigeroy, kristiansand, skagen]);
+    expect(between(chain, "k")).toEqual(["dk-bindslev", "no-eigeroy"]);
+    expect(between(chain, "sk")).toEqual(["dk-storvorde", "dk-bindslev"]);
+    for (const id of ["st", "b", "e"]) expect(between(chain, id)).toBeUndefined();
+    // An authored day trip on the same day keeps its base; the flag wins.
+    const flagged = resolve([bindslev, eigeroy, { ...kristiansand, dayTrip: true }]);
+    expect(flagged.find((v) => v.id === "k")).toMatchObject({ from: "dk-bindslev" });
+    expect(between(flagged, "k")).toBeUndefined();
+    // A day inside a stay is a day trip, never on the way.
+    expect(between(resolve([bindslev, visit("h", "dk-hirtshals", "2025-06-02", "2025-06-02")]), "h")).toBeUndefined();
+    // With a home, the first day of a journey is on the leg out and the last on the leg home.
+    const out = resolve([visit("x", "dk-x", "2025-05-25", "2025-05-25"), storvorde]);
+    expect(between(out, "x")).toEqual(["home-berlin", "dk-storvorde"]);
+    const back = resolve([storvorde, visit("y", "dk-y", "2025-06-01", "2025-06-01")]);
+    expect(between(back, "y")).toEqual(["dk-storvorde", "home-berlin"]);
+    // Without a home, or with a stay a day away on the other side, the dates say a night was slept somewhere: a stop as before.
+    expect(between(resolve([visit("x", "dk-x", "2025-05-25", "2025-05-25"), storvorde], []), "x")).toBeUndefined();
+    const later = visit("l", "dk-l", "2025-06-02", "2025-06-05");
+    expect(between(resolve([storvorde, visit("y", "dk-y", "2025-06-01", "2025-06-01"), later]), "y")).toBeUndefined();
+    // The flag bridges a night in transit: the stay reached begins the day after.
+    const ferry = resolve([storvorde, { ...visit("y", "dk-y", "2025-06-01", "2025-06-01"), via: true }, later]);
+    expect(between(ferry, "y")).toEqual(["dk-storvorde", "dk-l"]);
+    expect(() => resolve([{ ...visit("z", "dk-z", "2025-09-01", "2025-09-01"), via: true }])).toThrow(/no stay ends or begins around 2025-09-01/);
+    // Never between a place and itself, never for a stay.
+    expect(between(resolve([storvorde, visit("s2", "dk-storvorde", "2025-06-01", "2025-06-03"), visit("w", "dk-w", "2025-06-01", "2025-06-01")]), "w")).toBeUndefined();
+  });
+  it("rides with its hop, leaves the stops and the journey ID alone, and keeps the authored order", async () => {
+    const { assignDayTrips, assignVia, groupTrips, routeFeatures } = await import("../scripts/trips.ts");
+    const resolve = (visits: import("../scripts/trips.ts").TripVisit[]) =>
+      assignVia(assignDayTrips(visits, [home]), [home]);
+    const plain = groupTrips(resolve([storvorde, bindslev, eigeroy]));
+    const grouped = groupTrips(resolve([storvorde, bindslev, eigeroy, kristiansand, skagen]));
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].trip.stops).toEqual(["dk-storvorde", "dk-bindslev", "no-eigeroy"]);
+    expect(grouped[0].trip.via).toEqual([[], ["dk-skagen"], ["no-kristiansand"], []]);
+    expect(grouped[0].trip.id).toBe(plain[0].trip.id);
+    expect(plain[0].trip.via).toBeUndefined();
+    expect(grouped[0].trip.label).toBe("Denmark and Norway, 2025");
+    expect(grouped[0].visits.map((v) => v.id)).toEqual(["st", "b", "e", "sk", "k"]);
+    // Two towns passed on one day follow the authored order, not the alphabet.
+    const second = visit("a", "no-a", "2025-06-03", "2025-06-03", { index: 9 });
+    const ordered = groupTrips(resolve([storvorde, bindslev, eigeroy, { ...kristiansand, index: 3 }, second]));
+    expect(ordered[0].trip.via?.[2]).toEqual(["no-kristiansand", "no-a"]);
+    // The leg out and the leg home carry their own towns.
+    const legs = groupTrips(resolve([visit("x", "dk-x", "2025-05-25", "2025-05-25"), storvorde, bindslev, visit("y", "dk-y", "2025-06-03", "2025-06-03")]));
+    expect(legs[0].trip.via).toEqual([["dk-x"], [], ["dk-y"]]);
+    // The hop passes through the town as two arcs; the one arriving names it and its distance to the nearer neighbour.
+    const coordinates = new Map<string, [number, number]>([
+      ...["dk-storvorde", "dk-bindslev", "no-eigeroy", "no-kristiansand", "dk-skagen"].map(
+        (id) => [id, visit("_", id, "2025-01-01", "2025-01-01").coordinates] as [string, [number, number]],
+      ),
+      ["home-berlin", home.coordinates],
+    ]);
+    const { routes } = routeFeatures(grouped, [], coordinates, [home]);
+    const summary = routes.features.map((f) => [f.properties.kind, f.properties.order, f.properties.place ?? ""]);
+    expect(summary).toEqual([
+      ["leg", 0, ""],
+      ["hop", 1, "dk-skagen"],
+      ["hop", 2, ""],
+      ["hop", 3, "no-kristiansand"],
+      ["hop", 4, ""],
+      ["leg", 5, ""],
+    ]);
+    const arriving = routes.features[3];
+    expect(arriving.geometry.coordinates[0]).toEqual([10.19, 57.55]);
+    expect(arriving.geometry.coordinates.at(-1)).toEqual([7.99, 58.15]);
+    expect(arriving.properties.km).toBeGreaterThan(120);
+    expect(arriving.properties.km).toBeLessThan(130);
+    expect(routes.features[4].geometry.coordinates[0]).toEqual([7.99, 58.15]);
+    // A lone stay's legs pass through the towns on the way there and back under its own group.
+    const lone = resolve([visit("x", "dk-x", "2025-05-25", "2025-05-25"), storvorde]);
+    const alone = routeFeatures([], lone, new Map([...coordinates, ["dk-x", [11, 55] as [number, number]]]), [home]);
+    expect(alone.routes.features.map((f) => [f.properties.group, f.properties.kind, f.properties.place ?? ""])).toEqual([
+      ["place:dk-storvorde", "leg", "dk-x"],
+      ["place:dk-storvorde", "leg", ""],
+      ["place:dk-storvorde", "leg", ""],
+    ]);
+  });
+  it("publishes only the two neighbours and a count, and counts as a visit without nights", async () => {
+    const { computeStats } = await import("../scripts/stats.ts");
+    const { publicVisit } = await import("../scripts/config.ts");
+    const resolved = [
+      { id: "b", label: "Bindslev", country: "DK", city: "Bindslev", coordinates: [10.19, 57.55] as [number, number], dateRange: ["2025-06-01", "2025-06-03"] as [string, string] },
+      { id: "k", label: "Kristiansand", country: "NO", city: "Kristiansand", coordinates: [7.99, 58.15] as [number, number], date: "2025-06-03", between: ["dk-bindslev", "no-eigeroy"] as [string, string] },
+      { id: "e", label: "Eigersund", country: "NO", city: "Eigersund", coordinates: [5.93, 58.46] as [number, number], dateRange: ["2025-06-03", "2025-06-07"] as [string, string] },
+      { id: "r", label: "Rome", country: "IT", city: "Rome", coordinates: [12.5, 41.9] as [number, number], dateRange: ["2026-10-01", "2026-10-05"] as [string, string] },
+    ];
+    const places = collapseVisits(resolved).map((place) => ({
+      ...place,
+      ...(place.city === "Kristiansand" ? { via: 1 } : {}),
+    }));
+    const id = (city: string) => places.find((place) => place.city === city)!.id;
+    const visits = resolved.map((visit) =>
+      publicVisit({ ...visit, between: visit.between ? [id("Bindslev"), id("Eigersund")] : undefined }),
+    );
+    expect(visits[1].between).toEqual([id("Bindslev"), id("Eigersund")]);
+    const trip = { id: "t", label: "Denmark and Norway, 2025", start: "2025-06-01", end: "2025-06-07", stops: [id("Bindslev"), id("Eigersund")], via: [[], [id("Kristiansand")], []] };
+    const stats = computeStats(visits, places, { trips: [trip] });
+    expect(stats).toMatchObject({ visits: 4, dayTrips: 0, via: 1, nights: 10 });
+    // A stop on the way lies inside its journey and never shortens the gap between trips.
+    expect(stats.milestones).toContainEqual({ kind: "gap", from: id("Eigersund"), to: id("Rome"), days: 481 });
+    for (const [file, text] of [
+      ["visits.json", JSON.stringify(visits)],
+      ["places.json", JSON.stringify(places)],
+      ["trips.json", JSON.stringify([trip])],
+      ["stats.json", JSON.stringify(stats)],
+    ])
+      expect(payloadViolations(file, text)).toEqual([]);
+    expect(payloadViolations("visits.json", JSON.stringify([{ ...visits[1], road: "E39" }]))).toHaveLength(1);
+    expect(payloadViolations("trips.json", JSON.stringify([{ ...trip, route: [] }]))).toHaveLength(1);
+  });
+  it("parses the via flag into the visit, its formatted entry and a CSV column", async () => {
+    const { formatVisit, parseVisitArgs, visitFromRow } = await import("../scripts/authoring.ts");
+    const { visit } = parseVisitArgs(["NO", "Kristiansand", "2025-06-03", "--via"]);
+    expect(visit).toEqual({ country: "NO", city: "Kristiansand", date: "2025-06-03", via: true });
+    expect(formatVisit(visit)).toContain("via: true,");
+    expect(() => parseVisitArgs(["NO", "Kristiansand", "2025-06-03", "--via", "--day-trip"])).toThrow(/not both/);
+    expect(
+      visitFromRow({ line: 2, fields: { country: "no", city: "Kristiansand", start: "2025-06-03", end: "", via: "yes" } }),
+    ).toMatchObject({ via: true });
+  });
+});
 describe("authoring commands", () => {
   const source = `import type { Config } from "../scripts/config.ts";
 

@@ -15,7 +15,6 @@ Every item below respects those rules. Anything that adds a public field goes th
 | [Authoring without a laptop](#5-authoring-without-a-laptop) | Add a visit from your phone; import from what you already have. |
 | [In your language](#6-in-your-language) | The whole interface in German and other languages. |
 | [Foundations](#7-foundations) | Baselines and the published basemap. |
-| [Journeys as travelled](#8-journeys-as-travelled) | The towns passed through on a moving day, drawn on the way rather than as detours. |
 
 ---
 
@@ -149,28 +148,14 @@ Work that makes everything above cheaper and safer.
 - **7b. The complete published basemap.** Global z0–6 with city detail on a pinned Hugging Face SHA, as described in the [guide](GUIDE.md#basemap-deployment). Unblocks the poster, the recorder and the README hero.
 - **7c. Linkable journeys and During on phones.** `#/journey/<id>` in the router; the Through/During control on narrow screens.
 
-## 8. Journeys as travelled
-
-### 8a. Stops on the way
-
-A journey today knows two kinds of visit: a **stop**, where the traveller slept, and a **day trip**, out from a base and back by evening. The third kind has no home yet: the town seen for an afternoon while moving from one stop to the next, a ferry port, a lunch halfway. In the owner's Scandinavian journey seven such visits (Skagen, Kristiansand, Valle, Ørje, Åmål, Göteborg, Trelleborg) carry `dayTrip: true` for want of anything better. The build then draws each as a lens out of the stay left that morning and back into it, and the caption says "Day trip from Bindslev" about Kristiansand, a ferry port on the way to Eigerøy. Without the flag they would become numbered stops with no nights and the journey would read "stop 4 of 16". A visit on the way should be drawn on the way: on the arc between the two stops, as a small mark, never a star and never a lens.
-
-- **Rule.** A single dated visit that is not a day trip and falls on a day the journey moves is a stop on the way: the date is the end of one stay and the start of the next (consecutive stops of one journey), or the first day of the journey with a home to leave from, or the last day with a home to return to. The dates already say it, so the common case needs no authoring; removing the seven flags is the whole migration for the owner's data, and nothing else in it or in the fixture changes, because every other single date lies strictly inside a stay. `dayTrip: true` keeps its meaning and wins. A `via: true` flag covers the one case dates cannot tell, a night spent in transit (an overnight ferry, a sleeper): a single date on the day a stay ends when the next starts the day after. A night in a town is still a stop, however short; the strip already shows it as the narrowest segment. Several visits on one moving day keep their authored order, since `data/visits.ts` is written in travel order and `npm run add` appends. Without a home, a single date before the first stop or after the last has no second end and stays a stop, as today.
-- **Model.** Resolve after `assignDayTrips` and before `groupTrips`, so a visit on the way never chains as a stop. `trips.json` gains `via`, one list of place IDs per hop, with a list for the leg out and one for the leg home, in travel order; `stops` stays the list of places slept in, so a journey's ID does not change when a town on the way is added, exactly as for day trips. The visit publishes `via: [from, to]`, the public IDs of the stop or home left and the one reached, as `from` does for day trips, and the place counts its `via` visits beside `dayTrips`. Three allowlist entries, each derived from public dates and IDs, with a paragraph in [DECISIONS.md](DECISIONS.md) and a contract. Statistics count it as a visit with no nights, separately in the totals as day trips are; it lies inside a journey and never shortens the gap between trips.
-- **Map.** The hop from A to B becomes two arcs, A to X and X to B, each a `hop` in the same group with consecutive orders, so the reveal stagger, the focus filter and the crow-flies total ("at least") work unchanged and the total grows by the detour actually made. Two arcs meeting at X bend the route visibly at the town, which is the honest statement: "went this way, via X". No smooth curve through the waypoint, which would read as the road taken. At X a small filled lamplight dot, about a third of a star's radius, with no number and the stop label at the `focusLabel` band, follows the transit-map convention of ticks for ordinary stations and circles for interchanges. It hides like a day-trip ring until it stands 28 px clear of the nearer neighbour (`apart()` with `km` the smaller of the two distances), and lights when the arc arriving at it has drawn. A place only ever passed through is a hollow pin: the rule "visited, never slept here" already covers it.
-- **Caption and strip.** The kicker reads "On the way from Bindslev to Søre Eigerøya", both links; the steps line reads "Part of <em>…</em> · on the way, between stops 3 and 4"; stepping through a journey walks stop, its day trips, then the towns on the way to the next stop. In the itinerary strip a town on the way is a small dot in the gap between two segments, where day trips float above a segment and homes bookend the line; the summary line gains "7 on the way" and the directory entry "9 stops · 7 on the way". `npm run add -- --via` and a CSV `via` column author the flag.
-- **Rules.** Pixels change only inside a focused journey, so the journey baselines need a local approval (7a). No new colour, font or layer type; two new layers (`journey-via`, `journey-via-labels`) on a `via` point source built like `satellites`. Camera untouched.
-- **Done when** the seven Scandinavian visits are drawn between their stops with the flags removed, `trips.json` and `visits.json` pass the payload audit with the new fields, a contract pins the rule for the departure day, the arrival day, the leg out, the leg home, the overnight ferry and the no-home case, and `docs/DATA.md` describes stays, day trips and stops on the way in one place.
-
 ## Suggested order
 
 | Order | Item | Why now |
 |---|---|---|
 | 1 | 7a, 7b | Everything with pixels or a wide view depends on them. |
 | 2 | 1c, 1d, 7c | Small, no pixels, immediately useful. |
-| 3 | 8a | The owner's own journey is mis-told today; the model change is small and pixels change only in focus. |
-| 4 | 3b | Build-time data, high delight per line of code. |
-| 5 | 2a, 2b, 1b | The share story: replay, year in review, rich links. |
-| 6 | 3a, 1a | The signature pieces: the real sky and the poster. |
-| 7 | 5a, 5b | Authoring reach. |
-| 8 | 2c, 2d, 6, 3c, 4a, 5c | As appetite allows. |
+| 3 | 3b | Build-time data, high delight per line of code. |
+| 4 | 2a, 2b, 1b | The share story: replay, year in review, rich links. |
+| 5 | 3a, 1a | The signature pieces: the real sky and the poster. |
+| 6 | 5a, 5b | Authoring reach. |
+| 7 | 2c, 2d, 6, 3c, 4a, 5c | As appetite allows. |

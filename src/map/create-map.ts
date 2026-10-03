@@ -306,9 +306,16 @@ export async function createMap(
     .data as FeatureCollection;
   const satelliteData = (style.sources.satellites as GeoJSONSourceSpecification)
     .data as FeatureCollection;
+  const waypointData = (style.sources.waypoints as GeoJSONSourceSpecification)
+    .data as FeatureCollection;
   const segmentsByGroup = new Map<string, string[]>();
   // The outbound lens arc of each day trip, by group and place, for its satellite's cue.
   const excursionIndex = new Map<string, number>();
+  // The arc arriving at each stop on the way, by group and place, for its mark's cue.
+  const waypointIndex = new Map<string, number>();
+  // The arcs arriving at a stop or at home, in order: a hop through places on
+  // the way is several arcs, so the n-th stop lights with the n-th arrival.
+  const arrivalsByGroup = new Map<string, number[]>();
   for (const feature of [...routeData.features].sort(
     (a, b) => Number(a.properties?.order) - Number(b.properties?.order),
   )) {
@@ -317,8 +324,24 @@ export async function createMap(
     if (feature.properties?.kind === "excursion") {
       const key = `${group}#${String(feature.properties.place)}`;
       if (!excursionIndex.has(key)) excursionIndex.set(key, segments.length);
+    } else if (feature.properties?.place) {
+      const key = `${group}#${String(feature.properties.place)}`;
+      if (!waypointIndex.has(key)) waypointIndex.set(key, segments.length);
+    } else {
+      arrivalsByGroup.set(group, [...(arrivalsByGroup.get(group) ?? []), segments.length]);
     }
     segmentsByGroup.set(group, [...segments, String(feature.id)]);
+  }
+  const waypointsByGroup = new Map<string, { id: string; place: string }[]>();
+  const waypointGroups = new Map<string, string[]>();
+  for (const feature of waypointData.features) {
+    const group = String(feature.properties?.group);
+    const place = String(feature.properties?.place);
+    waypointsByGroup.set(group, [
+      ...(waypointsByGroup.get(group) ?? []),
+      { id: String(feature.id), place },
+    ]);
+    waypointGroups.set(place, [...(waypointGroups.get(place) ?? []), group]);
   }
   const satellitesByGroup = new Map<string, { id: string; place: string }[]>();
   const satelliteGroups = new Map<string, string[]>();
@@ -347,17 +370,20 @@ export async function createMap(
     ...countries.features.map((f) => ({ source: "countries", id: String(f.id) })),
     ...regions.features.map((f) => ({ source: "regions", id: String(f.id) })),
   ];
-  // A stop lights its journey; a lone stay its own lens; a day trip its base's group.
+  // A stop lights its journey; a lone stay its own lens; a day trip its base's
+  // group; a place passed on the way the group of the route through it.
   const groupForPlace = (id: string): string | null =>
     trips.find((trip) => trip.stops.includes(id))?.id ??
     (segmentsByGroup.has(`place:${id}`) ? `place:${id}` : null) ??
     satelliteGroups.get(id)?.[0] ??
+    waypointGroups.get(id)?.[0] ??
     null;
   const membersOf = (group: string): string[] => [
     ...(group.startsWith("place:")
       ? [group.slice("place:".length)]
       : (trips.find((trip) => trip.id === group)?.stops ?? [])),
     ...(satellitesByGroup.get(group) ?? []).map((satellite) => satellite.place),
+    ...(waypointsByGroup.get(group) ?? []).map((waypoint) => waypoint.place),
   ];
   let baseFocus: string | null = null;
   let shownFocus: string | null = null;
@@ -367,18 +393,25 @@ export async function createMap(
   const revealEntries = (group: string) => {
     const segments = segmentsByGroup.get(group) ?? [];
     const leadIn = trips.find((trip) => trip.id === group)?.from ? 1 : 0;
+    const arrivals = arrivalsByGroup.get(group) ?? [];
     const stagger = Math.min(220, 1500 / Math.max(1, segments.length));
     return [
       ...segments.map((id, index) => ({ source: "routes", id, at: index * stagger })),
       // A star lights as the arc arriving at it finishes drawing.
       ...(stopsByGroup.get(group) ?? []).map((stop) => {
-        const arriving = stop.first - 2 + leadIn;
+        const arriving = arrivals[stop.first - 2 + leadIn] ?? -1;
         return {
           source: "stops",
           id: stop.id,
           at: arriving < 0 ? 0 : arriving * stagger + revealDuration * 0.5,
         };
       }),
+      // A mark on the way lights as the arc arriving at it finishes drawing.
+      ...(waypointsByGroup.get(group) ?? []).map((waypoint) => ({
+        source: "waypoints",
+        id: waypoint.id,
+        at: (waypointIndex.get(waypoint.id) ?? 0) * stagger + revealDuration * 0.5,
+      })),
       // A day trip's ring follows its lens, after the route itself has drawn.
       ...(satellitesByGroup.get(group) ?? []).map((satellite) => ({
         source: "satellites",
@@ -387,14 +420,14 @@ export async function createMap(
       })),
     ];
   };
-  // The selected place's star or day-trip ring takes the ink stroke.
+  // The selected place's star, day-trip ring or mark on the way takes the ink stroke.
   const markCurrent = (place: string | null) => {
-    for (const source of ["stops", "satellites"]) {
+    for (const source of ["stops", "satellites", "waypoints"]) {
       if (currentStop) map.setFeatureState({ source, id: currentStop }, { current: false });
     }
     currentStop = place && shownFocus ? `${shownFocus}#${place}` : null;
     if (currentStop)
-      for (const source of ["stops", "satellites"])
+      for (const source of ["stops", "satellites", "waypoints"])
         map.setFeatureState({ source, id: currentStop }, { current: true });
   };
   const settleFocus = () => {
@@ -427,6 +460,8 @@ export async function createMap(
       "journey-stop-labels",
       "journey-daytrips",
       "journey-daytrip-labels",
+      "journey-via",
+      "journey-via-labels",
     ])
       map.setFilter(layer, match);
     const members = new Set(group ? membersOf(group) : []);
@@ -588,7 +623,9 @@ export async function createMap(
       if (!trip) return;
       // The frame includes home, so the whole round trip is in view.
       const points = [
-        ...trip.stops.map((stop) => places.find((place) => place.id === stop)?.coordinates),
+        ...[...trip.stops, ...(trip.via ?? []).flat()].map(
+          (stop) => places.find((place) => place.id === stop)?.coordinates,
+        ),
         ...[trip.from, trip.to].map(
           (home) => homes.find((candidate) => candidate.id === home)?.coordinates,
         ),
@@ -919,16 +956,24 @@ export async function createMap(
       ? nearest(point, ["pins", "place-labels"], reach, (feature) =>
           (states.get("pins" + String(feature.id)) ?? 1) > 0.5)
       : undefined;
-  // A focused journey's numbered stars and day-trip rings answer wherever they are drawn.
+  // A focused journey's numbered stars, day-trip rings and marks on the way
+  // answer wherever they are drawn.
   const stopAt = (point: maplibregl.Point, reach: number) =>
     shownFocus && map.getZoom() >= 2
       ? nearest(
           point,
-          ["journey-stops", "journey-stop-labels", "journey-daytrips", "journey-daytrip-labels"],
+          [
+            "journey-stops",
+            "journey-stop-labels",
+            "journey-daytrips",
+            "journey-daytrip-labels",
+            "journey-via",
+            "journey-via-labels",
+          ],
           reach,
-          // A ring still hidden beneath its base star must not catch the star's tap.
+          // A ring or mark still hidden beneath a star must not catch the star's tap.
           (feature) =>
-            !feature.layer.id.startsWith("journey-daytrip") ||
+            feature.properties.km === undefined ||
             Number(feature.properties.km) >= apartKm(map.getZoom()),
         )
       : undefined;

@@ -13,7 +13,7 @@ import {
   resolveVisits,
   validateConfig,
 } from "./config.ts";
-import { assignDayTrips, groupTrips, routeFeatures, type TripVisit } from "./trips.ts";
+import { assignDayTrips, assignVia, groupTrips, routeFeatures, type TripVisit } from "./trips.ts";
 import { computeStats } from "./stats.ts";
 import { placeKey } from "../src/map/place-key.ts";
 import {
@@ -189,37 +189,54 @@ async function main(): Promise<void> {
   const places = collapseVisits(anchored);
   const placeByKey = new Map(places.map((place) => [placeKey(place), place]));
   const homes = resolveHomes(authored, cache);
-  // Day trips resolve to the stay (or home) they were made from before
-  // journeys form, so they ride with their base instead of chaining as stops.
-  const tripVisits: TripVisit[] = assignDayTrips(
-    anchored.flatMap((visit) => {
-      if (!visit.city && !visit.address) return [];
-      const place = placeByKey.get(placeKey(visit));
-      if (!place) return [];
-      return [
-        {
-          id: visit.id,
-          placeId: place.id,
-          country: visit.country,
-          coordinates: visit.coordinates,
-          ...(visit.trip ? { trip: visit.trip } : {}),
-          ...(visit.dayTrip ? { dayTrip: true } : {}),
-          ...(visit.date !== undefined ? { date: visit.date } : {}),
-          ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
-        },
-      ];
-    }),
+  // Day trips resolve to the stay (or home) they were made from, and stops on
+  // the way to the stops they lie between, before journeys form, so neither
+  // chains as a stop. The authored order breaks ties between places passed on
+  // one day, since the list is written in travel order.
+  const authoredIndex = new Map(authored.visits.map((visit, index) => [visit.id, index]));
+  const tripVisits: TripVisit[] = assignVia(
+    assignDayTrips(
+      anchored.flatMap((visit) => {
+        if (!visit.city && !visit.address) return [];
+        const place = placeByKey.get(placeKey(visit));
+        if (!place) return [];
+        return [
+          {
+            id: visit.id,
+            placeId: place.id,
+            country: visit.country,
+            coordinates: visit.coordinates,
+            index: authoredIndex.get(visit.id) ?? authored.visits.length,
+            ...(visit.trip ? { trip: visit.trip } : {}),
+            ...(visit.dayTrip ? { dayTrip: true } : {}),
+            ...(visit.via ? { via: true } : {}),
+            ...(visit.date !== undefined ? { date: visit.date } : {}),
+            ...(visit.dateRange !== undefined ? { dateRange: visit.dateRange } : {}),
+          },
+        ];
+      }),
+      homes,
+    ),
     homes,
   );
-  const baseOf = new Map(tripVisits.flatMap((visit) => (visit.from ? [[visit.id, visit.from]] : [])));
-  const published = anchored.map((visit) =>
-    publicVisit({ ...visit, ...(baseOf.has(visit.id) ? { from: baseOf.get(visit.id) } : {}) }),
-  );
+  const tripVisitById = new Map(tripVisits.map((visit) => [visit.id, visit]));
+  const published = anchored.map((visit) => {
+    const resolved = tripVisitById.get(visit.id);
+    return publicVisit({
+      ...visit,
+      ...(resolved?.from ? { from: resolved.from } : {}),
+      ...(resolved?.between ? { between: resolved.between } : {}),
+    });
+  });
   for (const place of places) {
     const dayTrips = tripVisits.filter(
       (visit) => visit.from && visit.placeId === place.id,
     ).length;
     if (dayTrips) place.dayTrips = dayTrips;
+    const via = tripVisits.filter(
+      (visit) => visit.between && visit.placeId === place.id,
+    ).length;
+    if (via) place.via = via;
   }
   const grouped = groupTrips(tripVisits);
   const inJourney = new Set(grouped.flatMap((entry) => entry.visits.map((visit) => visit.id)));
@@ -318,8 +335,9 @@ async function main(): Promise<void> {
   );
   await repository.save();
   const dayTrips = tripVisits.filter((visit) => visit.from).length;
+  const onTheWay = tripVisits.filter((visit) => visit.between).length;
   console.log(
-    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits (${dayTrips} day ${dayTrips === 1 ? "trip" : "trips"}), ${trips.length} journeys, ${homes.length} ${homes.length === 1 ? "home" : "homes"}`,
+    `Published ${countryFine.features.length} countries, ${regionFine.features.length} regions, ${places.length} places, ${anchored.length} visits (${dayTrips} day ${dayTrips === 1 ? "trip" : "trips"}, ${onTheWay} on the way), ${trips.length} journeys, ${homes.length} ${homes.length === 1 ? "home" : "homes"}`,
   );
 }
 

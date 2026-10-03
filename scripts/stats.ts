@@ -52,6 +52,8 @@ export type Stats = {
   visits: number;
   /** Of the visits, those that were day trips from a stay or from home. */
   dayTrips: number;
+  /** Of the visits, those that were stops on the way between other places. */
+  via: number;
   journeys: number;
   nights: number;
   firstYear: number | null;
@@ -295,8 +297,11 @@ export function computeStats(
   const returned = [...places].sort((a, b) => b.visitCount - a.visitCount || byStart(a, b))[0];
   if (returned && returned.visitCount > 1)
     milestones.push({ kind: "returns", place: returned.id, visits: returned.visitCount });
-  // A day trip lies inside its stay, so it never opens or closes a gap.
-  const closed = dated.filter((visit) => dateBounds(visit)[1] !== openEnd && !visit.from);
+  // A day trip lies inside its stay and a stop on the way inside its journey,
+  // so neither opens or closes a gap.
+  const closed = dated.filter(
+    (visit) => dateBounds(visit)[1] !== openEnd && !visit.from && !visit.between,
+  );
   let gap: Extract<Milestone, { kind: "gap" }> | null = null;
   for (let i = 1; i < closed.length; i++) {
     const days = daysBetween(dateBounds(closed[i - 1])[1], dateBounds(closed[i])[0]);
@@ -312,6 +317,7 @@ export function computeStats(
     places: places.length,
     visits: cityVisits.length,
     dayTrips: cityVisits.filter((visit) => visit.from).length,
+    via: cityVisits.filter((visit) => visit.between).length,
     journeys: trips.length,
     nights: total,
     firstYear: sortedYears[0] ?? null,

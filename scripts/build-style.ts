@@ -123,6 +123,7 @@ const places = JSON.parse(
   coordinates: [number, number];
   visitCount: number;
   dayTrips?: number;
+  via?: number;
 }[];
 const anchors = JSON.parse(
   readFileSync("src/generated/anchors.json", "utf8"),
@@ -195,11 +196,42 @@ const satellites: FeatureCollection = {
     ];
   }),
 };
+// One mark per place passed on the way within its group, from the arcs the geo
+// build drew through it; it carries the distance that decides when it may show.
+const waypoints: FeatureCollection = {
+  type: "FeatureCollection",
+  features: routes.features.flatMap((feature) => {
+    const { group, kind, place, km, order } = feature.properties as {
+      group: string;
+      kind: string;
+      place?: string;
+      km?: number;
+      order: number;
+    };
+    if (kind === "excursion" || !place) return [];
+    const id = `${group}#${place}`;
+    if (routes.features.some((other) => {
+      const p = other.properties as { group: string; kind: string; place?: string; order: number };
+      return p.kind !== "excursion" && p.group === group && p.place === place && p.order < order;
+    }))
+      return [];
+    const target = placeById.get(place)!;
+    return [
+      {
+        type: "Feature" as const,
+        id,
+        properties: { id, group, place, km, label: target.label },
+        geometry: { type: "Point" as const, coordinates: target.coordinates },
+      },
+    ];
+  }),
+};
 const nothing: ExpressionSpecification = ["==", ["get", "group"], ""];
-// A place only ever seen on day trips is a hollow lamplight ring: visited, never slept in.
+// A place only ever seen on day trips or passed on the way is a hollow
+// lamplight ring: visited, never slept in.
 const hollow: ExpressionSpecification = [
   ">=",
-  ["coalesce", ["get", "dayTrips"], 0],
+  ["+", ["coalesce", ["get", "dayTrips"], 0], ["coalesce", ["get", "via"], 0]],
   ["coalesce", ["get", "visitCount"], 1],
 ];
 const visible: ExpressionSpecification = [
@@ -256,6 +288,11 @@ const style: StyleSpecification = {
       type: "geojson",
       promoteId: "id",
       data: satellites,
+    },
+    waypoints: {
+      type: "geojson",
+      promoteId: "id",
+      data: waypoints,
     },
     home: {
       type: "geojson",
@@ -565,6 +602,53 @@ const style: StyleSpecification = {
         "text-halo-color": color("halo"),
         "text-halo-width": 2,
         "text-opacity": pinOpacity,
+      },
+    },
+    // Stops on the way: a small filled dot on the route, unnumbered, where the
+    // arcs bend through the town; the tick of an ordinary station beside the
+    // circles of the stops. Hidden until it stands clear of its nearer neighbour.
+    {
+      id: "journey-via",
+      type: "circle",
+      source: "waypoints",
+      filter: nothing,
+      paint: {
+        "circle-color": color("accent"),
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 2.2, 8, 3, 16, 3.5],
+        "circle-opacity": apart(bands.focus, revealed),
+        "circle-stroke-color": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          color("ink"),
+          color("halo"),
+        ],
+        "circle-stroke-width": [
+          "case",
+          ["boolean", ["feature-state", "current"], false],
+          2,
+          1,
+        ],
+        "circle-stroke-opacity": apart(bands.focus, revealed),
+      },
+    },
+    {
+      id: "journey-via-labels",
+      type: "symbol",
+      source: "waypoints",
+      filter: nothing,
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 11,
+        "text-anchor": "left",
+        "text-offset": [0.7, 0],
+        "text-optional": true,
+      },
+      paint: {
+        "text-color": color("muted"),
+        "text-halo-color": color("halo"),
+        "text-halo-width": 2,
+        "text-opacity": apart(bands.focusLabel, revealed),
       },
     },
     // Day trips: small hollow rings beside their base, unnumbered, that appear
