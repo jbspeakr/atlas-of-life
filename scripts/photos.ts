@@ -60,7 +60,8 @@ const help = `Propose visits from photos and add the ones you confirm.
 Usage: npm run photos -- <export> [--dry-run] [--yes] [--no-geocode] [--since DATE | --all]
                                   [--home-radius KM] [--min-photos N] [--day-trip-photos N] [--max-gap-days N]
 
-<export> is what osxphotos writes with the fields below, as JSON or CSV:
+<export> is what osxphotos (https://github.com/RhetTbull/osxphotos) writes with the
+fields below, as JSON or CSV. Install it once with: uv tool install osxphotos
 
   osxphotos query --person "Name" --location --json \\
 ${osxphotosFields.map(([name, template]) => `    --field ${name} '${template}'`).join(" \\\n")} \\

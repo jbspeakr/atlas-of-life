@@ -29,7 +29,7 @@ NOMINATIM_CONTACT=you@example.org npm run geocode   # after editing by hand
 
 ### From photos
 
-`photos` proposes visits from a photo library export and adds the ones you confirm. Export the metadata on a Mac with [osxphotos](https://github.com/RhetTbull/osxphotos), which reads the Photos library in place, including photos kept only in iCloud; `npm run photos -- --help` prints the exact command. Filter it to the person or album that marks a trip:
+`photos` proposes visits from a photo library export and adds the ones you confirm. Export the metadata on a Mac with [osxphotos](https://github.com/RhetTbull/osxphotos), which reads the Photos library in place, including photos kept only in iCloud. Install it once with `uv tool install osxphotos` (or `pipx install osxphotos`); the first run asks for access to Photos. `npm run photos -- --help` prints the export command as well. Filter it to the person or album that marks a trip:
 
 ```sh
 osxphotos query --person "Name" --location --json \
