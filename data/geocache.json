@@ -10,6 +10,17 @@
     "city": "Hollenbeck",
     "source": "https://nominatim.openstreetmap.org/search?q=Hollenbeck&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=10&accept-language=en"
   },
+  "14fca73a0e4a7e6e41e1122a46f19d87ab6abfcafb3eaa0c486424ed41acb422": {
+    "coordinates": [
+      14.0552305,
+      52.2922975
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BB",
+    "city": "Bad Saarow",
+    "source": "https://nominatim.openstreetmap.org/search?q=Bad+Saarow&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
   "16767c928684698741afc91a4ac199b2fc8d361316f6a4b88e3c84f1b83ef069": {
     "coordinates": [
       12.4409217,
@@ -31,6 +42,17 @@
     "region": "SE-O",
     "city": "Ödsmål",
     "source": "https://nominatim.openstreetmap.org/search?q=%C3%96dsm%C3%A5l&countrycodes=se&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "25c286d7f8251c58cd5d9b0982181330574b51f594c6d534e3a074b19f7fce4d": {
+    "coordinates": [
+      13.0591397,
+      52.4009309
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BB",
+    "city": "Potsdam",
+    "source": "https://nominatim.openstreetmap.org/search?q=Potsdam&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "2e69527be96c917ed053a98487c3cf66b891db997cabd01bdd93c4134857cd08": {
     "coordinates": [
@@ -64,6 +86,17 @@
     "region": "DE-BE",
     "city": "Berlin",
     "source": "https://nominatim.openstreetmap.org/search?q=Berlin&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "37751cb91c439e8b9579aa6dc81a96ffff5aae4076d89013e6738a73c772c5c5": {
+    "coordinates": [
+      11.6601637,
+      59.480231
+    ],
+    "kind": "city",
+    "country": "NO",
+    "region": "NO-31",
+    "city": "Ørje",
+    "source": "https://nominatim.openstreetmap.org/search?q=%C3%98rje&countrycodes=no&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "60484ebe7b68e5d33382823a0b8334744760dfcd988be2f2cb7f4d3fa27ab71b": {
     "coordinates": [
@@ -108,6 +141,28 @@
     "region": "DE-BY",
     "city": "Munich",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Munich"
+  },
+  "733f14e7c29eec47c0989c54e438205663cdd4727fdbc2c2bc13b37f62b47bfe": {
+    "coordinates": [
+      8.5980244,
+      49.124118
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BW",
+    "city": "Bruchsal",
+    "source": "https://nominatim.openstreetmap.org/search?q=Bruchsal&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
+  "737feda6c390a861b0177c28dabe2577b61cd1221eabe16bd5429823962a3c11": {
+    "coordinates": [
+      23.795104,
+      38.3187102
+    ],
+    "kind": "city",
+    "country": "GR",
+    "region": "GR-A2",
+    "city": "Nea Palatia",
+    "source": "https://nominatim.openstreetmap.org/search?q=Nea+Palatia&countrycodes=gr&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "7c2effea71a1d35dd62fcc4a678c5cfa397941f520502f85fdc66696e294e24b": {
     "coordinates": [
@@ -186,6 +241,17 @@
     "city": "Skørping",
     "source": "https://nominatim.openstreetmap.org/search?q=Sk%C3%B8rping&countrycodes=dk&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
+  "ad433e0c35e26b035f9241534624fb6180f3236d6e008a2ce8127b1476b01c86": {
+    "coordinates": [
+      13.7628126,
+      52.110158
+    ],
+    "kind": "city",
+    "country": "DE",
+    "region": "DE-BB",
+    "city": "Märkisch Buchholz",
+    "source": "https://nominatim.openstreetmap.org/search?q=M%C3%A4rkisch+Buchholz&countrycodes=de&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
   "b4a32af5c76861a35eb4b76b8f2ea8b314d63254286a093c21da30de6ac63b3c": {
     "coordinates": [
       10.0996971,
@@ -207,6 +273,49 @@
     "region": "PL-32",
     "city": "Świnoujście",
     "source": "https://nominatim.openstreetmap.org/search?q=Swinem%C3%BCnde&countrycodes=pl&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
+  "bf7e151f9b74830cba30b3a40703073e7243ff711a4dabd4556b05332128fb50": {
+    "coordinates": [
+      23.7348324,
+      37.9755648
+    ],
+    "kind": "city",
+    "country": "GR",
+    "city": "Athens",
+    "source": "https://nominatim.openstreetmap.org/search?q=Athen&countrycodes=gr&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
+  "c67a81e9bb34a83daa4f5b2086fd4a9fccd3768cb86b3b83dcd6ce5c65f764de": {
+    "coordinates": [
+      11.5149447,
+      58.015795
+    ],
+    "kind": "city",
+    "country": "SE",
+    "region": "SE-O",
+    "city": "Kyrkesund",
+    "source": "https://nominatim.openstreetmap.org/search?q=Kyrkesund&countrycodes=se&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
+  "d01d701beb6602222006022085c6fba59b9a99e497c0133927ae8eaad0e188ca": {
+    "coordinates": [
+      10.5844602,
+      57.7259703
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Skagen",
+    "source": "https://nominatim.openstreetmap.org/search?q=Skagen&countrycodes=dk&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
+  "d34050e596dc510d876b05ba8ed16f2dabe3f76344355c64229f4b14e081534a": {
+    "coordinates": [
+      11.8190628,
+      58.1430369
+    ],
+    "kind": "city",
+    "country": "SE",
+    "region": "SE-O",
+    "city": "Svanesund",
+    "source": "https://nominatim.openstreetmap.org/search?q=Svanesund&countrycodes=se&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "d8205c775156b6d4a01d4aab09cfddc62e259d509229c17c0933262932c8a5e4": {
     "coordinates": [
@@ -252,6 +361,17 @@
     "city": "Lyon",
     "source": "https://en.wikipedia.org/api/rest_v1/page/summary/Lyon"
   },
+  "df0d12f5a6392cf9941fbcb7aa3de2febf6317f75bc0c3eb26dcab86e526fb8e": {
+    "coordinates": [
+      13.6190078,
+      60.0247668
+    ],
+    "kind": "city",
+    "country": "SE",
+    "region": "SE-S",
+    "city": "Uddeholm",
+    "source": "https://nominatim.openstreetmap.org/search?q=Uddeholm&countrycodes=se&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
+  },
   "df7d4dae3dc8fd33767a71bdcce8434f14c97773e9423313a41e9896cd5d6a8b": {
     "coordinates": [
       13.9689477,
@@ -262,6 +382,17 @@
     "region": "DE-BB",
     "city": "Lübbenau/Spreewald",
     "source": "https://nominatim.openstreetmap.org/search?q=L%C3%BCbbenau&countrycodes=de&format=jsonv2&addressdetails=1&limit=5&accept-language=en"
+  },
+  "e85573be26311f13cda020fa925968612718a0d84efbf6b777920f378f93710f": {
+    "coordinates": [
+      9.9649737,
+      57.5908031
+    ],
+    "kind": "city",
+    "country": "DK",
+    "region": "DK-81",
+    "city": "Hirtshals",
+    "source": "https://nominatim.openstreetmap.org/search?q=Hirtshals&countrycodes=dk&format=jsonv2&addressdetails=1&namedetails=1&limit=40&accept-language=en"
   },
   "f14a0add2984944711e81f38a8ce9f72be834fc3f6146939cb7f685d5c8636da": {
     "coordinates": [
