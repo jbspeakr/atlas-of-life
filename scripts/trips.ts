@@ -16,6 +16,12 @@ export type TripVisit = {
   dayTrip?: boolean;
   /** The place or home the day trip was made from, once resolved. */
   from?: string;
+  /** Authored: on the way although a night was spent in transit, so the dates alone cannot tell. */
+  via?: boolean;
+  /** Position in the authored list, which is written in travel order. */
+  index?: number;
+  /** The stop or home left and the one reached, once resolved as a stop on the way. */
+  between?: [string, string];
 };
 export type Trip = {
   id: string;
@@ -26,6 +32,11 @@ export type Trip = {
   /** The home the journey left from and returned to, when one was set. */
   from?: string;
   to?: string;
+  /**
+   * Places passed on the way, in travel order: one list per hop, the leg out
+   * first, then each hop between stops, the leg home last. Absent when none.
+   */
+  via?: string[][];
 };
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const day = 86_400_000;
@@ -79,6 +90,53 @@ export function assignDayTrips(
   });
 }
 
+/**
+ * Resolves stops on the way to the stop left and the stop reached. A single
+ * dated visit that is not a day trip lies on the way when its date is the day
+ * one stay ends and the next begins; with a home it is on the leg out when the
+ * date begins the next stay and no stay adjoins the day before, and on the leg
+ * home when it ends a stay and no stay adjoins the day after. An authored `via`
+ * also accepts the stay that ended the day before or begins the day after (a
+ * night in transit); it is an error when no stay adjoins at all. A visit a
+ * stay adjoins on only one side without a home, or with a stay a day away on
+ * the other side, keeps chaining as a stop: the dates say a night was slept
+ * somewhere, and the atlas does not guess where.
+ */
+export function assignVia(
+  input: readonly TripVisit[],
+  homes: readonly TripHome[] = [],
+): TripVisit[] {
+  const stays = input.filter(isStay).sort(byStart);
+  return input.map((visit) => {
+    const copy = { ...visit };
+    delete copy.between;
+    if (!closed(visit) || visit.from) return copy;
+    const [date, end] = dateBounds(visit);
+    if (date !== end) return copy;
+    const others = stays.filter(
+      (stay) => stay.id !== visit.id && stay.placeId !== visit.placeId,
+    );
+    const endsOn = (day: string) => others.filter((stay) => dateBounds(stay)[1] === day).at(-1);
+    const startsOn = (day: string) => others.find((stay) => dateBounds(stay)[0] === day);
+    const left = endsOn(date) ?? (visit.via ? endsOn(addDays(date, -1)) : undefined);
+    const right = startsOn(date) ?? (visit.via ? startsOn(addDays(date, 1)) : undefined);
+    if (left && right)
+      return left.placeId === right.placeId
+        ? copy
+        : { ...copy, between: [left.placeId, right.placeId] };
+    const home = homeAt(homes, date);
+    if (home && home.id !== visit.placeId) {
+      if (left && !startsOn(addDays(date, 1))) return { ...copy, between: [left.placeId, home.id] };
+      if (right && !endsOn(addDays(date, -1))) return { ...copy, between: [home.id, right.placeId] };
+    }
+    if (visit.via)
+      throw new Error(`${visit.id} is marked on the way, but no stay ends or begins around ${date}`);
+    return copy;
+  });
+}
+const byAuthored = (a: TripVisit, b: TripVisit) =>
+  (a.index ?? 0) - (b.index ?? 0) || byStart(a, b);
+
 function list(items: string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
@@ -112,7 +170,7 @@ export function groupTrips(
   let current: TripVisit[] = [];
   let latestEnd = "";
   for (const visit of eligible) {
-    if (visit.from) continue;
+    if (visit.from || visit.between) continue;
     if (visit.trip) {
       const group = authored.get(visit.trip) ?? [];
       group.push(visit);
@@ -141,17 +199,52 @@ export function groupTrips(
     );
     if (index >= 0) dayTrips[index].push(visit);
   }
+  // A stop on the way belongs to the journey whose hop or home leg it lies on:
+  // between two consecutive stops, before the first or after the last.
+  const stopsOf = (group: TripVisit[]) => {
+    const stops: string[] = [];
+    for (const visit of group)
+      if (stops[stops.length - 1] !== visit.placeId) stops.push(visit.placeId);
+    return stops;
+  };
+  const vias = groups.map((group): TripVisit[][] =>
+    Array.from({ length: stopsOf(group).length + 1 }, () => []),
+  );
+  for (const visit of eligible) {
+    if (!visit.between) continue;
+    const [left, right] = visit.between;
+    const date = dateBounds(visit)[0];
+    for (const [index, group] of groups.entries()) {
+      const stops = stopsOf(group);
+      const start = group.map((stay) => dateBounds(stay)[0]).sort()[0];
+      const end = group.map((stay) => dateBounds(stay)[1]).sort().at(-1)!;
+      const hop = stops.findIndex((stop, i) => i > 0 && stops[i - 1] === left && stop === right);
+      let slot = -1;
+      if (hop > 0 && start <= date && date <= end) slot = hop;
+      else if (right === stops[0] && !stops.includes(left) && addDays(start, -1) <= date && date <= start)
+        slot = 0;
+      else if (left === stops[stops.length - 1] && !stops.includes(right) && end <= date && date <= addDays(end, 1))
+        slot = stops.length;
+      if (slot < 0) continue;
+      vias[index][slot].push(visit);
+      break;
+    }
+  }
   const trips = groups.map((group, index): { trip: Trip; visits: TripVisit[] } => {
-    const visits = [...group, ...dayTrips[index]];
+    const passed = vias[index].map((slot) => {
+      const places: string[] = [];
+      for (const visit of [...slot].sort(byAuthored))
+        if (!places.includes(visit.placeId)) places.push(visit.placeId);
+      return places;
+    });
+    const visits = [...group, ...dayTrips[index], ...vias[index].flat()];
     const label = group[0].trip ?? tripLabel([...visits].sort(byStart));
     // Stops alone identify a journey, so adding a day trip keeps its ID.
     const digest = createHash("sha256")
       .update(JSON.stringify(group.map((visit) => visit.id).sort()))
       .digest("hex")
       .slice(0, 8);
-    const stops: string[] = [];
-    for (const visit of group)
-      if (stops[stops.length - 1] !== visit.placeId) stops.push(visit.placeId);
+    const stops = stopsOf(group);
     return {
       trip: {
         id: `trip-${slug(label) || "journey"}-${digest}`,
@@ -159,6 +252,7 @@ export function groupTrips(
         start: group.map((visit) => dateBounds(visit)[0]).sort()[0],
         end: group.map((visit) => dateBounds(visit)[1]).sort().at(-1)!,
         stops,
+        ...(passed.some((slot) => slot.length) ? { via: passed } : {}),
       },
       visits,
     };
@@ -312,7 +406,11 @@ export type RouteProperties = {
   /** A hop between stops, a leg from or to home, or one way of a day trip's lens. */
   kind: "hop" | "leg" | "excursion";
   order: number;
-  /** Excursions only: the day trip's place, its base and the distance between them. */
+  /**
+   * Excursions: the day trip's place, its base and the distance between them.
+   * A hop or leg arriving at a stop on the way: that place and its distance
+   * to the nearer of its two neighbours, which decides when its mark may show.
+   */
   place?: string;
   from?: string;
   km?: number;
@@ -358,6 +456,32 @@ export function routeFeatures(
     });
   };
   const homeIds = new Set(homes.map((home) => home.id));
+  // A hop or leg through the places passed on the way: one arc per step, the
+  // arcs arriving at a waypoint naming it. Two arcs meeting at the town bend
+  // the route there, which says "went this way, via here" and nothing more.
+  const through = (
+    group: string,
+    kind: "hop" | "leg",
+    from: [number, number],
+    to: [number, number],
+    side: 1 | -1,
+    via: readonly string[],
+  ) => {
+    const chain = [from, ...via.map(at), to];
+    for (let i = 1; i < chain.length; i++) {
+      const place = via[i - 1];
+      const extra = place
+        ? {
+            place,
+            km:
+              Math.round(
+                Math.min(distanceKm(chain[i - 1], chain[i]), distanceKm(chain[i], chain[i + 1])) * 10,
+              ) / 10,
+          }
+        : {};
+      emit(group, kind, chain[i - 1], chain[i], side, extra);
+    }
+  };
   const seenExcursions = new Set<string>();
   // One lens per base and place, however often the day was repeated.
   const excursions = (group: string, visits: readonly TripVisit[], bases: ReadonlySet<string>) => {
@@ -389,10 +513,12 @@ export function routeFeatures(
       ...points,
       ...(returns ? [returns.coordinates] : []),
     ]);
-    if (leaves) emit(trip.id, "leg", leaves.coordinates, points[0], side);
+    const via = (hop: number) => trip.via?.[hop] ?? [];
+    if (leaves) through(trip.id, "leg", leaves.coordinates, points[0], side, via(0));
     for (let i = 1; i < points.length; i++)
-      emit(trip.id, "hop", points[i - 1], points[i], side);
-    if (returns) emit(trip.id, "leg", points[points.length - 1], returns.coordinates, side);
+      through(trip.id, "hop", points[i - 1], points[i], side, via(i));
+    if (returns)
+      through(trip.id, "leg", points[points.length - 1], returns.coordinates, side, via(points.length));
     excursions(trip.id, visits, new Set(trip.stops));
     return {
       ...trip,
@@ -403,19 +529,38 @@ export function routeFeatures(
   // A place visited on its own shows the way out and back as a lens; a day
   // trip from home is such a visit, and one from a stay draws under the stay.
   const seen = new Set<string>();
+  // The places passed between a home and a lone stay, on the way there or back.
+  const passed = (visit: TripVisit, between: [string, string], window: [string, string]) =>
+    standalone
+      .filter((candidate) => {
+        const date = dateBounds(candidate)[0];
+        return (
+          candidate.between?.[0] === between[0] &&
+          candidate.between[1] === between[1] &&
+          window[0] <= date &&
+          date <= window[1]
+        );
+      })
+      .sort(byAuthored)
+      .map((candidate) => candidate.placeId)
+      .filter((place, index, all) => all.indexOf(place) === index && place !== visit.placeId);
   for (const visit of standalone) {
-    if (!closed(visit)) continue;
+    if (!closed(visit) || visit.between) continue;
     if (visit.from && !homeIds.has(visit.from)) continue;
     const [start, end] = dateBounds(visit);
     const point = at(visit.placeId);
     const out = homeAt(homes, start);
     const back = homeAt(homes, end);
     const group = `place:${visit.placeId}`;
-    const key = `${group}|${out?.id ?? ""}|${back?.id ?? ""}`;
+    const there = out ? passed(visit, [out.id, visit.placeId], [addDays(start, -1), start]) : [];
+    const home = back ? passed(visit, [visit.placeId, back.id], [end, addDays(end, 1)]) : [];
+    const key = `${group}|${out?.id ?? ""}|${back?.id ?? ""}|${there.join(",")}|${home.join(",")}`;
     if (!seen.has(key)) {
       seen.add(key);
-      if (out && !samePoint(out.coordinates, point)) emit(group, "leg", out.coordinates, point, 1);
-      if (back && !samePoint(back.coordinates, point)) emit(group, "leg", point, back.coordinates, 1);
+      if (out && !samePoint(out.coordinates, point))
+        through(group, "leg", out.coordinates, point, 1, there);
+      if (back && !samePoint(back.coordinates, point))
+        through(group, "leg", point, back.coordinates, 1, home);
     }
     if (isStay(visit))
       excursions(

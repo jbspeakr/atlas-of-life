@@ -13,6 +13,11 @@ const allowlist: Record<string, true> = {
   // counts how many of its visits were day trips. Both derive from public dates.
   from: true,
   dayTrips: true,
+  // A stop on the way names the public stop or home it left and the one it
+  // reached; a place counts how many of its visits passed through. Both derive
+  // from public dates and IDs.
+  between: true,
+  via: true,
 };
 // Homes publish a city-precision point and the period they cover, nothing more.
 const homeAllowlist: Record<string, true> = {
@@ -34,6 +39,8 @@ const tripAllowlist: Record<string, true> = {
   stops: true,
   from: true,
   to: true,
+  // Places passed on the way, per hop, by public ID.
+  via: true,
 };
 /** Audit object shapes in both standalone JSON and minified production JavaScript. */
 export function payloadViolations(

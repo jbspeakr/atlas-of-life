@@ -20,11 +20,15 @@ export type Place = {
   visitCount: number;
   /** How many of the visits were day trips from elsewhere. */
   dayTrips?: number;
+  /** How many of the visits were stops on the way between other places. */
+  via?: number;
 };
-export type PublicVisit = Omit<Place, "visitCount" | "dayTrips"> & {
+export type PublicVisit = Omit<Place, "visitCount" | "dayTrips" | "via"> & {
   visitCount?: number;
   /** The place or home this day trip was made from. */
   from?: string;
+  /** The stop or home this visit on the way left and the one it reached. */
+  between?: [string, string];
 };
 export type Trip = {
   id: string;
@@ -35,6 +39,8 @@ export type Trip = {
   /** Home IDs the journey left from and returned to. */
   from?: string;
   to?: string;
+  /** Places passed on the way, one list per hop: the leg out, each hop, the leg home. */
+  via?: string[][];
 };
 /** The base journeys start from; never a visit, published at city precision. */
 export type Home = {

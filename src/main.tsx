@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   dayTripsByBase,
@@ -145,19 +145,35 @@ const dayTripPlaces = (base: string, within?: { start: string; end: string }): s
       .map((visit) => placeByVisit.get(visit.id)!.id),
   ),
 ];
+type JourneyRecord = (typeof trips)[number];
+/** The places passed on the way along one hop: 0 is the leg out, stops.length the leg home. */
+const viaPlaces = (trip: JourneyRecord, hop: number): string[] => trip.via?.[hop] ?? [];
+const viaEntries = (trip: JourneyRecord, hop: number): ItineraryEntry[] =>
+  viaPlaces(trip, hop).map((id) => ({
+    id,
+    between: [
+      hop === 0 ? (trip.from ?? "") : trip.stops[hop - 1],
+      hop === trip.stops.length ? (trip.to ?? "") : trip.stops[hop],
+    ],
+  }));
 /**
  * A journey in walking order: each numbered stop, then the day trips made from
- * it. Stepping through a journey follows this sequence; the itinerary strip
- * draws it as segments with their satellites.
+ * it, then the places passed on the way to the next stop. Stepping through a
+ * journey follows this sequence; the itinerary strip draws it as segments with
+ * their satellites and the marks between them.
  */
-type ItineraryEntry = { id: string; stop?: number; from?: string };
+type ItineraryEntry = { id: string; stop?: number; from?: string; between?: [string, string] };
 const itineraries = new Map<string, ItineraryEntry[]>(
   trips.map((trip) => [
     trip.id,
-    trip.stops.flatMap((stop, index) => [
-      { id: stop, stop: index + 1 },
-      ...dayTripPlaces(stop, trip).map((id) => ({ id, from: stop })),
-    ]),
+    [
+      ...viaEntries(trip, 0),
+      ...trip.stops.flatMap((stop, index) => [
+        { id: stop, stop: index + 1 },
+        ...dayTripPlaces(stop, trip).map((id) => ({ id, from: stop })),
+        ...viaEntries(trip, index + 1),
+      ]),
+    ],
   ]),
 );
 const tripByPlace = new Map<string, { trip: (typeof trips)[number]; index: number }>();
@@ -165,11 +181,13 @@ for (const trip of trips)
   itineraries.get(trip.id)!.forEach((entry, index) => {
     if (!tripByPlace.has(entry.id)) tripByPlace.set(entry.id, { trip, index });
   });
-const tripDayTrips = (trip: (typeof trips)[number]) =>
+const tripDayTrips = (trip: JourneyRecord) =>
   itineraries.get(trip.id)!.filter((entry) => entry.from).length;
-/** Whether every visit to the place was a day trip from somewhere else. */
-const onlyDayTrips = (place: { visitCount: number; dayTrips?: number }) =>
-  (place.dayTrips ?? 0) >= place.visitCount;
+const tripVia = (trip: JourneyRecord) =>
+  itineraries.get(trip.id)!.filter((entry) => entry.between).length;
+/** Whether the place was only ever seen on day trips or passed on the way: visited, never slept in. */
+const neverSlept = (place: { visitCount: number; dayTrips?: number; via?: number }) =>
+  (place.dayTrips ?? 0) + (place.via ?? 0) >= place.visitCount;
 const baseLabel = (id: string) => placeById.get(id)?.label ?? homeById.get(id)?.label ?? id;
 /** Nights spent at each stop within the journey's dates, for the itinerary strip. */
 const stopNights = new Map(
@@ -199,6 +217,7 @@ function roundTrip(trip: (typeof trips)[number]): string | undefined {
 const searchableTrips = trips.map((trip) => ({
   ...trip,
   dayTrips: tripDayTrips(trip),
+  onTheWay: tripVia(trip),
   searchText: fold(trip.label),
 }));
 const searchablePlaces = chronology.map((place) => ({
@@ -604,6 +623,14 @@ function App() {
   // Where this place's day trips were made from, and where day trips from it went.
   const basesOf = [...new Set(placeVisits.flatMap((visit: PublicVisit) => (visit.from ? [visit.from] : [])))];
   const excursionsFrom = place ? dayTripPlaces(place.id) : home ? dayTripPlaces(home.id) : [];
+  // The pairs of places this one was passed between, each once.
+  const betweens = [
+    ...new Map(
+      placeVisits.flatMap((visit: PublicVisit) =>
+        visit.between ? [[visit.between.join("|"), visit.between] as const] : [],
+      ),
+    ).values(),
+  ];
   const placeLinks = (ids: string[]): ReactNode =>
     ids.map((id, index) => (
       <span key={id}>
@@ -652,6 +679,7 @@ function App() {
               <dd>
                 {stats.visits}
                 {stats.dayTrips > 0 && <small>{count(stats.dayTrips, "day trip")}</small>}
+                {stats.via > 0 && <small>{numberFormatter.format(stats.via)} on the way</small>}
               </dd>
             </div>
             <div><dt>Journeys</dt><dd>{stats.journeys}</dd></div>
@@ -949,6 +977,7 @@ function App() {
                       <span className="index-year">
                         {trip.stops.length} stops
                         {trip.dayTrips > 0 && <small>{plural(trip.dayTrips, "day trip")}</small>}
+                        {trip.onTheWay > 0 && <small>{trip.onTheWay} on the way</small>}
                       </span>
                     </button>
                   </li>
@@ -961,7 +990,7 @@ function App() {
                   <button type="button" data-place-id={p.id}
                     aria-pressed={selected === p.id}
                     onClick={() => atlas.current?.select(p.id)}>
-                    <span className={onlyDayTrips(p) ? "place-mark place-mark-daytrip" : "place-mark"} aria-hidden="true" />
+                    <span className={neverSlept(p) ? "place-mark place-mark-hollow" : "place-mark"} aria-hidden="true" />
                     <span className="index-name">{p.label}<small>{p.countryName}</small></span>
                     <span className="index-year">{Number.isFinite(p.firstVisit) ? p.firstVisit : "Undated"}</span>
                   </button>
@@ -1065,7 +1094,7 @@ function App() {
           )}
           {basesOf.length > 0 && (
             <p className="caption-daytrip">
-              {onlyDayTrips(place) && placeVisits.length === 1 ? "Day trip" : "Day trips"} from{" "}
+              {placeVisits.filter((visit: PublicVisit) => visit.from).length === 1 ? "Day trip" : "Day trips"} from{" "}
               {placeLinks(basesOf)}
             </p>
           )}
@@ -1074,6 +1103,11 @@ function App() {
               {excursionsFrom.length === 1 ? "Day trip" : "Day trips"} to {placeLinks(excursionsFrom)}
             </p>
           )}
+          {betweens.map(([left, right]) => (
+            <p key={`${left}|${right}`} className="caption-daytrip">
+              On the way from {placeLinks([left])} to {placeLinks([right])}
+            </p>
+          ))}
           {membership && (() => {
             const trip = membership.trip;
             const from = trip.from ? homeById.get(trip.from) : undefined;
@@ -1081,26 +1115,42 @@ function App() {
             const perStop = stopNights.get(trip.id) ?? [];
             const total = perStop.reduce((a, b) => a + b, 0);
             const excursions = tripDayTrips(trip);
+            const onTheWay = tripVia(trip);
             const summary = [
               roundTrip(trip),
               total ? plural(total, "night") : undefined,
               excursions ? plural(excursions, "day trip") : undefined,
+              onTheWay ? `${onTheWay} on the way` : undefined,
             ]
               .filter(Boolean)
               .join(" · ");
+            // Places passed on the way sit in the gap between two segments, as
+            // the small marks they are on the map.
+            const viaMarks = (hop: number) =>
+              viaPlaces(trip, hop).map((id) => (
+                <li key={`via-${hop}-${id}`} className="itinerary-via">
+                  <button type="button" tabIndex={-1}
+                    title={`On the way, ${baseLabel(id)}`}
+                    aria-label={`On the way, ${baseLabel(id)}`}
+                    aria-current={entry?.id === id && entry.between ? "step" : undefined}
+                    onClick={() => atlas.current?.select(id)} />
+                </li>
+              ));
             return (
               <div className="itinerary">
                 {summary && <p className="itinerary-summary">{summary}</p>}
                 {/* Segment widths follow nights stayed: a schematic, never geography. */}
                 <ol className="itinerary-strip" aria-label="Stops in this journey">
                   {from && <li className="itinerary-home" aria-hidden="true" title={`Home, ${from.label}`} />}
+                  {viaMarks(0)}
                   {trip.stops.map((stop, index) => {
                     const label = placeById.get(stop)?.label ?? stop;
                     const stay = perStop[index] ?? 0;
                     const detail = `${index + 1}. ${label}${stay ? `, ${plural(stay, "night")}` : ""}`;
                     const satellites = dayTripPlaces(stop, trip);
                     return (
-                      <li key={`${stop}-${index}`} style={{ flexGrow: Math.max(1, stay) }}>
+                      <Fragment key={`${stop}-${index}`}>
+                      <li style={{ flexGrow: Math.max(1, stay) }}>
                         {satellites.length > 0 && (
                           // Day trips sit above their stop as the hollow rings they are on the map.
                           <span className="itinerary-satellites">
@@ -1117,6 +1167,8 @@ function App() {
                           aria-current={entry?.stop === index + 1 ? "step" : undefined}
                           onClick={() => atlas.current?.select(stop)} />
                       </li>
+                      {viaMarks(index + 1)}
+                      </Fragment>
                     );
                   })}
                   {to && <li className="itinerary-home" aria-hidden="true" title={`Home, ${to.label}`} />}
@@ -1133,7 +1185,9 @@ function App() {
                 ? <>Part of <em>{membership.trip.label}</em> · stop {entry.stop} of {membership.trip.stops.length}</>
                 : membership && entry?.from
                   ? <>Part of <em>{membership.trip.label}</em> · day trip from {baseLabel(entry.from)}</>
-                  : <>Visit {sequenceIndex + 1} of {sequence.length}</>}
+                  : membership && entry?.between
+                    ? <>Part of <em>{membership.trip.label}</em> · on the way from {baseLabel(entry.between[0])} to {baseLabel(entry.between[1])}</>
+                    : <>Visit {sequenceIndex + 1} of {sequence.length}</>}
             </span>
             <button type="button" aria-label={membership ? "Next stop" : "Next visit"}
               aria-keyshortcuts="ArrowRight" disabled={sequenceIndex >= sequence.length - 1}

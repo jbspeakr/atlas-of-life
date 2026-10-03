@@ -104,7 +104,6 @@ const config: Config = {
       country: "DK",
       city: "Skagen",
       date: "2025-06-01",
-      dayTrip: true
     },
     {
       country: "DK",
@@ -125,7 +124,6 @@ const config: Config = {
       coordinates: [7.949089, 58.1530416],
       publishPrecision: "exact",
       date: "2025-06-03",
-      dayTrip: true
     },
     {
       country: "NO",
@@ -152,7 +150,6 @@ const config: Config = {
       coordinates: [7.53296, 59.21218],
       publishPrecision: "exact",
       date: "2025-06-07",
-      dayTrip: true
     },
     {
       country: "NO",
@@ -165,7 +162,6 @@ const config: Config = {
       country: "NO",
       city: "Ørje",
       date: "2025-06-12",
-      dayTrip: true
     },
     {
       country: "SE",
@@ -212,7 +208,6 @@ const config: Config = {
       coordinates: [12.70607, 59.05221],
       publishPrecision: "exact",
       date: "2025-06-18",
-      dayTrip: true
     },
     {
       country: "SE",
@@ -270,7 +265,6 @@ const config: Config = {
       coordinates: [11.94000, 57.68592],
       publishPrecision: "exact",
       date: "2025-06-24",
-      dayTrip: true
     },
     {
       country: "SE",
@@ -302,7 +296,6 @@ const config: Config = {
       coordinates: [13.15386, 55.37138],
       publishPrecision: "exact",
       date: "2025-07-01",
-      dayTrip: true
     },
     {
       country: "DE",

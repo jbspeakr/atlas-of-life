@@ -350,8 +350,8 @@ kbd {
   border-radius: 50%;
   background: var(--accent);
 }
-/* A place only ever seen on day trips: hollow, as its pin is on the map. */
-.place-mark-daytrip {
+/* A place only ever seen on day trips or passed on the way: hollow, as its pin is on the map. */
+.place-mark-hollow {
   width: 6px;
   height: 6px;
   flex-basis: 6px;
@@ -572,6 +572,30 @@ kbd {
 .itinerary-strip button[aria-current="step"] {
   opacity: 1;
   background-size: 100% 6px;
+}
+/* Places passed on the way: a small filled mark in the gap between two segments. */
+.itinerary-strip .itinerary-via {
+  flex: 0 0 5px;
+  min-width: 5px;
+}
+.itinerary-strip .itinerary-via button {
+  display: block;
+  width: 5px;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+  cursor: pointer;
+}
+.itinerary-strip .itinerary-via button:hover {
+  opacity: 1;
+}
+.itinerary-strip .itinerary-via button[aria-current="step"] {
+  opacity: 1;
+  outline: 1.5px solid var(--text);
+  outline-offset: 1px;
 }
 /* Home bookends: the same hollow ring as on the map. */
 .itinerary-strip .itinerary-home {
