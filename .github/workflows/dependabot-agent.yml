@@ -5,6 +5,9 @@ name: Review Dependabot security update
 #          hands its commits over as a patch.
 #   apply  write token; refuses patches that touch protected paths, pushes,
 #          re-runs "Verify and publish atlas" on the new head and comments.
+#          It merges by itself only a patch-level update that Claude called
+#          "Safe to merge" without changing code, once the `quick` check on
+#          that exact head is green, and then dispatches the Pages deploy.
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -26,6 +29,7 @@ jobs:
       before: ${{ steps.before.outcome }}
       after: ${{ steps.after.outcome }}
       commits: ${{ steps.patch.outputs.commits }}
+      update-type: ${{ steps.meta.outputs.update-type }}
     env:
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -137,6 +141,7 @@ jobs:
       BEFORE: ${{ needs.agent.outputs.before }}
       AFTER: ${{ needs.agent.outputs.after }}
       COMMITS: ${{ needs.agent.outputs.commits || '0' }}
+      UPDATE_TYPE: ${{ needs.agent.outputs.update-type }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -184,3 +189,25 @@ jobs:
             echo "[Workflow run]($RUN_URL)"
           } > "$RUNNER_TEMP/comment.md"
           gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+      - name: Merge a safe patch update
+        # GITHUB_TOKEN merges start no push workflow, so the deploy is dispatched.
+        run: |
+          verdict=$(grep -v '^[[:space:]]*$' "$RUNNER_TEMP/agent/review.md" | tail -n 1)
+          if [ "$UPDATE_TYPE" != "version-update:semver-patch" ] || [ "$COMMITS" != "0" ] \
+             || [ "$BEFORE" != "success" ] || [ "$AFTER" != "success" ] \
+             || ! printf '%s' "$verdict" | grep -q 'Safe to merge'; then
+            echo "Not eligible for merging by itself: $UPDATE_TYPE, $COMMITS commit(s), verdict: $verdict"
+            exit 0
+          fi
+          for _ in $(seq 60); do
+            conclusion=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?check_name=quick" \
+              --jq '[.check_runs[] | select(.status == "completed")][0].conclusion // ""')
+            [ -n "$conclusion" ] && break
+            sleep 10
+          done
+          if [ "$conclusion" != "success" ]; then
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Not merged by itself: the \`quick\` check on $HEAD_SHA is ${conclusion:-still running}."
+            exit 0
+          fi
+          gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$HEAD_SHA"
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main

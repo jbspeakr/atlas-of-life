@@ -66,7 +66,7 @@ The harness precedes application code. Missing outputs, assets, runtime interfac
 
 ## Dependency updates
 
-Dependabot raises security updates only; version updates would be noise for a one-person site. An agent reviews and fixes them, but the job that runs it holds no write token and the dependency's own code, which runs during `npm ci` and tests, sees only the Anthropic key. Writes happen in a separate job that applies the agent's commits after a path guard, so a prompt injected through release notes cannot push workflow, data or baseline changes. Pushing with the Claude GitHub App instead was rejected: it would hand that write token to the job running untrusted package code. Merging stays with the maintainer.
+Dependabot raises security updates only; version updates would be noise for a one-person site. An agent reviews and fixes them, but the job that runs it holds no write token and the dependency's own code, which runs during `npm ci` and tests, sees only the Anthropic key. Writes happen in a separate job that applies the agent's commits after a path guard, so a prompt injected through release notes cannot push workflow, data or baseline changes. Pushing with the Claude GitHub App instead was rejected: it would hand that write token to the job running untrusted package code. Only a patch-level update that Claude called safe without changing any code, with the `quick` check green on that exact head, merges by itself; everything else, and every update the agent had to fix, waits for the maintainer.
 
 ## Accessibility
 

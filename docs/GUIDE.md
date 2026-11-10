@@ -117,6 +117,8 @@ Dependabot opens security updates only (`.github/dependabot.yml`; version update
 
 Claude runs with a read-only token and can only commit locally. A second job takes its commits as a patch, refuses any that touch `.github/`, `data/`, baselines or budgets, pushes only when the quick gate passes, and re-dispatches "Verify and publish atlas" on the new head, since a `GITHUB_TOKEN` push starts no workflow. After that push Dependabot stops rebasing the pull request; comment `@dependabot recreate` to start over. Updates to `maplibre-gl`, `pmtiles`, `@protomaps/*`, `react`, `react-dom` or `vite` still need a local `npm run verify` before merging.
 
+A patch-level update merges by itself when Claude's verdict is "Safe to merge", it changed no code, and the `quick` check on that head is green; the workflow then dispatches the Pages deploy, because a merge made with `GITHUB_TOKEN` starts no push workflow. Minor and major updates, and any update Claude fixed, wait for a human.
+
 Setup: turn on Dependabot alerts and security updates under Settings → Code security, and add `ANTHROPIC_API_KEY` as a **Dependabot** secret (Settings → Secrets and variables → Dependabot). Actions secrets are not passed to Dependabot runs.
 
 ## Data provenance
