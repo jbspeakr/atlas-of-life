@@ -1,0 +1,16 @@
+# Security updates only. Version updates are off (limit 0); security updates
+# ignore this limit and still read the labels and commit prefix below.
+# Turn on "Dependabot security updates" under Settings → Code security too.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 0
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: fix
+      include: scope

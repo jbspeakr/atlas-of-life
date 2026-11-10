@@ -64,6 +64,10 @@ The Pages workflow reads its base path from `actions/configure-pages` before Vit
 
 The harness precedes application code. Missing outputs, assets, runtime interfaces or baselines are failures, not skips. Baselines are approved only by the explicit approval command. Full verification serves the build under `/atlas/` at a pinned viewport and DPR, records objective metrics, gates frame time on the median p95 and flags instability rather than hiding it with retries. Hosted CI runs only the quick gate. Full verification needs a real GPU and exact platform PNGs, so it is a local step on the maintainer's machine before merging any change that touches rendering, motion or pixels. There is no self-hosted GPU runner and none is planned: it would need a persistent machine holding no personal credentials, fenced from fork code, for a one-person site. The Cloudflare deployment job stays commented and rebuilds with `/` rather than reusing the Pages subpath.
 
+## Dependency updates
+
+Dependabot raises security updates only; version updates would be noise for a one-person site. An agent reviews and fixes them, but the job that runs it holds no write token and the dependency's own code, which runs during `npm ci` and tests, sees only the Anthropic key. Writes happen in a separate job that applies the agent's commits after a path guard, so a prompt injected through release notes cannot push workflow, data or baseline changes. Pushing with the Claude GitHub App instead was rejected: it would hand that write token to the job running untrusted package code. Merging stays with the maintainer.
+
 ## Accessibility
 
 Every control has an accessible name, a keyboard path and a visible focus ring; axe runs in full verification on every surface. Repeated-visit aliases replace their canonical hash instead of pushing history, so Back never traps. Escape closes what is open and returns focus to where it came from.

@@ -111,6 +111,14 @@ The workflow runs quick verification on every push and pull request, comments th
 
 The build injects a strict CSP: scripts, fonts and styles from self, only explicit tile origins for connections, a same-origin module worker for MapLibre, no inline script except the hashed theme boot. MapLibre itself ships as three ES module files under `assets/maplibre-<hash>/`, served as they are so the page and the worker share one download; viewers need a browser with WebGL2. Deploy over HTTP(S), not `file://`. `_headers` gives hashed assets a one-year immutable policy and marks `sw.js` no-cache on hosts that honour it; GitHub Pages does not, so use an immutable remote archive there. Never gzip a PMTiles object at the CDN.
 
+## Dependency security updates
+
+Dependabot opens security updates only (`.github/dependabot.yml`; version updates are off). `.github/workflows/dependabot-agent.yml` then runs Claude on each of its pull requests: it reads what changed upstream, checks every use of the package here, fixes the code if the quick gate fails, and comments a review ending in one verdict: "Safe to merge", "Safe after local full verification" or "Needs a human".
+
+Claude runs with a read-only token and can only commit locally. A second job takes its commits as a patch, refuses any that touch `.github/`, `data/`, baselines or budgets, pushes only when the quick gate passes, and re-dispatches "Verify and publish atlas" on the new head, since a `GITHUB_TOKEN` push starts no workflow. After that push Dependabot stops rebasing the pull request; comment `@dependabot recreate` to start over. Updates to `maplibre-gl`, `pmtiles`, `@protomaps/*`, `react`, `react-dom` or `vite` still need a local `npm run verify` before merging.
+
+Setup: turn on Dependabot alerts and security updates under Settings → Code security, and add `ANTHROPIC_API_KEY` as a **Dependabot** secret (Settings → Secrets and variables → Dependabot). Actions secrets are not passed to Dependabot runs.
+
 ## Data provenance
 
 Natural Earth is public domain; geoBoundaries gbOpen is CC-BY 4.0; OSM tiles are ODbL; Protomaps supplies basemap and style assets. See [attribution](ATTRIBUTION.md). Boundary sources are pinned by URL and SHA-256 in `data/sources.json`; missing non-fixture boundaries download from those sources at build, but geocoding never happens in a build. Nominatim is used only by the explicit commands, with a contact-bearing User-Agent and at least 1.1 s between requests; read its [usage policy](https://operations.osmfoundation.org/policies/nominatim/) before refreshing a large configuration.

@@ -59,6 +59,8 @@ verification/         The verification harness and its fixtures.
 docs/                 GUIDE (operating reference), DATA (authoring), DECISIONS (settled choices),
                       ROADMAP (what is next), ATTRIBUTION, and assets/ (README logo and screenshots).
 .github/workflows/deploy.yml   Quick verification on ubuntu-latest, PR comment, Pages deploy.
+.github/workflows/dependabot-agent.yml   Claude reviews and fixes Dependabot security updates.
+.github/dependabot.yml   Security updates only.
 ```
 
 ## Data flow
