@@ -61,7 +61,7 @@ The build finds the city, discovers which region it belongs to, generates stable
   A timeline with one tick per visit. **Through** shows everywhere you had been by a date; **During** lights only what was under way that month.
 
 - **Every view is a link**<br>
-  The address bar follows the map: a place, a camera position, a timeline position. Share exactly what you see.
+  The address bar follows the map: a place, a journey, a camera position, a timeline position, an open panel. Share exactly what you see.
 
 - **By the numbers**<br>
   Countries, regions, places, journeys and nights away; your share of the world's 195 countries and of each continent; milestones such as the furthest point from home, the crow-flies distance, the northernmost place and the longest journey, each a link that lights it on the map; two years side by side. All computed at build time.
