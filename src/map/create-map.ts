@@ -17,20 +17,19 @@ import { activeLayer } from "./layers";
 import {
   homes,
   isMissingTile,
-  placeByVisit,
   places,
   trips,
   visits,
   visitsByPlace,
-  type Place,
 } from "./data";
 export * from "./data";
 import { apartKm } from "./expressions";
-import { visibleAt, type Dated, type TimeMode } from "./time";
-import { formatHash, parseHash } from "./router";
+import { visibleAt, type Dated } from "./time";
 import { cameraAtFrame, createGlobeTour, selectTourStops, tourCandidates } from "./tour";
 import { attachSky } from "./sky";
-import { currentTheme, type Theme } from "../theme";
+import type { Theme } from "../theme";
+import { isOpeningView, type Action, type AtlasState, type Timeline } from "../state/atlas-state";
+import type { Store } from "../state/store";
 // The archive holds z7–14 only in padded windows around places. An empty tile
 // (or a 404, which MapLibre treats the same) renders as a blank hole; an errored
 // tile makes MapLibre draw the nearest ancestor it has, at worst the global z6.
@@ -50,22 +49,19 @@ archiveTiles.getHeader().catch(() => {
   // The map awaits this same request and reports a failure itself.
 });
 const ease = (t: number) => t * t * (3 - 2 * t);
+/**
+ * The map's handle. What the map lights, filters and flies to follows the
+ * store; the handle adds only what is not state (the camera nudge, teardown)
+ * and, for verification and the recorder, shorthands that dispatch actions.
+ */
 export type Atlas = {
   map: LibreMap;
   firstIdleMs: number;
   /** The basemap archive URL and whether it is served from this origin. */
   archive: { url: string; bundled: boolean };
   select: (id: string) => void;
-  deselect: () => void;
-  focusTrip: (id: string) => void;
-  /** Temporarily light a journey (directory hover); null restores the focus beneath. */
-  preview: (id: string | null) => void;
-  play: () => void;
-  stop: () => void;
   reset: () => void;
   zoomBy: (delta: number) => void;
-  setTheme: (theme: Theme) => void;
-  filter: (through: string | null, mode: TimeMode) => void;
   destroy: () => void;
 };
 declare global {
@@ -75,10 +71,8 @@ declare global {
 }
 export async function createMap(
   container: HTMLElement,
-  onSelect: (id: string | null) => void,
+  store: Store,
   onView: (message: string, zoom: number, visibleIds: string[]) => void,
-  onFilter: (through: string | null, mode: TimeMode) => void,
-  onTour: (playing: boolean) => void,
   signal: AbortSignal,
 ): Promise<Atlas> {
   const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -102,7 +96,7 @@ export async function createMap(
   if (media.matches || deterministic)
     style.transition = { duration: 0, delay: 0 };
   // The first frame already wears the theme the page booted with.
-  const initialTheme = currentTheme();
+  const initialTheme = store.getState().theme;
   style.state = { theme: { default: initialTheme } };
   const home = { center: [10, 35] as [number, number], zoom: innerWidth < 700 ? 0.65 : 1.8 };
   const map = new maplibregl.Map({
@@ -146,41 +140,23 @@ export async function createMap(
     "World map. Use arrow keys to pan, plus and minus to zoom, or Browse places. Alt+W returns to the world.",
   );
   canvas.tabIndex = 0;
-  let selected: string | null = null;
-  let filterState: { through: string | null; mode: TimeMode } = {
-    through: null,
-    mode: "cumulative",
-  };
-  // The URL mirrors what the viewer can see: a place, a moved camera, a filter.
-  const currentRoute = () => {
+  /**
+   * Once the viewer has moved the camera, each settled camera is reported to
+   * the store; ignition and the flight home after a reset never are.
+   */
+  const reportCamera = () => {
+    if (!stopped) return;
     const center = map.getCenter();
     const zoom = map.getZoom();
     const atHome =
       Math.abs(zoom - home.zoom) < 0.01 &&
       Math.abs(center.lat - home.center[1]) < 0.01 &&
       Math.abs(center.lng - home.center[0]) < 0.01;
-    return {
-      ...(selected ? { place: selected } : {}),
-      ...(!selected && stopped && !atHome
-        ? { view: { zoom, lat: center.lat, lng: center.lng } }
-        : {}),
-      ...(filterState.through ? { through: filterState.through } : {}),
-      ...(filterState.mode === "only" ? { mode: filterState.mode } : {}),
-    };
+    store.dispatch({
+      type: "moved",
+      camera: atHome ? { kind: "home" } : { kind: "moved", zoom, lat: center.lat, lng: center.lng },
+    });
   };
-  const writeUrl = (method: "push" | "replace" = "replace") => {
-    const hash = formatHash(currentRoute());
-    if (hash === location.hash) return;
-    const url = location.pathname + location.search + hash;
-    if (method === "push") history.pushState(null, "", url);
-    else history.replaceState(null, "", url);
-  };
-  // Legacy links carried a 64-character digest; the current ID is its prefix.
-  const resolvePlace = (id: string): Place | undefined =>
-    placeByVisit.get(id) ??
-    visits
-      .filter((visit) => id.startsWith(visit.id) && placeByVisit.has(visit.id))
-      .map((visit) => placeByVisit.get(visit.id)!)[0];
   let animation = 0;
   let touring = false;
   /** The tour's opening flight is under way; a viewer's gesture already ends it. */
@@ -274,29 +250,6 @@ export async function createMap(
       map.setFeatureState({ source: "countries", id: feature.id! }, { visibility: 1 });
     }
   };
-  const fly = (bounds: LngLatBoundsLike, maxZoom: number, clearance = 0) => {
-    finishIgnition();
-    stopped = true;
-    const camera = map.cameraForBounds(bounds, {
-      padding: {
-        top: innerWidth > 700 ? 110 : 125,
-        bottom: innerWidth > 700 ? 100 + clearance : 190,
-        left: 40,
-        right: 40,
-      },
-      maxZoom,
-    });
-    if (camera)
-      map.flyTo({
-        ...camera,
-        pitch: 0,
-        bearing: 0,
-        speed: 0.72,
-        curve: 1.5,
-        easing: ease,
-        animate: !media.matches,
-      });
-  };
   // Journeys stay off the map until one is in focus: a selected stop, a
   // journey chosen in the directory, or a hovered directory entry. The focused
   // group's arcs and numbered stars reveal in travel order; other pins recede.
@@ -385,7 +338,6 @@ export async function createMap(
     ...(satellitesByGroup.get(group) ?? []).map((satellite) => satellite.place),
     ...(waypointsByGroup.get(group) ?? []).map((waypoint) => waypoint.place),
   ];
-  let baseFocus: string | null = null;
   let shownFocus: string | null = null;
   let currentStop: string | null = null;
   let revealFrame = 0;
@@ -501,158 +453,261 @@ export async function createMap(
     };
     revealFrame = requestAnimationFrame(frame);
   }
-  const focus = (group: string | null, place: string | null = null) => {
-    baseFocus = group;
-    showFocus(group, place);
+  const fly = (bounds: LngLatBoundsLike, maxZoom: number, clearance = 0) => {
+    finishIgnition();
+    stopped = true;
+    const camera = map.cameraForBounds(bounds, {
+      padding: {
+        top: innerWidth > 700 ? 110 : 125,
+        bottom: innerWidth > 700 ? 100 + clearance : 190,
+        left: 40,
+        right: 40,
+      },
+      maxZoom,
+    });
+    if (camera)
+      map.flyTo({
+        ...camera,
+        pitch: 0,
+        bearing: 0,
+        speed: 0.72,
+        curve: 1.5,
+        easing: ease,
+        animate: !media.matches,
+      });
   };
+  const flyToPlace = (id: string) => {
+    const target = homes.find((candidate) => candidate.id === id) ?? places.find((place) => place.id === id);
+    if (!target) return;
+    const [x, y] = target.coordinates;
+    fly(
+      [
+        [x - 0.035, y - 0.022],
+        [x + 0.035, y + 0.022],
+      ],
+      11,
+    );
+  };
+  const frameJourney = (id: string) => {
+    const trip = trips.find((candidate) => candidate.id === id);
+    if (!trip) return;
+    // The frame includes home, so the whole round trip is in view.
+    const points = [
+      ...[...trip.stops, ...(trip.via ?? []).flat()].map(
+        (stop) => places.find((place) => place.id === stop)?.coordinates,
+      ),
+      ...[trip.from, trip.to].map(
+        (base) => homes.find((candidate) => candidate.id === base)?.coordinates,
+      ),
+    ].filter((point): point is [number, number] => Boolean(point));
+    if (!points.length) return;
+    fly(
+      [
+        [Math.min(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1]))],
+        [Math.max(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))],
+      ],
+      6,
+      // Clear of the timeline, so a journey's home is never framed beneath it.
+      40,
+    );
+  };
+  const flyHome = () => {
+    finishIgnition();
+    stopped = false;
+    map.flyTo({
+      center: home.center,
+      zoom: home.zoom,
+      bearing: 0,
+      pitch: 0,
+      speed: 0.72,
+      curve: 1.5,
+      easing: ease,
+      animate: !media.matches,
+    });
+  };
+  const jumpTo = (camera: { zoom: number; lat: number; lng: number }) => {
+    finishIgnition();
+    stopped = true;
+    map.jumpTo({ center: [camera.lng, camera.lat], zoom: camera.zoom, bearing: 0, pitch: 0 });
+  };
+  const startTour = () => {
+    // The recorder picks the same stops, so the movie and the app agree.
+    const candidates = tourCandidates(places, homes);
+    if (touring) return;
+    if (!candidates.length) {
+      store.dispatch({ type: "stopTour" });
+      return;
+    }
+    const stops = selectTourStops(candidates, candidates[0]);
+    const { width, height } = canvas.getBoundingClientRect();
+    const tour = createGlobeTour(stops, { width, height });
+    finishIgnition();
+    for (const id of Object.keys(fineSources)) loadFine(id);
+    touring = true;
+    stopped = true;
+    const apply = (camera: { center: [number, number]; zoom: number }) =>
+      map.jumpTo({ center: camera.center, zoom: camera.zoom, bearing: 0, pitch: 0 });
+    const end = () => store.dispatch({ type: "stopTour" });
+    if (media.matches) {
+      // Reduced motion: hold each shot instead of flying between them.
+      let index = 0;
+      const next = () => {
+        if (!touring) return;
+        if (index >= tour.keyframes.length) {
+          end();
+          return;
+        }
+        apply(tour.keyframes[index].camera);
+        index += 1;
+        tourTimer = window.setTimeout(next, 1500);
+      };
+      next();
+      return;
+    }
+    // The tour begins where the viewer is: fly from the current camera to the
+    // opening wide shot, as "World" does, then play the choreography onwards.
+    const entry = tour.keyframes[1];
+    const playFrom = (first: number) => {
+      const start = performance.now();
+      const frame = (now: number) => {
+        if (!touring) return;
+        // A frame timestamp can precede the performance.now() taken at start.
+        const index = Math.max(first, Math.min(719, first + Math.floor(((now - start) / 1000) * 30)));
+        apply(cameraAtFrame(index, tour));
+        if (index >= 719) {
+          end();
+          return;
+        }
+        tourFrame = requestAnimationFrame(frame);
+      };
+      tourFrame = requestAnimationFrame(frame);
+    };
+    map.stop();
+    map.once("moveend", () => {
+      tourFlight = false;
+      if (!touring) return;
+      // Another camera move interrupted the flight: the viewer took over.
+      const center = map.getCenter();
+      const drift = Math.abs(((center.lng - entry.camera.center[0] + 540) % 360) - 180);
+      if (
+        drift > 0.01 ||
+        Math.abs(center.lat - entry.camera.center[1]) > 0.01 ||
+        Math.abs(map.getZoom() - entry.camera.zoom) > 0.01
+      ) {
+        end();
+        return;
+      }
+      playFrom(entry.frame);
+    });
+    tourFlight = true;
+    map.flyTo({
+      center: entry.camera.center,
+      zoom: entry.camera.zoom,
+      bearing: 0,
+      pitch: 0,
+      speed: 0.72,
+      curve: 1.5,
+      easing: ease,
+      essential: true,
+    });
+  };
+  const endTour = () => {
+    if (!touring) return;
+    touring = false;
+    // Ending the flight fires moveend, which reports the view once touring is off.
+    if (tourFlight) map.stop();
+    tourFlight = false;
+    cancelAnimationFrame(tourFrame);
+    clearTimeout(tourTimer);
+    reportView();
+    reportCamera();
+  };
+  const filter = ({ through, mode }: Timeline) => {
+    igniting = false;
+    cancelAnimationFrame(filtering);
+    cancelAnimationFrame(animation);
+    const start = performance.now();
+    const values = features.map((f) => {
+      const key = f.source + f.id;
+      const target = Math.max(
+        0,
+        ...f.visits.map((v) => visibleAt(v, through, mode)),
+      );
+      return { ...f, key, from: states.get(key) ?? 1, target };
+    });
+    const frame = (now: number) => {
+      const t =
+        media.matches || deterministic ? 1 : Math.min(1, (now - start) / 240);
+      for (const f of values) {
+        const visibility = f.from + (f.target - f.from) * ease(t);
+        states.set(f.key, visibility);
+        map.setFeatureState({ source: f.source, id: f.id }, { visibility });
+      }
+      if (t < 1) filtering = requestAnimationFrame(frame);
+    };
+    filtering = requestAnimationFrame(frame);
+  };
+  const setTheme = (next: Theme) => {
+    if (next === theme) return;
+    theme = next;
+    sky.setTheme(next);
+    if (styled) map.setGlobalStateProperty("theme", next);
+  };
+  /** The journey a subject lights: its own, the one a stop belongs to, or none for a home. */
+  const groupOf = (state: AtlasState): string | null => {
+    const { subject } = state;
+    if (subject.kind === "journey") return subject.id;
+    if (subject.kind === "place" && !homes.some((candidate) => candidate.id === subject.id))
+      return groupForPlace(subject.id);
+    return null;
+  };
+  const isHome = (id: string) => homes.some((candidate) => candidate.id === id);
+  /**
+   * Brings the map in line with the state. Lighting, filter, theme and tour
+   * follow the state itself; the camera follows only the actions that ask to
+   * go somewhere, so a camera the viewer moved is never pulled back.
+   */
+  let applied: AtlasState | null = null;
+  const apply = (state: AtlasState, action: Action | null) => {
+    const previous = applied;
+    applied = state;
+    if (previous ? previous.timeline !== state.timeline : state.timeline.through !== null || state.timeline.mode !== "cumulative")
+      filter(state.timeline);
+    setTheme(state.theme);
+    if (previous?.touring && !state.touring) endTour();
+    const place = state.subject.kind === "place" && !isHome(state.subject.id) ? state.subject.id : null;
+    showFocus(state.preview ?? groupOf(state), place);
+    const subject = state.subject;
+    const arrived = !previous || previous.subject.kind !== subject.kind ||
+      (subject.kind !== "none" && (previous.subject as typeof subject).id !== subject.id);
+    switch (action?.type ?? "route") {
+      case "select":
+        if (subject.kind === "place") flyToPlace(subject.id);
+        break;
+      case "focusJourney":
+        if (subject.kind === "journey") frameJourney(subject.id);
+        break;
+      case "reset":
+        flyHome();
+        break;
+      case "route":
+        if (subject.kind === "place" && arrived) flyToPlace(subject.id);
+        else if (subject.kind === "journey" && arrived) frameJourney(subject.id);
+        else if (subject.kind === "none" && state.camera.kind === "moved" && (!previous || previous.camera !== state.camera))
+          jumpTo(state.camera);
+        break;
+    }
+    if (state.touring && !previous?.touring) startTour();
+  };
+  const unsubscribe = store.subscribe((state, _previous, action) => {
+    if (styled) apply(state, action);
+  });
   const atlas: Atlas = {
     map,
     firstIdleMs: 0,
     archive: { url: archive, bundled: new URL(archive).origin === location.origin },
-    play() {
-      // The recorder picks the same stops, so the movie and the app agree.
-      const candidates = tourCandidates(places, homes);
-      if (touring || !candidates.length) return;
-      const stops = selectTourStops(candidates, candidates[0]);
-      const { width, height } = canvas.getBoundingClientRect();
-      const tour = createGlobeTour(stops, { width, height });
-      finishIgnition();
-      atlas.deselect();
-      for (const id of Object.keys(fineSources)) loadFine(id);
-      touring = true;
-      stopped = true;
-      onTour(true);
-      const apply = (camera: { center: [number, number]; zoom: number }) =>
-        map.jumpTo({ center: camera.center, zoom: camera.zoom, bearing: 0, pitch: 0 });
-      if (media.matches) {
-        // Reduced motion: hold each shot instead of flying between them.
-        let index = 0;
-        const next = () => {
-          if (!touring) return;
-          if (index >= tour.keyframes.length) {
-            atlas.stop();
-            return;
-          }
-          apply(tour.keyframes[index].camera);
-          index += 1;
-          tourTimer = window.setTimeout(next, 1500);
-        };
-        next();
-        return;
-      }
-      // The tour begins where the viewer is: fly from the current camera to the
-      // opening wide shot, as "World" does, then play the choreography onwards.
-      const entry = tour.keyframes[1];
-      const playFrom = (first: number) => {
-        const start = performance.now();
-        const frame = (now: number) => {
-          if (!touring) return;
-          // A frame timestamp can precede the performance.now() taken at start.
-          const index = Math.max(first, Math.min(719, first + Math.floor(((now - start) / 1000) * 30)));
-          apply(cameraAtFrame(index, tour));
-          if (index >= 719) {
-            atlas.stop();
-            return;
-          }
-          tourFrame = requestAnimationFrame(frame);
-        };
-        tourFrame = requestAnimationFrame(frame);
-      };
-      map.stop();
-      map.once("moveend", () => {
-        tourFlight = false;
-        if (!touring) return;
-        // Another camera move interrupted the flight: the viewer took over.
-        const center = map.getCenter();
-        const drift = Math.abs(((center.lng - entry.camera.center[0] + 540) % 360) - 180);
-        if (
-          drift > 0.01 ||
-          Math.abs(center.lat - entry.camera.center[1]) > 0.01 ||
-          Math.abs(map.getZoom() - entry.camera.zoom) > 0.01
-        ) {
-          atlas.stop();
-          return;
-        }
-        playFrom(entry.frame);
-      });
-      tourFlight = true;
-      map.flyTo({
-        center: entry.camera.center,
-        zoom: entry.camera.zoom,
-        bearing: 0,
-        pitch: 0,
-        speed: 0.72,
-        curve: 1.5,
-        easing: ease,
-        essential: true,
-      });
-    },
-    stop() {
-      if (!touring) return;
-      touring = false;
-      // Ending the flight fires moveend, which reports the view once touring is off.
-      if (tourFlight) map.stop();
-      tourFlight = false;
-      cancelAnimationFrame(tourFrame);
-      clearTimeout(tourTimer);
-      onTour(false);
-      reportView();
-      writeUrl();
-    },
-    select(id) {
-      atlas.stop();
-      const home = homes.find((candidate) => candidate.id === id);
-      const place = home ? undefined : resolvePlace(id);
-      const target = home ?? place;
-      if (!target) return;
-      selected = target.id;
-      focus(place ? groupForPlace(place.id) : null, place?.id ?? null);
-      onSelect(target.id);
-      writeUrl("push");
-      const [x, y] = target.coordinates;
-      fly(
-        [
-          [x - 0.035, y - 0.022],
-          [x + 0.035, y + 0.022],
-        ],
-        11,
-      );
-    },
-    focusTrip(id) {
-      const trip = trips.find((candidate) => candidate.id === id);
-      if (!trip) return;
-      // The frame includes home, so the whole round trip is in view.
-      const points = [
-        ...[...trip.stops, ...(trip.via ?? []).flat()].map(
-          (stop) => places.find((place) => place.id === stop)?.coordinates,
-        ),
-        ...[trip.from, trip.to].map(
-          (home) => homes.find((candidate) => candidate.id === home)?.coordinates,
-        ),
-      ].filter((point): point is [number, number] => Boolean(point));
-      if (!points.length) return;
-      atlas.deselect();
-      focus(trip.id);
-      fly(
-        [
-          [Math.min(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1]))],
-          [Math.max(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))],
-        ],
-        6,
-        // Clear of the timeline, so a journey's home is never framed beneath it.
-        40,
-      );
-    },
-    preview(id) {
-      showFocus(id ?? baseFocus);
-    },
-    deselect() {
-      focus(null);
-      if (!selected) return;
-      selected = null;
-      onSelect(null);
-      writeUrl();
-    },
+    select: (id) => store.dispatch({ type: "select", id }),
+    reset: () => store.dispatch({ type: "reset" }),
     zoomBy(delta) {
       finishIgnition();
       stopped = true;
@@ -662,63 +717,8 @@ export async function createMap(
         easing: ease,
       });
     },
-    reset() {
-      atlas.stop();
-      finishIgnition();
-      focus(null);
-      selected = null;
-      onSelect(null);
-      stopped = false;
-      writeUrl();
-      map.flyTo({
-        center: home.center,
-        zoom: home.zoom,
-        bearing: 0,
-        pitch: 0,
-        speed: 0.72,
-        curve: 1.5,
-        easing: ease,
-        animate: !media.matches,
-      });
-    },
-    filter(through, mode) {
-      filterState = { through, mode };
-      if (!map.getSource("pins")) {
-        map.once("style.load", () => atlas.filter(through, mode));
-        return;
-      }
-      writeUrl();
-      igniting = false;
-      cancelAnimationFrame(filtering);
-      cancelAnimationFrame(animation);
-      const start = performance.now();
-      const values = features.map((f) => {
-        const key = f.source + f.id;
-        const target = Math.max(
-          0,
-          ...f.visits.map((v) => visibleAt(v, through, mode)),
-        );
-        return { ...f, key, from: states.get(key) ?? 1, target };
-      });
-      const frame = (now: number) => {
-        const t =
-          media.matches || deterministic ? 1 : Math.min(1, (now - start) / 240);
-        for (const f of values) {
-          const visibility = f.from + (f.target - f.from) * ease(t);
-          states.set(f.key, visibility);
-          map.setFeatureState({ source: f.source, id: f.id }, { visibility });
-        }
-        if (t < 1) filtering = requestAnimationFrame(frame);
-      };
-      filtering = requestAnimationFrame(frame);
-    },
-    setTheme(next) {
-      if (next === theme) return;
-      theme = next;
-      sky.setTheme(next);
-      if (styled) map.setGlobalStateProperty("theme", next);
-    },
     destroy() {
+      unsubscribe();
       sky.destroy();
       touring = false;
       cancelAnimationFrame(revealFrame);
@@ -727,7 +727,6 @@ export async function createMap(
       cancelAnimationFrame(animation);
       cancelAnimationFrame(filtering);
       media.removeEventListener("change", motionChanged);
-      window.removeEventListener("hashchange", route);
       map.remove();
       delete window.__atlas;
     },
@@ -746,59 +745,19 @@ export async function createMap(
         );
     }
   }
-  function route() {
-    const parsed = parseHash(location.hash);
-    const through = parsed.through ?? null;
-    const mode: TimeMode = parsed.mode ?? "cumulative";
-    if (through !== filterState.through || mode !== filterState.mode) {
-      onFilter(through, mode);
-      atlas.filter(through, mode);
-    }
-    if (parsed.place) {
-      const target =
-        homes.find((home) => home.id === parsed.place) ?? resolvePlace(parsed.place);
-      if (!target) {
-        selected = null;
-        focus(null);
-        onSelect(null);
-        return;
-      }
-      // A legacy or alias link becomes its canonical form in place, never a second entry.
-      selected = target.id;
-      writeUrl();
-      atlas.select(target.id);
-    } else if (parsed.view) {
-      selected = null;
-      focus(null);
-      onSelect(null);
-      finishIgnition();
-      stopped = true;
-      map.jumpTo({
-        center: [parsed.view.lng, parsed.view.lat],
-        zoom: parsed.view.zoom,
-        bearing: 0,
-        pitch: 0,
-      });
-    } else {
-      selected = null;
-      focus(null);
-      onSelect(null);
-    }
-  }
   media.addEventListener("change", motionChanged);
-  window.addEventListener("hashchange", route);
   map.once("idle", () => {
     atlas.firstIdleMs = performance.now();
   });
   // Boundaries, pins and routes are inline GeoJSON, so the atlas can light up
   // as soon as the style is ready rather than after every basemap tile arrives.
   map.once("style.load", () => {
-    route();
+    apply(store.getState(), null);
     reportView();
     // Deterministic captures compare fine geometry regardless of camera history.
     if (deterministic) for (const id of Object.keys(fineSources)) loadFine(id);
     refineForZoom();
-    if (!media.matches && !deterministic && !location.hash && !stopped) {
+    if (!media.matches && !deterministic && isOpeningView(store.getState()) && !stopped) {
       igniting = true;
       for (const f of countries.features) {
         states.set("countries" + f.id, 0);
@@ -837,7 +796,7 @@ export async function createMap(
       // The gesture has already interrupted any flight; stopping the map again
       // would cancel the gesture itself.
       tourFlight = false;
-      atlas.stop();
+      store.dispatch({ type: "stopTour" });
       finishIgnition();
       stopped = true;
       cancelAnimationFrame(animation);
@@ -876,9 +835,7 @@ export async function createMap(
     // A playing tour moves every frame; the view report and URL wait for it to end.
     if (touring) return;
     reportView();
-    // Only a camera the viewer moved becomes part of the link; ignition and
-    // programmatic resets never write a view.
-    if (stopped && !selected) writeUrl();
+    reportCamera();
   });
   map.on("zoomend", refineForZoom);
   map.on("resize", reportView);
@@ -1008,7 +965,7 @@ export async function createMap(
   map.on("click", (event) => {
     const mark = markAt(event.point, reachOf(event));
     if (mark) {
-      atlas.select(mark);
+      store.dispatch({ type: "select", id: mark });
       return;
     }
     const layer = activeLayer(map.getZoom());
@@ -1033,12 +990,8 @@ export async function createMap(
           layer === "countries" ? 5.5 : 8,
         );
     } else {
-      focus(null);
-      if (selected) {
-        selected = null;
-        onSelect(null);
-        writeUrl();
-      }
+      // Empty sea lets go of a place or a journey alike.
+      store.dispatch({ type: "deselect" });
     }
   });
   window.__atlas = atlas;

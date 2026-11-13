@@ -33,11 +33,17 @@ scripts/              Build-time Node code, run with tsx. Owns every sensitive f
   service-worker.ts     Source of the generated dist/sw.js (see vite.config.ts).
   build-basemap.sh / publish-tiles.ts Basemap extraction and Hugging Face publishing.
 src/                  Browser application.
-  main.tsx              The whole React UI: title, directory, caption, timeline, numbers, tour and theme buttons.
+  main.tsx              Entry: creates the store, binds the URL and theme to it, renders the app.
+  state/atlas-state.ts  The state model: one typed state, the action union, pure transitions, Escape order.
+  state/router.ts       Hash routes: #/place/<id>, #/journey/<id>, #/view/<z>/<lat>/<lng>, ?through=&mode=&panel=.
+  state/store.ts        The store, its React binding (useSyncExternalStore) and StoreContext.
+  state/url.ts          Keeps the hash equal to the state's route; push for navigations, replace otherwise.
+  state/catalog.ts      What transitions know of the atlas: canonical place IDs, legacy aliases, journeys.
+  app/                  One React file per surface: App (layout, keyboard, focus), Numbers, Controls,
+                        Directory, Caption, Timeline, Credits; derived.ts (indexes, itineraries), format.ts.
   theme.ts              Day/night theme: pre-paint boot script (hashed into the CSP), storage, system follow.
-  map/create-map.ts     MapLibre setup, feature state, selection, journeys focus, LOD swaps, `Atlas` API.
+  map/create-map.ts     MapLibre setup, feature state, LOD swaps; follows the store and dispatches to it.
   map/expressions.ts    Zoom bands and paint-expression helpers shared with build-style.ts.
-  map/router.ts         Hash routes: #/place/<id>, #/view/<z>/<lat>/<lng>, ?through=&mode=.
   map/time.ts           Timeline predicate and dateBounds (shared with scripts/config.ts).
   map/tour.ts           In-app tour; shares shots with the recorder.
   map/text.ts           Diacritic folding and slugs (shared with authoring).
@@ -48,7 +54,7 @@ src/                  Browser application.
 public/               Static assets copied verbatim: fonts, glyphs, sprites, icons, social card, _headers.
 verification/         The verification harness and its fixtures.
   run.ts / entry.mjs    `npm run verify` orchestration; writes verification/report.json.
-  contracts.test.ts     Unit contracts (Vitest). boundaries.test.ts, recording.test.ts too.
+  contracts.test.ts     Unit contracts (Vitest). boundaries.test.ts, recording.test.ts, state.test.ts too.
   runtime.ts / browser.ts / server.ts   Full-mode Playwright choreography, a11y, network audit.
   payload.ts            Publication allowlist audit of everything shipped to the browser.
   style.ts              Style layer/continuity checks.
@@ -106,7 +112,8 @@ Before proposing a change as done, run at least `npm test`, `npm run lint`, `npx
 
 - **Add a map layer or change styling:** `scripts/build-style.ts` (layers), `src/map/expressions.ts` (zoom bands and shared expressions), then check `verification/style.ts` for layer-ID expectations. Pixel changes need a baseline approval by a human.
 - **Change a colour:** use a semantic token (`--bg`, `--text`, `--accent`, …) in CSS and the `color(role)` helper in `build-style.ts`; give it a night and a day value. The `theme.palettes` style gate checks the built style.
-- **Add a UI control:** `src/main.tsx` plus `src/styles/app.css`. Mirror the existing pattern: `aria-label`, `aria-keyshortcuts` where there's a key, hide `kbd` hints under 700 px.
+- **Add a UI control:** the surface's file in `src/app/` plus `src/styles/app.css`. Mirror the existing pattern: `aria-label`, `aria-keyshortcuts` where there's a key, hide `kbd` hints under 700 px. Read state with `useAtlas(select)` and change it with `store.dispatch`; keep only a surface's own detail (a search query, a page) in `useState`.
+- **Add a piece of state or a URL field:** extend `AtlasState` and `Action` in `src/state/atlas-state.ts` with its transition, `Route` in `src/state/router.ts` and `toRoute` if links should carry it, and the arbitraries in `verification/state.test.ts` so the round-trip property covers it. The map follows state in `apply()` in `create-map.ts`; only an action that asks to go somewhere moves the camera.
 - **Add a published field or generated file:** produce it in `scripts/build-geo.ts`, extend `verification/payload.ts` and add a contract in `verification/contracts.test.ts`.
 - **Change authoring rules:** `scripts/config.ts` (schema and identity). IDs must stay stable for unrelated edits; see the ID section of `docs/DATA.md`.
 - **Change the tour:** shots are shared by `src/map/tour.ts` and `scripts/record.ts`; keep them in agreement.

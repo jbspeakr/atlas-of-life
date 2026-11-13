@@ -494,7 +494,7 @@ describe("time predicate and hash routes", () => {
     );
   });
   it("round-trips place, view and filter routes and rejects malformed ones", async () => {
-    const { parseHash, formatHash } = await import("../src/map/router.ts");
+    const { parseHash, formatHash } = await import("../src/state/router.ts");
     expect(parseHash("")).toEqual({});
     expect(parseHash("#/place/de-berlin-1a2b3c4d")).toEqual({ place: "de-berlin-1a2b3c4d" });
     expect(parseHash("#/view/5.00/51.2000/10.4000?through=2025-06-24&mode=only")).toEqual({

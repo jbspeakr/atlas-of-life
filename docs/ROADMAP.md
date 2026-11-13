@@ -146,7 +146,7 @@ Work that makes everything above cheaper and safer.
 
 - **7a. Approved baselines.** Run `npm run verify` locally on a machine with a GPU, fix anything non-visual that fails, approve with `npm run verify:approve`, set the metric baseline, commit.
 - **7b. The complete published basemap.** Global z0–6 with city detail on a pinned Hugging Face SHA, as described in the [guide](GUIDE.md#basemap-deployment). Unblocks the poster, the recorder and the README hero.
-- **7c. Linkable journeys and During on phones.** `#/journey/<id>` in the router; the Through/During control on narrow screens.
+- **7c. During on phones.** The Through/During control on narrow screens.
 
 ## Suggested order
 
